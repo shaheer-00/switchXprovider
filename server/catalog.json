@@ -1,0 +1,110 @@
+{
+  "version": 1,
+  "updated": "2026-09-05",
+  "note": "Curated provider catalog shipped with the plugin. A remote catalog (same schema, served from a raw GitHub URL) can be added in Settings and overrides entries with matching ids. Model IDs change often — always verify against the provider's docs. Ratings are editorial.",
+  "providers": [
+    {
+      "id": "anthropic",
+      "name": "Anthropic (official)",
+      "baseUrl": "https://api.anthropic.com",
+      "authStyle": "anthropic",
+      "description": "The official Anthropic API. Native Claude models, first-party reliability, full feature support (prompt caching, extended thinking, web search tools).",
+      "website": "https://www.anthropic.com",
+      "docsUrl": "https://docs.anthropic.com",
+      "pricing": "per-token, no free tier",
+      "freeTier": false,
+      "rating": 5,
+      "tags": ["official", "claude-models", "full-features"],
+      "models": {
+        "opus": "claude-opus-5",
+        "sonnet": "claude-sonnet-5",
+        "haiku": "claude-haiku-4-5-20251001"
+      }
+    },
+    {
+      "id": "openrouter",
+      "name": "OpenRouter",
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "authStyle": "bearer",
+      "description": "Aggregator with hundreds of models behind one API and one balance. Officially supports Claude Code. Good fallback layer — one key covers many upstream providers.",
+      "website": "https://openrouter.ai",
+      "docsUrl": "https://openrouter.ai/docs",
+      "pricing": "per-token, pay-as-you-go, some free models",
+      "freeTier": true,
+      "rating": 4.5,
+      "tags": ["aggregator", "many-models", "fallback"],
+      "models": {
+        "opus": "anthropic/claude-opus-5",
+        "sonnet": "anthropic/claude-sonnet-5",
+        "haiku": "anthropic/claude-haiku-4.5"
+      }
+    },
+    {
+      "id": "zai-glm",
+      "name": "Z.AI (GLM)",
+      "baseUrl": "https://api.z.ai/api/anthropic",
+      "authStyle": "anthropic",
+      "description": "Zhipu's GLM models via their Anthropic-compatible endpoint. The GLM Coding Plan is a popular flat-rate subscription for coding tools.",
+      "website": "https://z.ai",
+      "docsUrl": "https://docs.z.ai",
+      "pricing": "subscription (Coding Plan) or per-token",
+      "freeTier": false,
+      "rating": 4,
+      "tags": ["anthropic-compatible", "coding-plan", "budget"],
+      "models": {
+        "sonnet": "glm-4.6",
+        "haiku": "glm-4.5-air"
+      }
+    },
+    {
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "baseUrl": "https://api.deepseek.com/anthropic",
+      "authStyle": "anthropic",
+      "description": "DeepSeek's official Anthropic-compatible endpoint. Very cheap per-token pricing; strong reasoning model. No subscription tier.",
+      "website": "https://www.deepseek.com",
+      "docsUrl": "https://api-docs.deepseek.com",
+      "pricing": "per-token, very cheap",
+      "freeTier": false,
+      "rating": 4,
+      "tags": ["anthropic-compatible", "cheap", "reasoning"],
+      "models": {
+        "sonnet": "deepseek-chat",
+        "haiku": "deepseek-chat"
+      }
+    },
+    {
+      "id": "moonshot-kimi",
+      "name": "Moonshot Kimi",
+      "baseUrl": "https://api.moonshot.ai/anthropic",
+      "authStyle": "anthropic",
+      "description": "Kimi models via Moonshot's Anthropic-compatible endpoint. Long-context strengths; regional variants (api.moonshot.ai for global).",
+      "website": "https://moonshot.ai",
+      "docsUrl": "https://platform.moonshot.ai/docs",
+      "pricing": "per-token",
+      "freeTier": true,
+      "rating": 3.5,
+      "tags": ["anthropic-compatible", "long-context"],
+      "models": {
+        "sonnet": "kimi-k2-0905-preview",
+        "haiku": "kimi-k2-0905-preview"
+      }
+    },
+    {
+      "id": "agentrouter",
+      "name": "AgentRouter",
+      "baseUrl": "https://agentrouter.org",
+      "authStyle": "anthropic",
+      "description": "Community gateway offering various models (GLM, DeepSeek, etc.) through one endpoint. Claude Code clients only — it fingerprints user-agents.",
+      "website": "https://agentrouter.org",
+      "pricing": "varies, check site",
+      "freeTier": true,
+      "rating": 3.5,
+      "tags": ["community", "gateway", "multi-model"],
+      "models": {
+        "sonnet": "glm-5.3",
+        "haiku": "deepseek-v4-flash"
+      }
+    }
+  ]
+}

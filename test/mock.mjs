@@ -1,0 +1,89 @@
+#!/usr/bin/env node
+// Mock Anthropic-compatible provider for tests.
+// Usage: node mock.mjs <port> <mode>
+//   ok       — 200 on /v1/messages, echoes received model + auth; 200 on /v1/models
+//   fail500  — 500 on /v1/messages (provider trouble)
+//   ratelimit — 429 on /v1/messages (quota/usage window)
+//   badreq   — 400 on /v1/messages (request error, must NOT trigger failover)
+//   keyonly  — 401 unless x-api-key present (anthropic-style provider)
+//   beareronly — 401 unless Authorization: Bearer present (openrouter-style provider)
+
+import http from 'node:http';
+
+const [, , portArg, mode = 'ok'] = process.argv;
+const port = parseInt(portArg, 10);
+
+const server = http.createServer((req, res) => {
+  let body = '';
+  req.on('data', (c) => (body += c));
+  req.on('end', () => {
+    if (req.url.includes('/v1/models')) {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ data: [] }));
+      return;
+    }
+    if (!req.url.includes('/v1/messages')) {
+      res.writeHead(404, { 'content-type': 'application/json' });
+      res.end('{}');
+      return;
+    }
+
+    const auth = req.headers['x-api-key'] || req.headers['authorization'] || '';
+    const json = JSON.parse(body || '{}');
+
+    if (mode === 'ok' && json.stream) {
+      // SSE with realistic usage events: message_start carries input tokens,
+      // message_delta carries the final cumulative output count.
+      res.writeHead(200, { 'content-type': 'text/event-stream' });
+      res.write(`event: message_start\ndata: ${JSON.stringify({ type: 'message_start', message: { model: json.model, usage: { input_tokens: 7, output_tokens: 1, cache_read_input_tokens: 3 } } })}\n\n`);
+      res.write(`event: content_block_delta\ndata: ${JSON.stringify({ type: 'content_block_delta', delta: { type: 'text_delta', text: 'hello' } })}\n\n`);
+      res.write(`event: message_delta\ndata: ${JSON.stringify({ type: 'message_delta', usage: { output_tokens: 9 } })}\n\n`);
+      res.write('event: message_stop\ndata: {"type":"message_stop"}\n\n');
+      res.end();
+      return;
+    }
+
+    const payload = JSON.stringify({
+      id: 'msg_mock',
+      type: 'message',
+      role: 'assistant',
+      model: json.model,
+      content: [{ type: 'text', text: `mock:${mode}` }],
+      receivedAuth: auth,
+      usage: { input_tokens: 10, output_tokens: 5 },
+    });
+
+    if (mode === 'fail500') {
+      res.writeHead(500, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ type: 'error', error: { type: 'api_error', message: 'mock internal error' } }));
+      return;
+    }
+    if (mode === 'ratelimit') {
+      res.writeHead(429, { 'content-type': 'application/json', 'retry-after': '120' });
+      res.end(JSON.stringify({ type: 'error', error: { type: 'rate_limit_error', message: 'mock rate limit' } }));
+      return;
+    }
+    if (mode === 'badreq') {
+      res.writeHead(400, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: 'mock bad request' } }));
+      return;
+    }
+    if (mode === 'keyonly' && !req.headers['x-api-key']) {
+      res.writeHead(401, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ type: 'error', error: { type: 'authentication_error', message: 'missing x-api-key' } }));
+      return;
+    }
+    if (mode === 'beareronly' && !/^Bearer /.test(req.headers['authorization'] || '')) {
+      res.writeHead(401, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ type: 'error', error: { type: 'authentication_error', message: 'missing bearer token' } }));
+      return;
+    }
+
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(payload);
+  });
+});
+
+server.listen(port, '127.0.0.1', () => {
+  console.log(`mock ${mode} on ${port}`);
+});

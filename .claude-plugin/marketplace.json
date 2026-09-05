@@ -1,0 +1,24 @@
+{
+  "name": "switchx-marketplace",
+  "owner": {
+    "name": "shaheer-00",
+    "url": "https://github.com/shaheer-00"
+  },
+  "plugins": [
+    {
+      "name": "switchXprovider",
+      "source": "./",
+      "description": "Local multi-provider proxy for Claude Code — automatic failover, priority routing, auto-recovery, usage analytics, and a built-in provider catalog.",
+      "version": "0.1.0",
+      "author": {
+        "name": "shaheer-00",
+        "url": "https://github.com/shaheer-00"
+      },
+      "homepage": "https://github.com/shaheer-00/switchXprovider",
+      "repository": "https://github.com/shaheer-00/switchXprovider",
+      "license": "MIT",
+      "keywords": ["proxy", "failover", "router", "anthropic", "providers", "dashboard"],
+      "category": "productivity"
+    }
+  ]
+}

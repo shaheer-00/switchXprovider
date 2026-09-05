@@ -1,0 +1,17 @@
+{
+  "name": "switchxprovider",
+  "version": "0.1.0",
+  "description": "Local proxy for Claude Code: multi-provider routing, automatic failover, priority switching, auto-recovery.",
+  "type": "module",
+  "main": "server/server.mjs",
+  "scripts": {
+    "start": "node server/server.mjs",
+    "ensure": "node server/ensure.mjs",
+    "setup": "node scripts/install.mjs",
+    "test": "node test/run-tests.mjs"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT"
+}

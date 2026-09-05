@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>switchXprovider</title>
+<style>
+  :root {
+    --bg: #05070d;
+    --bg2: #090d18;
+    --panel: rgba(19, 24, 40, 0.72);
+    --panel-solid: #12172a;
+    --panel2: rgba(30, 37, 60, 0.65);
+    --border: rgba(130, 150, 200, 0.14);
+    --border-hi: rgba(120, 140, 255, 0.35);
+    --text: #e3e9f5;
+    --muted: #8b95ad;
+    --dim: #5d677e;
+    --acc1: #6366f1;
+    --acc2: #22d3ee;
+    --acc3: #a855f7;
+    --grad: linear-gradient(100deg, var(--acc1), var(--acc2));
+    --grad3: linear-gradient(100deg, var(--acc3), var(--acc1), var(--acc2));
+    --green: #34d399;
+    --red: #f87171;
+    --amber: #fbbf24;
+    --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+    --side: 240px;
+    --r: 16px;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; color: var(--text);
+    font: 14px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--bg);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---- ambient background ---- */
+  .bgfx { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+  .bgfx .blob { position: absolute; border-radius: 50%; filter: blur(110px); opacity: 0.16; }
+  .blob.b1 { width: 620px; height: 620px; background: var(--acc1); top: -220px; left: -140px; animation: drift1 26s ease-in-out infinite alternate; }
+  .blob.b2 { width: 520px; height: 520px; background: var(--acc2); bottom: -200px; right: -120px; opacity: 0.11; animation: drift2 32s ease-in-out infinite alternate; }
+  .blob.b3 { width: 420px; height: 420px; background: var(--acc3); top: 40%; left: 55%; opacity: 0.07; animation: drift1 40s ease-in-out infinite alternate-reverse; }
+  @keyframes drift1 { to { transform: translate(90px, 60px) scale(1.15); } }
+  @keyframes drift2 { to { transform: translate(-70px, -80px) scale(0.9); } }
+  .bgfx .grid {
+    position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(130,150,255,0.03) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(130,150,255,0.03) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 20%, transparent 75%);
+  }
+
+  /* ---- app shell ---- */
+  .app { position: relative; z-index: 1; display: grid; grid-template-columns: var(--side) 1fr; height: 100vh; }
+
+  aside {
+    background: rgba(9, 12, 22, 0.85); backdrop-filter: blur(14px);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; padding: 20px 14px;
+    overflow-y: auto;
+  }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 2px 8px 4px; }
+  .brandmark {
+    width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+    background: var(--grad3); background-size: 200% 200%;
+    display: grid; place-items: center; font-weight: 800; font-size: 15px; color: #fff;
+    box-shadow: 0 0 22px rgba(99, 102, 241, 0.45);
+    animation: hue 9s ease-in-out infinite;
+  }
+  @keyframes hue { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+  .brand .t { font-size: 15.5px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
+  .brand .t span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .brand .s { font-size: 10.5px; color: var(--dim); }
+
+  nav { display: flex; flex-direction: column; gap: 4px; margin-top: 18px; }
+  nav button {
+    all: unset; cursor: pointer; display: flex; align-items: center; gap: 11px;
+    padding: 9px 11px; border-radius: 11px; font-size: 13.5px; color: var(--muted);
+    transition: all 0.18s ease; position: relative;
+  }
+  nav button:hover { background: rgba(99, 102, 241, 0.08); color: var(--text); transform: translateX(2px); }
+  nav button.active {
+    background: linear-gradient(95deg, rgba(99, 102, 241, 0.16), rgba(34, 211, 238, 0.07));
+    color: #fff;
+    box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.25), 0 4px 18px rgba(99, 102, 241, 0.12);
+  }
+  nav button.active::before {
+    content: ''; position: absolute; left: -14px; top: 20%; bottom: 20%; width: 3px;
+    border-radius: 3px; background: var(--grad); box-shadow: 0 0 10px var(--acc1);
+  }
+  nav .ico { width: 18px; height: 18px; display: grid; place-items: center; flex-shrink: 0; }
+  nav .ico svg { width: 17px; height: 17px; }
+
+  .sidebottom { margin-top: auto; padding: 14px 10px 2px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--muted); }
+  .sidebottom .row { display: flex; align-items: center; gap: 7px; margin-top: 6px; }
+  .sidebottom .row b { color: var(--text); font-weight: 500; }
+  .bmc {
+    display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 8px 11px;
+    border-radius: 11px; border: 1px solid rgba(251, 191, 36, 0.35);
+    background: rgba(251, 191, 36, 0.07); color: var(--amber);
+    text-decoration: none; font-size: 12px; font-weight: 600;
+    transition: all 0.18s ease;
+  }
+  .bmc:hover { background: rgba(251, 191, 36, 0.14); box-shadow: 0 4px 18px rgba(251, 191, 36, 0.18); transform: translateY(-1px); }
+
+  main { overflow-y: auto; padding: 28px 38px 90px; scroll-behavior: smooth; }
+  .view { display: none; max-width: 1240px; margin: 0 auto; animation: viewin 0.3s ease; }
+  .view.active { display: block; }
+  @keyframes viewin { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .viewhead { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 22px; }
+  .viewhead h1 { font-size: 22px; margin: 0; letter-spacing: -0.03em; }
+  .viewhead .sub { color: var(--muted); font-size: 13px; }
+
+  /* ---- glowy panel ---- */
+  .panelcard {
+    background: var(--panel); backdrop-filter: blur(12px);
+    border: 1px solid var(--border); border-radius: var(--r);
+    padding: 20px; margin-bottom: 22px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+  }
+  .panelcard h2 { font-size: 14.5px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .panelcard .hint { color: var(--muted); font-size: 12.5px; margin-bottom: 14px; }
+
+  /* ---- hero (overview) ---- */
+  .hero {
+    display: grid; grid-template-columns: 1fr 1.25fr; gap: 22px; margin-bottom: 22px;
+  }
+  .hero-left {
+    background: var(--panel); backdrop-filter: blur(12px);
+    border: 1px solid var(--border); border-radius: var(--r);
+    padding: 24px; position: relative; overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+  }
+  .hero-left::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1.5px;
+    background: var(--grad3); background-size: 200% 100%; animation: hue 6s linear infinite;
+  }
+  .hero-left .lbl { color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.1em; }
+  .hero-left .bigname {
+    font-size: 30px; font-weight: 800; letter-spacing: -0.03em; margin: 6px 0 2px;
+    background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
+    word-break: break-word;
+  }
+  .hero-left .state { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+  .hero-left .uptime { color: var(--dim); font-size: 12px; font-family: var(--mono); margin-top: 14px; }
+
+  .pulse { width: 10px; height: 10px; border-radius: 50%; position: relative; flex-shrink: 0; }
+  .pulse.ok { background: var(--green); box-shadow: 0 0 12px var(--green); }
+  .pulse.ok::after {
+    content: ''; position: absolute; inset: -5px; border-radius: 50%;
+    border: 2px solid var(--green); animation: ping 2.2s ease-out infinite;
+  }
+  @keyframes ping { 0% { transform: scale(0.4); opacity: 0.8; } 75% { transform: scale(1.5); opacity: 0; } 100% { opacity: 0; } }
+  .pulse.bad { background: var(--red); box-shadow: 0 0 12px var(--red); }
+
+  .pill {
+    border: 1px solid var(--border); border-radius: 999px; padding: 2px 11px;
+    font-size: 11.5px; color: var(--muted); background: rgba(255,255,255,0.02);
+  }
+  .pill.ok { color: var(--green); border-color: rgba(52, 211, 153, 0.4); background: rgba(52, 211, 153, 0.07); }
+  .pill.bad { color: var(--red); border-color: rgba(248, 113, 113, 0.4); background: rgba(248, 113, 113, 0.07); }
+  .pill.warn { color: var(--amber); border-color: rgba(251, 191, 36, 0.4); background: rgba(251, 191, 36, 0.07); }
+
+  /* ---- flow diagram ---- */
+  .hero-right {
+    background: var(--panel); backdrop-filter: blur(12px);
+    border: 1px solid var(--border); border-radius: var(--r);
+    padding: 18px 20px 10px; overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+  }
+  .hero-right h2 { font-size: 13px; margin: 0 0 2px; color: var(--muted); font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; }
+  .flowsvg { width: 100%; height: auto; display: block; }
+  .flowsvg .edge { stroke: rgba(130,150,200,0.18); stroke-width: 1.5; fill: none; }
+  .flowsvg .edge.active {
+    stroke: url(#edgeGrad); stroke-width: 2.2;
+    stroke-dasharray: 7 7; animation: dashmove 0.9s linear infinite;
+    filter: drop-shadow(0 0 4px rgba(99,102,241,0.6));
+  }
+  .flowsvg .edge.dead { stroke: rgba(248,113,113,0.35); stroke-dasharray: 2 5; }
+  .flowsvg .edge.disabled { stroke: rgba(130,150,200,0.07); }
+  @keyframes dashmove { to { stroke-dashoffset: -14; } }
+  .flowsvg .node rect { fill: var(--panel-solid); stroke: var(--border); rx: 10; }
+  .flowsvg .node text { fill: var(--text); font-size: 11px; font-family: system-ui, sans-serif; }
+  .flowsvg .node .sub { fill: var(--dim); font-size: 9px; }
+  .flowsvg .node.active rect { stroke: rgba(99,102,241,0.55); filter: drop-shadow(0 0 8px rgba(99,102,241,0.35)); }
+  .flowsvg .core rect { fill: rgba(99,102,241,0.12); stroke: rgba(99,102,241,0.5); }
+
+  /* ---- stat cards ---- */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 15px; margin-bottom: 22px; }
+  .stat {
+    background: var(--panel); backdrop-filter: blur(12px);
+    border: 1px solid var(--border); border-radius: var(--r);
+    padding: 17px 19px; position: relative; overflow: hidden;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .stat:hover { transform: translateY(-3px); border-color: var(--border-hi); box-shadow: 0 14px 34px rgba(99,102,241,0.14); }
+  .stat .glowcorner {
+    position: absolute; top: -40px; right: -40px; width: 110px; height: 110px; border-radius: 50%;
+    filter: blur(38px); opacity: 0.35; pointer-events: none;
+  }
+  .stat .toprow { display: flex; align-items: center; gap: 8px; }
+  .stat .ic { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: rgba(99,102,241,0.14); }
+  .stat .ic svg { width: 14px; height: 14px; }
+  .stat .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .stat .value { font-size: 29px; font-weight: 800; font-variant-numeric: tabular-nums; margin-top: 6px; letter-spacing: -0.03em; }
+  .stat .detail { color: var(--dim); font-size: 11.5px; margin-top: 2px; font-family: var(--mono); }
+
+  /* ---- chart ---- */
+  .chart { display: flex; align-items: flex-end; gap: 6px; height: 170px; }
+  .barday { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 5px; height: 100%; min-width: 0; position: relative; }
+  .barstack { width: 100%; max-width: 42px; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; border-radius: 5px 5px 0 0; overflow: hidden; }
+  .bar-in, .bar-out { width: 100%; transition: height 0.8s cubic-bezier(0.22, 1, 0.36, 1); }
+  .bar-in { background: linear-gradient(180deg, var(--acc1), rgba(99,102,241,0.25)); box-shadow: 0 0 14px rgba(99,102,241,0.25); }
+  .bar-out { background: linear-gradient(180deg, var(--acc2), rgba(34,211,238,0.2)); box-shadow: 0 0 14px rgba(34,211,238,0.2); }
+  .barday .lbl { color: var(--dim); font-size: 10px; font-family: var(--mono); }
+  .barday:hover .barstack { outline: 1px solid var(--border-hi); }
+  .barday .tip {
+    display: none; position: absolute; z-index: 5; background: #0d1222; border: 1px solid var(--border-hi);
+    border-radius: 9px; padding: 7px 11px; font-size: 11px; font-family: var(--mono); white-space: nowrap;
+    bottom: 100%; left: 50%; transform: translateX(-50%); pointer-events: none; margin-bottom: 6px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  }
+  .barday:hover .tip { display: block; }
+  .legend { display: flex; gap: 18px; margin-top: 12px; color: var(--muted); font-size: 12px; }
+  .swatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; margin-right: 6px; vertical-align: -1px; }
+
+  /* ---- usage bars ---- */
+  .prow { margin-bottom: 13px; }
+  .prow .ptop { display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 5px; gap: 10px; }
+  .prow .ptop .tok { color: var(--muted); font-family: var(--mono); font-size: 11.5px; }
+  .track { height: 8px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+  .fill { height: 100%; border-radius: 999px; background: var(--grad); box-shadow: 0 0 12px rgba(99,102,241,0.5); width: 0; transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1); }
+
+  table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.tbl th { text-align: left; color: var(--dim); font-weight: 500; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em; padding: 7px 10px; border-bottom: 1px solid var(--border); }
+  table.tbl td { padding: 9px 10px; border-bottom: 1px solid rgba(130,150,200,0.07); font-family: var(--mono); font-size: 12.5px; }
+  table.tbl tr:hover td { background: rgba(99,102,241,0.05); }
+
+  /* ---- request feed ---- */
+  .feed { display: flex; flex-direction: column; gap: 7px; max-height: 400px; overflow-y: auto; padding-right: 4px; }
+  .req {
+    display: grid; grid-template-columns: 72px 1.1fr 1.3fr 1fr auto; gap: 10px; align-items: center;
+    background: rgba(30, 37, 60, 0.4); border: 1px solid var(--border); border-radius: 11px;
+    padding: 8px 13px; font-size: 12.5px; font-family: var(--mono);
+    animation: reqin 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  @keyframes reqin { from { transform: translateY(-10px) scale(0.98); opacity: 0; box-shadow: 0 0 24px rgba(99,102,241,0.4); } to { transform: none; opacity: 1; } }
+  .req .t { color: var(--dim); font-size: 11px; }
+  .req .prov { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .req .mod { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .req .tok { color: var(--muted); font-size: 11px; }
+  .req .st { font-size: 11px; padding: 1px 9px; border-radius: 999px; font-weight: 600; }
+  .st.s2 { color: var(--green); border: 1px solid rgba(52,211,153,0.4); background: rgba(52,211,153,0.08); }
+  .st.s4 { color: var(--red); border: 1px solid rgba(248,113,113,0.4); background: rgba(248,113,113,0.08); }
+  .st.s5 { color: var(--amber); border: 1px solid rgba(251,191,36,0.4); background: rgba(251,191,36,0.08); }
+
+  /* ---- provider cards ---- */
+  .card {
+    background: var(--panel); backdrop-filter: blur(12px);
+    border: 1px solid var(--border); border-radius: var(--r);
+    padding: 16px 19px; margin-bottom: 13px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .card:hover { border-color: var(--border-hi); box-shadow: 0 8px 30px rgba(99,102,241,0.1); }
+  .card .row1 { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .avatar {
+    width: 36px; height: 36px; border-radius: 11px; flex-shrink: 0;
+    display: grid; place-items: center; font-weight: 700; font-size: 15px; color: #fff;
+    background: var(--grad3); background-size: 200% 200%;
+    box-shadow: 0 4px 14px rgba(99,102,241,0.3);
+  }
+  .card .namecol { display: flex; flex-direction: column; min-width: 0; }
+  .card .name { font-weight: 600; font-size: 15px; }
+  .card .baseurl { color: var(--muted); font-family: var(--mono); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 340px; }
+  .spacer { flex: 1; }
+  .card .meta { display: flex; gap: 18px; flex-wrap: wrap; color: var(--muted); font-size: 12px; margin-top: 10px; }
+  .card .meta b { color: var(--text); font-weight: 500; }
+  .card .reason { color: var(--red); font-size: 12px; font-family: var(--mono); margin-top: 7px; word-break: break-all; }
+  .models { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 9px; }
+  .modeltag { background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.18); border-radius: 7px; padding: 2px 9px; font-family: var(--mono); font-size: 11px; }
+  .modeltag em { color: var(--dim); font-style: normal; margin-right: 4px; }
+
+  /* ---- catalog ---- */
+  .catgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+  .catcard {
+    background: var(--panel); backdrop-filter: blur(12px);
+    border: 1px solid var(--border); border-radius: var(--r);
+    padding: 18px; display: flex; flex-direction: column; gap: 9px;
+    transition: transform 0.22s ease, border-color 0.2s, box-shadow 0.22s;
+  }
+  .catcard:hover { border-color: var(--border-hi); transform: translateY(-4px); box-shadow: 0 16px 40px rgba(99,102,241,0.16); }
+  .catcard .top { display: flex; align-items: center; gap: 11px; }
+  .catcard .top .name { font-weight: 600; font-size: 15px; }
+  .catcard .desc { color: var(--muted); font-size: 12.5px; flex: 1; }
+  .catcard .facts { display: flex; flex-wrap: wrap; gap: 6px; }
+  .fact { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; font-size: 11px; color: var(--muted); }
+  .fact.free { color: var(--green); border-color: rgba(52,211,153,0.35); background: rgba(52,211,153,0.07); }
+  .catcard .urls { display: flex; gap: 14px; font-size: 12px; }
+  .catcard .urls a { color: var(--acc2); text-decoration: none; }
+  .catcard .urls a:hover { text-decoration: underline; }
+  .stars { position: relative; display: inline-block; font-size: 13px; color: #2c3550; letter-spacing: 1.5px; flex-shrink: 0; }
+  .stars .fillstars { position: absolute; left: 0; top: 0; overflow: hidden; white-space: nowrap; color: var(--amber); text-shadow: 0 0 10px rgba(251,191,36,0.4); }
+
+  /* ---- forms ---- */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+  input, select, textarea {
+    width: 100%; background: rgba(5, 7, 13, 0.7); color: var(--text);
+    border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
+    font-size: 13px; font-family: var(--mono);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--acc1); box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+  .checkrow { display: flex; align-items: center; gap: 9px; }
+  .checkrow input { width: auto; }
+  .formactions { display: flex; gap: 10px; margin-top: 15px; }
+
+  button {
+    background: rgba(30, 37, 60, 0.6); color: var(--text); border: 1px solid var(--border);
+    border-radius: 10px; padding: 7px 14px; font-size: 12.5px; cursor: pointer;
+    transition: all 0.15s ease; backdrop-filter: blur(6px);
+  }
+  button:hover { border-color: var(--acc1); box-shadow: 0 4px 18px rgba(99,102,241,0.18); }
+  button:active { transform: scale(0.97); }
+  button.primary {
+    background: var(--grad); border: none; color: #fff; font-weight: 600;
+    box-shadow: 0 4px 20px rgba(99,102,241,0.35);
+  }
+  button.primary:hover { box-shadow: 0 6px 26px rgba(99,102,241,0.5); }
+  button.danger { border-color: rgba(248,113,113,0.3); color: var(--red); background: transparent; }
+  button.danger:hover { border-color: var(--red); background: rgba(248,113,113,0.08); box-shadow: none; }
+  button.icon { padding: 4px 9px; }
+  button:disabled { opacity: 0.35; cursor: default; box-shadow: none; }
+
+  .events { list-style: none; margin: 0; padding: 0; font-family: var(--mono); font-size: 12px; }
+  .events li { padding: 7px 11px; border-bottom: 1px solid rgba(130,150,200,0.07); color: var(--muted); }
+  .events li b { color: var(--text); font-weight: 500; }
+  .empty { color: var(--dim); font-style: italic; }
+
+  /* ---- settings ---- */
+  .setrow { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 13px 0; border-bottom: 1px solid rgba(130,150,200,0.08); }
+  .setrow:last-child { border-bottom: none; }
+  .setrow .info { flex: 1; min-width: 260px; }
+  .setrow .info .t { font-weight: 600; font-size: 13.5px; }
+  .setrow .info .d { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .setrow .info .mono { font-family: var(--mono); font-size: 11.5px; color: var(--muted); margin-top: 3px; word-break: break-all; }
+  .urlbar { display: flex; gap: 8px; flex: 1; min-width: 300px; }
+
+  .toast {
+    position: fixed; bottom: 22px; right: 22px; background: #10152a;
+    border: 1px solid var(--border-hi); border-radius: 12px; padding: 11px 17px;
+    font-size: 13px; display: none; max-width: 400px; z-index: 50;
+    box-shadow: 0 12px 40px rgba(99,102,241,0.25);
+    animation: reqin 0.3s ease;
+  }
+  .toast.error { border-color: rgba(248,113,113,0.5); box-shadow: 0 12px 40px rgba(248,113,113,0.2); }
+
+  /* skeleton shimmer for first paint */
+  .skel { border-radius: var(--r); background: linear-gradient(100deg, rgba(30,37,60,0.3) 40%, rgba(50,60,95,0.45) 50%, rgba(30,37,60,0.3) 60%); background-size: 250% 100%; animation: shimmer 1.4s linear infinite; }
+  @keyframes shimmer { to { background-position: -150% 0; } }
+
+  /* ---- sparklines ---- */
+  .stat .sparkwrap { margin-top: 8px; height: 26px; }
+  .stat .sparkwrap svg { width: 100%; height: 26px; display: block; overflow: visible; }
+  .stat .spark { fill: none; stroke: url(#sparkGrad); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 4px rgba(99,102,241,0.5)); }
+  .stat .sparkfill { fill: url(#sparkFillGrad); opacity: 0.5; }
+
+  /* ---- widgets row ---- */
+  .widgets { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 22px; }
+  .widget {
+    background: var(--panel); backdrop-filter: blur(12px);
+    border: 1px solid var(--border); border-radius: var(--r);
+    padding: 16px 18px; transition: transform 0.2s ease, border-color 0.2s, box-shadow 0.2s;
+  }
+  .widget:hover { transform: translateY(-2px); border-color: var(--border-hi); }
+  .widget .wtitle { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+  .widget .bignum { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+  .ringwrap { display: flex; align-items: center; gap: 14px; }
+  .ring { width: 74px; height: 74px; flex-shrink: 0; }
+  .ring circle.track { fill: none; stroke: rgba(255,255,255,0.05); stroke-width: 7; }
+  .ring circle.val { fill: none; stroke: url(#ringGrad); stroke-width: 7; stroke-linecap: round; transition: stroke-dashoffset 1s cubic-bezier(0.22, 1, 0.36, 1); filter: drop-shadow(0 0 6px rgba(99,102,241,0.5)); transform: rotate(-90deg); transform-origin: center; }
+  .ring .ringtext { font-size: 15px; font-weight: 700; fill: var(--text); }
+  .ring .ringsub { font-size: 7.5px; fill: var(--dim); }
+  .wsub { color: var(--dim); font-size: 11.5px; margin-top: 4px; }
+  .coolrow { margin-bottom: 10px; }
+  .coolrow:last-child { margin-bottom: 0; }
+  .coolrow .ctop { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; gap: 8px; }
+  .coolrow .cd { color: var(--red); font-family: var(--mono); font-size: 11px; white-space: nowrap; }
+  .cooltrack { height: 5px; background: rgba(248,113,113,0.1); border-radius: 999px; overflow: hidden; }
+  .coolfill { height: 100%; background: linear-gradient(90deg, var(--red), var(--amber)); border-radius: 999px; transition: width 1s linear; }
+  .latrow { display: flex; align-items: center; gap: 9px; margin-bottom: 8px; }
+  .latrow:last-child { margin-bottom: 0; }
+  .latrow .lname { font-size: 12px; width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 0; }
+  .latrow .ltrack { display: block; flex: 1; height: 6px; background: rgba(255,255,255,0.04); border-radius: 999px; overflow: hidden; }
+  .latrow .lfill { display: block; height: 100%; background: var(--grad); border-radius: 999px; transition: width 0.8s ease; box-shadow: 0 0 8px rgba(99,102,241,0.4); }
+  .latrow .lms { font-family: var(--mono); font-size: 10.5px; color: var(--muted); width: 52px; text-align: right; flex-shrink: 0; }
+
+  /* ---- search ---- */
+  .searchbar { position: relative; margin-bottom: 14px; }
+  .searchbar input { padding-left: 36px; }
+  .searchbar .sic {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    color: var(--dim); pointer-events: none; display: grid; place-items: center;
+  }
+  .searchbar .sic svg { width: 14px; height: 14px; }
+  .kbd { font-family: var(--mono); font-size: 10px; border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; color: var(--dim); }
+
+  @media (max-width: 980px) {
+    .hero { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 860px) {
+    .app { grid-template-columns: 62px 1fr; }
+    .brand .t, .brand .s, nav button .lbl, .sidebottom .sideText { display: none; }
+    .brand { justify-content: center; }
+    nav button { justify-content: center; }
+    main { padding: 18px 16px 90px; }
+  }
+  /* Motion control: follow the OS reduced-motion preference by default, but
+     let the user force animations on (html.force-motion) or off (html.no-motion). */
+  @media (prefers-reduced-motion: reduce) {
+    html:not(.force-motion) *,
+    html:not(.force-motion) *::before,
+    html:not(.force-motion) *::after {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+  html.no-motion *,
+  html.no-motion *::before,
+  html.no-motion *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+</style>
+</head>
+<body>
+<div class="bgfx"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="grid"></div></div>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="sparkGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+    <linearGradient id="sparkFillGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="rgba(99,102,241,0.35)"/><stop offset="1" stop-color="rgba(99,102,241,0)"/>
+    </linearGradient>
+    <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<div class="app">
+  <aside>
+    <div class="brand">
+      <div class="brandmark">X</div>
+      <div>
+        <div class="t">switch<span>X</span>provider</div>
+        <div class="s">multi-provider proxy</div>
+      </div>
+    </div>
+    <nav id="nav">
+      <button data-view="overview" class="active">
+        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v5.5M12 15.5V21M3 12h5.5M15.5 12H21"/></svg></span>
+        <span class="lbl">Overview</span>
+      </button>
+      <button data-view="providers">
+        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h13M4 12h9M4 17h13"/><path d="M18 5l3 2-3 2M18 15l3 2-3 2"/></svg></span>
+        <span class="lbl">Providers</span>
+      </button>
+      <button data-view="discover">
+        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg></span>
+        <span class="lbl">Discover</span>
+      </button>
+      <button data-view="usage">
+        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
+        <span class="lbl">Usage</span>
+      </button>
+      <button data-view="settings">
+        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z"/></svg></span>
+        <span class="lbl">Settings</span>
+      </button>
+    </nav>
+    <div class="sidebottom">
+      <div class="row"><span class="pulse" id="sideDot" style="background:var(--dim)"></span><span id="sideStatus" class="sideText">connecting…</span></div>
+      <div class="row sideText" id="sideActive">active: —</div>
+      <div class="row sideText" id="sidePort">:8787</div>
+      <a class="bmc" href="https://buymeacoffee.com/shaheer0.0" target="_blank" rel="noopener" title="Support development">
+        ☕ <span class="sideText">Buy me a coffee</span>
+      </a>
+    </div>
+  </aside>
+
+  <main>
+    <!-- ============ OVERVIEW ============ -->
+    <section class="view active" id="view-overview">
+      <div class="viewhead">
+        <h1>Overview</h1>
+        <span class="sub" id="ovConn">connecting…</span>
+      </div>
+
+      <div class="hero">
+        <div class="hero-left">
+          <div class="lbl">Active route</div>
+          <div class="bigname" id="heroActive">—</div>
+          <div class="state">
+            <span class="pill" id="heroState">…</span>
+            <span class="pill" id="heroUp">0 up</span>
+            <span class="pill" id="heroTotalTok">0 tokens</span>
+          </div>
+          <div class="uptime" id="heroUptime">uptime —</div>
+        </div>
+        <div class="hero-right">
+          <h2>Traffic flow</h2>
+          <svg class="flowsvg" id="flowsvg" viewBox="0 0 460 220" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="glowcorner" style="background:var(--acc1)"></div>
+          <div class="toprow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#8b9dff" stroke-width="2"><path d="M4 7h16M4 12h10M4 17h13"/></svg></span><span class="label">Tokens total</span></div>
+          <div class="value" id="stTotal">0</div>
+          <div class="detail" id="stTotalDetail">in 0 · out 0</div>
+          <div class="sparkwrap"><svg id="sparkTokens" viewBox="0 0 100 26" preserveAspectRatio="none"></svg></div>
+        </div>
+        <div class="stat">
+          <div class="glowcorner" style="background:var(--acc2)"></div>
+          <div class="toprow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#67e8f9" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span><span class="label">Tokens today</span></div>
+          <div class="value" id="stToday">0</div>
+          <div class="detail" id="stTodayDetail">0 requests today</div>
+        </div>
+        <div class="stat">
+          <div class="glowcorner" style="background:var(--acc3)"></div>
+          <div class="toprow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></svg></span><span class="label">Requests</span></div>
+          <div class="value" id="stReqs">0</div>
+          <div class="detail">routed through proxy</div>
+          <div class="sparkwrap"><svg id="sparkReqs" viewBox="0 0 100 26" preserveAspectRatio="none"></svg></div>
+        </div>
+        <div class="stat">
+          <div class="glowcorner" style="background:var(--green)"></div>
+          <div class="toprow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#6ee7b7" stroke-width="2"><path d="M5 12a7 7 0 0 1 14 0v5a2 2 0 0 1-2 2h-2v-6h4M5 12v5a2 2 0 0 0 2 2h2v-6H5"/></svg></span><span class="label">Providers</span></div>
+          <div class="value" id="stProv">0/0</div>
+          <div class="detail">up / configured</div>
+        </div>
+      </div>
+
+      <div class="widgets">
+        <div class="widget">
+          <div class="wtitle">Overall success</div>
+          <div class="ringwrap">
+            <svg class="ring" viewBox="0 0 74 74">
+              <circle class="track" cx="37" cy="37" r="30"/>
+              <circle class="val" id="ringVal" cx="37" cy="37" r="30" stroke-dasharray="188.5" stroke-dashoffset="188.5"/>
+              <text class="ringtext" id="ringPct" x="37" y="36" text-anchor="middle">—</text>
+              <text class="ringsub" x="37" y="47" text-anchor="middle">SUCCESS</text>
+            </svg>
+            <div>
+              <div class="wsub" id="ringDetail">no data yet</div>
+            </div>
+          </div>
+        </div>
+        <div class="widget">
+          <div class="wtitle">Failovers</div>
+          <div class="bignum" id="wFailovers" style="background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent">0</div>
+          <div class="wsub">automatic provider switches — your session never noticed</div>
+        </div>
+        <div class="widget">
+          <div class="wtitle">Cooldown monitor</div>
+          <div id="wCooldown"><div class="wsub">all providers healthy</div></div>
+        </div>
+        <div class="widget">
+          <div class="wtitle">Latency leaderboard</div>
+          <div id="wLatency"><div class="wsub">no latency data yet</div></div>
+        </div>
+      </div>
+
+      <div class="panelcard">
+        <h2>Token usage — last 14 days</h2>
+        <div class="hint">input (incl. cache) vs output tokens per day</div>
+        <div class="chart" id="chart"><div class="skel" style="height:100%"></div></div>
+        <div class="legend">
+          <span><span class="swatch" style="background:var(--acc1)"></span>input</span>
+          <span><span class="swatch" style="background:var(--acc2)"></span>output</span>
+        </div>
+      </div>
+
+      <div class="panelcard">
+        <h2>Live requests</h2>
+        <div class="hint">most recent traffic first — updates as Claude Code works</div>
+        <div class="feed" id="feed"><span class="empty">no requests yet</span></div>
+      </div>
+    </section>
+
+    <!-- ============ PROVIDERS ============ -->
+    <section class="view" id="view-providers">
+      <div class="viewhead">
+        <h1>Providers</h1>
+        <span class="sub">priority order · traffic goes to the highest healthy one</span>
+        <span class="spacer"></span>
+        <span class="sub"><span class="kbd">1</span>–<span class="kbd">5</span> switch views</span>
+      </div>
+      <div class="searchbar">
+        <span class="sic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
+        <input id="provSearch" placeholder="filter providers by name, URL, or model…" oninput="renderProviders()">
+      </div>
+      <div id="providers"><div class="skel" style="height:110px;margin-bottom:13px"></div><div class="skel" style="height:110px;margin-bottom:13px"></div></div>
+
+      <div class="panelcard" id="formcard" style="margin-top:26px">
+        <h2 id="formTitle">Add provider</h2>
+        <form id="pform" onsubmit="return submitForm(event)">
+          <input type="hidden" id="f_id">
+          <div class="grid">
+            <div>
+              <label for="f_name">Name</label>
+              <input id="f_name" required placeholder="My provider">
+            </div>
+            <div>
+              <label for="f_baseUrl">Base URL</label>
+              <input id="f_baseUrl" required placeholder="https://api.anthropic.com">
+            </div>
+            <div>
+              <label for="f_apiKey">API key <span id="keyhint" style="color:var(--amber)"></span></label>
+              <input id="f_apiKey" type="password" placeholder="sk-...">
+            </div>
+            <div>
+              <label for="f_authStyle">Auth style</label>
+              <select id="f_authStyle">
+                <option value="auto" selected>Auto (recommended — works everywhere)</option>
+                <option value="anthropic">x-api-key only (Anthropic-compatible)</option>
+                <option value="bearer">Bearer only (OpenRouter etc.)</option>
+              </select>
+              <div style="color:var(--dim);font-size:11.5px;margin-top:5px">
+                Auto sends both header styles; every provider just reads the one it knows.
+              </div>
+            </div>
+            <div>
+              <label for="f_opus">Opus model ID</label>
+              <input id="f_opus" placeholder="claude-opus-5">
+            </div>
+            <div>
+              <label for="f_sonnet">Sonnet model ID</label>
+              <input id="f_sonnet" placeholder="claude-sonnet-5">
+            </div>
+            <div>
+              <label for="f_haiku">Haiku model ID</label>
+              <input id="f_haiku" placeholder="claude-haiku-4-5-20251001">
+            </div>
+            <div class="checkrow" style="align-self:end">
+              <input id="f_enabled" type="checkbox" checked>
+              <label for="f_enabled" style="margin:0">Enabled</label>
+            </div>
+          </div>
+          <div class="formactions">
+            <button class="primary" type="submit" id="submitBtn">Add</button>
+            <button type="button" onclick="resetForm()">Cancel</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="panelcard">
+        <h2>Event log</h2>
+        <div class="hint">failovers, recoveries, cooldowns, config changes</div>
+        <ul class="events" id="events"></ul>
+      </div>
+    </section>
+
+    <!-- ============ DISCOVER ============ -->
+    <section class="view" id="view-discover">
+      <div class="viewhead">
+        <h1>Discover providers</h1>
+        <span class="sub">curated catalog · one click to prefill</span>
+      </div>
+
+      <div class="searchbar">
+        <span class="sic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
+        <input id="catSearch" placeholder="filter by name, tag, or pricing…" oninput="renderCatalog()">
+      </div>
+
+      <div class="panelcard">
+        <h2>Remote catalog</h2>
+        <div class="hint">Point at a raw JSON catalog (e.g. your GitHub repo) to extend/override the built-in list. Same schema as the seed — see README.</div>
+        <div class="urlbar">
+          <input id="catalogUrl" placeholder="https://raw.githubusercontent.com/you/switchx-catalog/main/catalog.json">
+          <button class="primary" onclick="refreshCatalog()">Fetch &amp; apply</button>
+        </div>
+        <div class="hint" id="catalogMeta" style="margin-top:10px"></div>
+      </div>
+
+      <div class="catgrid" id="catgrid"></div>
+    </section>
+
+    <!-- ============ USAGE ============ -->
+    <section class="view" id="view-usage">
+      <div class="viewhead">
+        <h1>Usage</h1>
+        <span class="sub">tokens per provider and per model</span>
+        <span class="spacer"></span>
+        <button class="danger" onclick="resetUsage()">reset statistics</button>
+      </div>
+
+      <div class="panelcard">
+        <h2>Tokens by provider</h2>
+        <div class="hint">share of total tokens (input + output)</div>
+        <div id="provUsage"></div>
+      </div>
+
+      <div class="panelcard">
+        <h2>Tokens by model</h2>
+        <div class="hint">which model IDs your traffic actually lands on</div>
+        <table class="tbl" id="modelTbl"></table>
+      </div>
+    </section>
+
+    <!-- ============ SETTINGS ============ -->
+    <section class="view" id="view-settings">
+      <div class="viewhead">
+        <h1>Settings</h1>
+        <span class="sub">local proxy state and setup</span>
+      </div>
+
+      <div class="panelcard" id="installCard">
+        <h2>Claude Code connection</h2>
+        <div class="hint">is Claude Code's settings.json pointed at this proxy?</div>
+        <div id="installStatus"></div>
+      </div>
+
+      <div class="panelcard">
+        <h2>Configuration</h2>
+        <div class="setrow">
+          <div class="info">
+            <div class="t">Proxy port</div>
+            <div class="d">Configured in ~/.claude/switchx/config.json — change requires a proxy restart.</div>
+            <div class="mono" id="setPort"></div>
+          </div>
+        </div>
+        <div class="setrow">
+          <div class="info">
+            <div class="t">Backup / restore</div>
+            <div class="d">Export includes API keys — store the file safely.</div>
+          </div>
+          <button onclick="exportConfig()">export JSON</button>
+          <button onclick="document.getElementById('importFile').click()">import JSON</button>
+          <input type="file" id="importFile" accept=".json" style="display:none" onchange="importConfig(event)">
+        </div>
+        <div class="setrow">
+          <div class="info">
+            <div class="t">Animations</div>
+            <div class="d">Flow diagram, pulses, count-ups, and transitions. "Auto" follows your OS setting (Windows: Settings → Accessibility → Visual effects → Animation effects).</div>
+            <div class="mono" id="motionDetect"></div>
+          </div>
+          <select id="motionPref" onchange="setMotion(this.value)" style="max-width:150px">
+            <option value="auto">Auto (follow OS)</option>
+            <option value="on">On (force)</option>
+            <option value="off">Off</option>
+          </select>
+        </div>
+        <div class="setrow">
+          <div class="info">
+            <div class="t">Reset statistics</div>
+            <div class="d">Zeroes all token counters and the request feed. Providers and keys are untouched.</div>
+          </div>
+          <button class="danger" onclick="resetUsage()">reset</button>
+        </div>
+      </div>
+
+      <div class="panelcard">
+        <h2>Support</h2>
+        <div class="setrow">
+          <div class="info">
+            <div class="t">☕ Buy me a coffee</div>
+            <div class="d">If switchXprovider saved your session, support development — every coffee keeps the failovers coming.</div>
+          </div>
+          <button class="primary" onclick="window.open('https://buymeacoffee.com/shaheer0.0','_blank')">buymeacoffee.com/shaheer0.0</button>
+        </div>
+      </div>
+
+      <div class="panelcard">
+        <h2>Files</h2>
+        <div class="setrow"><div class="info">
+          <div class="t">Config</div>
+          <div class="mono">~/.claude/switchx/config.json</div>
+        </div></div>
+        <div class="setrow"><div class="info">
+          <div class="t">Server log</div>
+          <div class="mono">~/.claude/switchx/server.log</div>
+        </div></div>
+        <div class="setrow"><div class="info">
+          <div class="t">settings.json backup (made by installer)</div>
+          <div class="mono">~/.claude/settings.json.switchx-backup</div>
+        </div></div>
+      </div>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let statusState = { providers: [], events: [] };
+let usage = null;
+let catalog = null;
+let port = 8787;
+const base = location.origin;
+
+/* ---- nav ---- */
+document.querySelectorAll('#nav button').forEach((b) => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#nav button').forEach((x) => x.classList.remove('active'));
+    b.classList.add('active');
+    document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
+    $('view-' + b.dataset.view).classList.add('active');
+  });
+});
+window.gotoView = (name) => document.querySelector(`#nav button[data-view="${name}"]`).click();
+
+function toast(msg, isErr) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (isErr ? ' error' : '');
+  t.style.display = 'block';
+  clearTimeout(t._h);
+  t._h = setTimeout(() => { t.style.display = 'none'; }, 3500);
+}
+
+async function api(path, opts) {
+  const resp = await fetch(base + path, opts);
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(data.error || resp.statusText);
+  return data;
+}
+
+function fmtTok(n) {
+  if (n == null) return '0';
+  if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'k';
+  return String(n);
+}
+function fmtClock(ts) { return new Date(ts).toTimeString().slice(0, 8); }
+function fmtUptime(sec) {
+  if (sec == null) return '—';
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+  return h ? `${h}h ${m}m` : `${m}m ${sec % 60}s`;
+}
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmtAgo(ts) {
+  const s = Math.max(0, Math.round((Date.now() - ts) / 1000));
+  if (s < 60) return s + 's ago';
+  if (s < 3600) return Math.round(s / 60) + 'm ago';
+  if (s < 86400) return Math.round(s / 3600) + 'h ago';
+  return Math.round(s / 86400) + 'd ago';
+}
+function initials(name) {
+  return String(name || '?').trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+}
+
+/* ---- animated count-up ---- */
+const counters = new Map();
+function countUp(id, target) {
+  const el = $(id);
+  const from = counters.get(id) ?? 0;
+  counters.set(id, target);
+  if (from === target) { el.textContent = fmtTok(target); return; }
+  const t0 = performance.now(), dur = 750;
+  const step = (now) => {
+    const k = Math.min(1, (now - t0) / dur);
+    const eased = 1 - Math.pow(1 - k, 3);
+    el.textContent = fmtTok(Math.round(from + (target - from) * eased));
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+/* ---- flow diagram ---- */
+let flowSig = '';
+function renderFlow() {
+  const ps = statusState.providers || [];
+  const shown = ps.slice(0, 4);
+  // Rebuilding the SVG restarts its CSS dash animation from zero — skip the
+  // rebuild when nothing actually changed so the flow keeps moving smoothly.
+  const sig = JSON.stringify(shown.map((p) => [p.name, p.status])) + '|' + port;
+  if (sig === flowSig && $('flowsvg').innerHTML) return;
+  flowSig = sig;
+
+  const H = 56 + shown.length * 44;
+  const svg = $('flowsvg');
+  svg.setAttribute('viewBox', `0 0 460 ${H}`);
+  // First healthy provider in priority order = the active route.
+  const activeIdx = shown.findIndex((p) => p.status === 'up');
+  let defs = `<defs>
+    <linearGradient id="edgeGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>`;
+
+  // client node
+  const midY = H / 2 - 12;
+  let out = defs;
+  out += `
+    <g class="node">
+      <rect x="8" y="${midY - 18}" width="96" height="36" rx="10"/>
+      <text x="56" y="${midY - 2}" text-anchor="middle">Claude Code</text>
+      <text x="56" y="${midY + 11}" text-anchor="middle" class="sub">settings.json</text>
+    </g>
+    <g class="node core">
+      <rect x="160" y="${midY - 22}" width="110" height="44" rx="11"/>
+      <text x="215" y="${midY + 1}" text-anchor="middle" style="font-weight:700">switchX</text>
+      <text x="215" y="${midY + 14}" text-anchor="middle" class="sub">:${port} · priority</text>
+    </g>
+    <path class="edge active" d="M104 ${midY} H160"/>`;
+
+  shown.forEach((p, i) => {
+    const y = 26 + i * 44;
+    const isActive = i === activeIdx;
+    const cls = isActive ? 'active' : p.status === 'down' ? 'dead' : p.status === 'disabled' ? 'disabled' : '';
+    out += `
+      <path class="edge ${cls}" d="M270 ${midY} C 320 ${midY}, 320 ${y}, 346 ${y}"/>
+      <g class="node ${isActive ? 'active' : ''}">
+        <rect x="346" y="${y - 15}" width="106" height="30" rx="9"/>
+        <text x="399" y="${y + 4}" text-anchor="middle">${escapeHtml(p.name.slice(0, 16))}</text>
+      </g>
+      <circle cx="346" cy="${y}" r="3.5" fill="${p.status === 'up' ? '#34d399' : p.status === 'down' ? '#f87171' : '#5d677e'}"/>`;
+  });
+  if (ps.length > 4) {
+    out += `<text x="399" y="${26 + 4 * 44}" text-anchor="middle" class="sub">+ ${ps.length - 4} more…</text>`;
+  }
+  svg.innerHTML = out;
+}
+
+/* ---- providers view ---- */
+function providerCard(p) {
+  const cd = p.status === 'down'
+    ? ` <span class="pill bad" title="cooldown">back in ~${Math.ceil(p.downForMs / 1000)}s</span>` : '';
+  const lat = p.stats.emaLatencyMs != null ? p.stats.emaLatencyMs + 'ms' : '—';
+  const sr = p.stats.requests ? Math.round(100 * p.stats.successes / p.stats.requests) + '%' : '—';
+  const models = ['opus', 'sonnet', 'haiku']
+    .filter((s) => p.models[s])
+    .map((s) => `<span class="modeltag"><em>${s}</em>${escapeHtml(p.models[s])}</span>`)
+    .join('');
+  const reason = p.statusDetail ? `<div class="reason">${escapeHtml(p.statusDetail)}</div>` : '';
+  return `
+  <div class="card">
+    <div class="row1">
+      <span class="avatar">${escapeHtml(initials(p.name))}</span>
+      <span class="namecol">
+        <span class="name">${escapeHtml(p.name)} ${p.status === 'up' ? '<span class="pulse ok" style="display:inline-block;vertical-align:2px;margin-left:4px"></span>' : p.status === 'down' ? '<span class="pulse bad" style="display:inline-block;vertical-align:2px;margin-left:4px"></span>' : ''}</span>
+        <span class="baseurl">${escapeHtml(p.baseUrl)} · ${escapeHtml(p.maskedKey)}</span>
+      </span>
+      ${cd}
+      <span class="spacer"></span>
+      <span class="pill">priority ${p.priority}</span>
+      <button class="icon" title="move up" onclick="move('${p.id}','up')" ${p.priority <= 1 ? 'disabled' : ''}>▲</button>
+      <button class="icon" title="move down" onclick="move('${p.id}','down')">▼</button>
+      <button onclick="test('${p.id}')">test</button>
+      ${p.status === 'down' ? `<button onclick="resetP('${p.id}')">reset</button>` : ''}
+      <button onclick="edit('${p.id}')">edit</button>
+      <button class="danger" onclick="remove('${p.id}')">delete</button>
+    </div>
+    <div class="meta">
+      <span>requests <b>${p.stats.requests}</b></span>
+      <span>success <b>${sr}</b></span>
+      <span>latency <b>${lat}</b></span>
+      <span>auth <b>${p.authStyle}</b></span>
+    </div>
+    <div class="models">${models}</div>
+    ${reason}
+  </div>`;
+}
+
+function renderProviders() {
+  const q = ($('provSearch').value || '').toLowerCase().trim();
+  const list = statusState.providers.filter((p) => {
+    if (!q) return true;
+    return (p.name + ' ' + p.baseUrl + ' ' + Object.values(p.models || {}).join(' ')).toLowerCase().includes(q);
+  });
+  $('providers').innerHTML = list.length
+    ? list.map(providerCard).join('')
+    : `<div class="card empty">${statusState.providers.length ? 'No providers match your filter.' : `No providers yet — add one below, or prefill from the <a href="#" onclick="gotoView('discover');return false" style="color:var(--acc2)">Discover</a> catalog.<br><br>
+       <b style="color:var(--amber)">Important:</b> add at least one provider with an API key and enable it <i>before</i> running
+       <span style="font-family:var(--mono)">scripts/install.mjs</span> — once settings.json points here, Claude Code has no API
+       except through the providers configured on this page. The installer refuses to continue until that's done.`}</div>`;
+  $('events').innerHTML = statusState.events.length
+    ? statusState.events.slice(0, 80).map((e) => `<li><b>${fmtAgo(e.ts)}</b> ${escapeHtml(e.msg)}</li>`).join('')
+    : '<li class="empty">no events yet</li>';
+  const up = statusState.providers.filter((p) => p.status === 'up').length;
+  $('stProv').textContent = `${up}/${statusState.providers.length}`;
+  const active = statusState.providers.find((p) => p.status === 'up')?.name || '—';
+  $('sideActive').textContent = 'active: ' + active;
+}
+
+/* ---- usage rendering ---- */
+function renderUsage() {
+  if (!usage) return;
+  const t = usage.totals || {};
+  const inTok = (t.inputTokens || 0) + (t.cacheReadTokens || 0) + (t.cacheCreationTokens || 0);
+  const outTok = t.outputTokens || 0;
+  countUp('stTotal', inTok + outTok);
+  $('stTotalDetail').textContent = `in ${fmtTok(inTok)} · out ${fmtTok(outTok)}`;
+  countUp('stReqs', t.requests || 0);
+  $('heroTotalTok').textContent = `${fmtTok(inTok + outTok)} tokens`;
+
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const today = (usage.daily || []).find((d) => d.date === todayKey) || {};
+  countUp('stToday', (today.inputTokens || 0) + (today.outputTokens || 0));
+  $('stTodayDetail').textContent = `${today.requests || 0} requests today`;
+
+  // 14-day chart
+  const days = usage.daily || [];
+  const maxDay = Math.max(1, ...days.map((d) => (d.inputTokens || 0) + (d.outputTokens || 0)));
+  $('chart').innerHTML = days.map((d) => {
+    const inH = Math.round((d.inputTokens || 0) / maxDay * 100);
+    const outH = Math.round((d.outputTokens || 0) / maxDay * 100);
+    const lbl = d.date.slice(5).replace('-', '/');
+    return `
+    <div class="barday">
+      <div class="tip">${d.date}<br>in ${fmtTok(d.inputTokens)} · out ${fmtTok(d.outputTokens)}<br>${d.requests} req</div>
+      <div class="barstack" data-in="${inH}" data-out="${outH}"><div class="bar-out" style="height:0"></div><div class="bar-in" style="height:0"></div></div>
+      <span class="lbl">${lbl}</span>
+    </div>`;
+  }).join('');
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    document.querySelectorAll('.barstack').forEach((s) => {
+      s.querySelector('.bar-in').style.height = s.dataset.in + '%';
+      s.querySelector('.bar-out').style.height = s.dataset.out + '%';
+    });
+  }));
+
+  // per-provider bars (usage view)
+  const byProv = usage.byProvider || [];
+  const maxProv = Math.max(1, ...byProv.map((p) => (p.inputTokens || 0) + (p.outputTokens || 0)));
+  $('provUsage').innerHTML = byProv.length
+    ? byProv.map((p) => {
+      const tok = (p.inputTokens || 0) + (p.outputTokens || 0);
+      const pct = Math.round(tok / maxProv * 100);
+      return `
+      <div class="prow">
+        <div class="ptop">
+          <span>${escapeHtml(p.name || p.id)}</span>
+          <span class="tok">${fmtTok(tok)} tok · ${p.requests} req · in ${fmtTok(p.inputTokens)} / out ${fmtTok(p.outputTokens)}</span>
+        </div>
+        <div class="track"><div class="fill" data-pct="${pct}"></div></div>
+      </div>`;
+    }).join('')
+    : '<span class="empty">no usage recorded yet — run a request through the proxy</span>';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    document.querySelectorAll('#provUsage .fill').forEach((f) => (f.style.width = f.dataset.pct + '%'));
+  }));
+
+  // by-model table
+  const byModel = usage.byModel || [];
+  $('modelTbl').innerHTML = byModel.length
+    ? `<tr><th>model</th><th>requests</th><th>input</th><th>output</th><th>total</th></tr>` +
+      byModel.map((m) => `
+        <tr>
+          <td>${escapeHtml(m.model)}</td>
+          <td>${m.requests}</td>
+          <td>${fmtTok(m.inputTokens)}</td>
+          <td>${fmtTok(m.outputTokens)}</td>
+          <td><b>${fmtTok((m.inputTokens || 0) + (m.outputTokens || 0))}</b></td>
+        </tr>`).join('')
+    : '<tr><td class="empty">no usage yet</td></tr>';
+
+  // live feed
+  const recent = usage.recent || [];
+  $('feed').innerHTML = recent.length
+    ? recent.map((r) => {
+      const stClass = r.status < 400 ? 's2' : r.status < 500 ? 's4' : 's5';
+      return `
+      <div class="req">
+        <span class="t">${fmtClock(r.ts)}</span>
+        <span class="prov">${escapeHtml(r.provider)}</span>
+        <span class="mod">${escapeHtml(r.model)}</span>
+        <span class="tok">${fmtTok(r.inTok)}→${fmtTok(r.outTok)} · ${r.latencyMs}ms</span>
+        <span class="st ${stClass}">${r.status}</span>
+      </div>`;
+    }).join('')
+    : '<span class="empty">no requests yet</span>';
+}
+
+/* ---- settings view ---- */
+function renderSettings() {
+  const cc = statusState.claudeCode || {};
+  $('installStatus').innerHTML = cc.configured
+    ? `<span class="pill ok">✓ connected</span> <span class="hint" style="display:inline">Claude Code is routed through this proxy (${escapeHtml(cc.baseUrl)}).</span>`
+    : `<span class="pill bad">✗ not connected</span>
+       <div class="hint" style="margin-top:10px">
+         Claude Code's settings.json ${cc.baseUrl ? `points at <span style="font-family:var(--mono)">${escapeHtml(cc.baseUrl)}</span>` : 'has no ANTHROPIC_BASE_URL set'}.
+         To switch it over: make sure a provider is added and tested, then run
+         <span style="font-family:var(--mono)">node scripts/install.mjs</span> from the plugin folder and restart Claude Code.
+       </div>`;
+  $('setPort').textContent = `http://127.0.0.1:${port}`;
+  if (statusState.catalogUrl) $('catalogUrl').value = statusState.catalogUrl;
+}
+
+/* ---- discover view ---- */
+function stars(rating) {
+  const pct = Math.max(0, Math.min(5, rating || 0)) / 5 * 100;
+  return `<span class="stars" title="${rating}/5">★★★★★<span class="fillstars" style="width:${pct}%">★★★★★</span></span>`;
+}
+
+function renderCatalog() {
+  if (!catalog) return;
+  $('catalogMeta').textContent = catalog.remoteUpdated
+    ? `built-in catalog ${catalog.seedUpdated || '—'} · remote catalog ${catalog.remoteUpdated} (overrides matching entries)`
+    : `built-in catalog ${catalog.seedUpdated || '—'} · no remote catalog configured`;
+  const q = ($('catSearch').value || '').toLowerCase().trim();
+  const list = (catalog.providers || []).filter((c) => {
+    if (!q) return true;
+    return (c.name + ' ' + (c.description || '') + ' ' + (c.tags || []).join(' ') + ' ' + (c.pricing || '')).toLowerCase().includes(q);
+  });
+  $('catgrid').innerHTML = list.length
+    ? list.map((c) => `
+    <div class="catcard">
+      <div class="top">
+        <span class="avatar">${escapeHtml(initials(c.name))}</span>
+        <span class="name">${escapeHtml(c.name)}</span>
+        <span class="spacer"></span>
+        ${stars(c.rating)}
+      </div>
+      <div class="desc">${escapeHtml(c.description || '')}</div>
+      <div class="facts">
+        ${c.freeTier ? '<span class="fact free">free tier</span>' : ''}
+        ${c.pricing ? `<span class="fact">${escapeHtml(c.pricing)}</span>` : ''}
+        ${(c.tags || []).map((t) => `<span class="fact">#${escapeHtml(t)}</span>`).join('')}
+        ${c.source === 'remote' ? '<span class="fact free">remote</span>' : ''}
+      </div>
+      <div class="urls">
+        ${c.website ? `<a href="${escapeHtml(c.website)}" target="_blank" rel="noopener">website ↗</a>` : ''}
+        ${c.docsUrl ? `<a href="${escapeHtml(c.docsUrl)}" target="_blank" rel="noopener">docs ↗</a>` : ''}
+      </div>
+      <div class="formactions" style="margin:0">
+        <button class="primary" onclick='prefillFromCatalog(${JSON.stringify(c).replace(/'/g, "&#39;")})'>+ add provider</button>
+      </div>
+    </div>
+  `).join('')
+    : '<div class="card empty">No catalog entries match your filter.</div>';
+}
+
+window.prefillFromCatalog = (c) => {
+  gotoView('providers');
+  resetForm();
+  $('formTitle').textContent = 'Add provider';
+  $('f_name').value = c.name;
+  $('f_baseUrl').value = c.baseUrl;
+  $('f_authStyle').value = c.authStyle || 'auto';
+  $('f_opus').value = c.models?.opus || '';
+  $('f_sonnet').value = c.models?.sonnet || '';
+  $('f_haiku').value = c.models?.haiku || '';
+  $('f_apiKey').focus();
+  toast('Prefilled from catalog — enter your API key');
+  $('formcard').scrollIntoView({ behavior: 'smooth' });
+};
+
+window.refreshCatalog = async () => {
+  const url = $('catalogUrl').value.trim();
+  if (!url) return toast('Enter a catalog URL first', true);
+  toast('Fetching catalog…');
+  try {
+    const r = await api('/api/catalog/refresh', { method: 'POST', body: JSON.stringify({ url }) });
+    toast(`Catalog updated: ${r.fetched} remote entries`);
+    catalog = await api('/api/catalog');
+    renderCatalog();
+  } catch (e) { toast(e.message, true); }
+};
+
+/* ---- actions ---- */
+window.edit = (id) => {
+  const p = statusState.providers.find((x) => x.id === id);
+  if (!p) return;
+  $('formTitle').textContent = 'Edit provider';
+  $('submitBtn').textContent = 'Save';
+  $('f_id').value = p.id;
+  $('f_name').value = p.name;
+  $('f_baseUrl').value = p.baseUrl;
+  $('f_apiKey').value = '';
+  $('keyhint').textContent = '(leave empty to keep current)';
+  $('f_authStyle').value = p.authStyle;
+  $('f_opus').value = p.models.opus || '';
+  $('f_sonnet').value = p.models.sonnet || '';
+  $('f_haiku').value = p.models.haiku || '';
+  $('f_enabled').checked = p.enabled;
+  $('formcard').scrollIntoView({ behavior: 'smooth' });
+};
+
+window.resetForm = () => {
+  $('pform').reset();
+  $('f_id').value = '';
+  $('keyhint').textContent = '';
+  $('formTitle').textContent = 'Add provider';
+  $('submitBtn').textContent = 'Add';
+};
+
+window.submitForm = async (ev) => {
+  ev.preventDefault();
+  const id = $('f_id').value;
+  const body = {
+    name: $('f_name').value,
+    baseUrl: $('f_baseUrl').value,
+    apiKey: $('f_apiKey').value,
+    authStyle: $('f_authStyle').value,
+    enabled: $('f_enabled').checked,
+    models: { opus: $('f_opus').value, sonnet: $('f_sonnet').value, haiku: $('f_haiku').value },
+  };
+  try {
+    if (id) {
+      await api('/api/providers/' + id, { method: 'PUT', body: JSON.stringify(body) });
+      toast('Provider updated');
+    } else {
+      await api('/api/providers', { method: 'POST', body: JSON.stringify(body) });
+      toast('Provider added');
+    }
+    resetForm();
+    refresh();
+  } catch (e) { toast(e.message, true); }
+  return false;
+};
+
+window.remove = async (id) => {
+  const p = statusState.providers.find((x) => x.id === id);
+  if (!p || !confirm(`Delete provider "${p.name}"?`)) return;
+  try {
+    await api('/api/providers/' + id, { method: 'DELETE' });
+    toast('Provider deleted');
+    refresh();
+  } catch (e) { toast(e.message, true); }
+};
+
+window.move = async (id, dir) => {
+  try {
+    await api(`/api/providers/${id}/${dir}`, { method: 'POST' });
+    refresh();
+  } catch (e) { toast(e.message, true); }
+};
+
+window.test = async (id) => {
+  toast('Testing… (up to 10s)');
+  try {
+    const r = await api(`/api/providers/${id}/test`, { method: 'POST' });
+    toast(r.ok ? 'Provider reachable ✓' : 'Provider unreachable ✗', !r.ok);
+    refresh();
+  } catch (e) { toast(e.message, true); }
+};
+
+window.resetP = async (id) => {
+  try {
+    await api(`/api/providers/${id}/reset`, { method: 'POST' });
+    refresh();
+  } catch (e) { toast(e.message, true); }
+};
+
+window.resetUsage = async () => {
+  if (!confirm('Reset all usage statistics? Providers and keys are kept.')) return;
+  try {
+    await api('/api/usage/reset', { method: 'POST' });
+    toast('Statistics reset');
+    refresh();
+  } catch (e) { toast(e.message, true); }
+};
+
+window.exportConfig = async () => {
+  try {
+    const data = await api('/api/export');
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `switchx-config-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('Config exported (contains API keys — store safely)');
+  } catch (e) { toast(e.message, true); }
+};
+
+window.importConfig = async (ev) => {
+  const file = ev.target.files[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    const providers = parsed.config?.providers || parsed.providers || parsed;
+    const r = await api('/api/import', { method: 'POST', body: JSON.stringify({ providers }) });
+    toast(`Imported ${r.imported} provider(s)`);
+    refresh();
+  } catch (e) { toast('Import failed: ' + e.message, true); }
+  ev.target.value = '';
+};
+
+window.clearEvents = async () => {
+  try {
+    await api('/api/events/clear', { method: 'POST' });
+    refresh();
+  } catch (e) { toast(e.message, true); }
+};
+
+/* ---- sparklines ---- */
+function renderSpark(id, values) {
+  const svg = $(id);
+  if (!svg) return;
+  const vals = values.length ? values : [0, 0];
+  const max = Math.max(...vals, 1);
+  const step = 100 / Math.max(1, vals.length - 1);
+  const pts = vals.map((v, i) => `${(i * step).toFixed(1)},${(23 - (v / max) * 20).toFixed(1)}`);
+  svg.innerHTML = `<polygon class="sparkfill" points="0,26 ${pts.join(' ')} 100,26"/>
+    <polyline class="spark" points="${pts.join(' ')}"/>`;
+}
+
+/* ---- widgets ---- */
+function renderWidgets() {
+  // success ring
+  const ps = statusState.providers || [];
+  const reqs = ps.reduce((a, p) => a + (p.stats.requests || 0), 0);
+  const succ = ps.reduce((a, p) => a + (p.stats.successes || 0), 0);
+  const rate = reqs ? succ / reqs : null;
+  const C = 2 * Math.PI * 30; // ring circumference
+  const ring = $('ringVal');
+  ring.setAttribute('stroke-dasharray', C.toFixed(1));
+  ring.setAttribute('stroke-dashoffset', (C * (1 - (rate ?? 0))).toFixed(1));
+  $('ringPct').textContent = rate == null ? '—' : Math.round(rate * 100) + '%';
+  $('ringDetail').innerHTML = reqs
+    ? `${succ} succeeded · ${reqs - succ} failed<br>across ${ps.length} provider(s)`
+    : 'no requests routed yet';
+
+  // failovers
+  countUp('wFailovers', (usage?.counters?.failovers) || 0);
+
+  // cooldown monitor
+  const down = ps.filter((p) => p.status === 'down');
+  $('wCooldown').innerHTML = down.length
+    ? down.map((p) => {
+      const remain = p.downForMs;
+      const pct = Math.max(0, Math.min(100, 100 - (remain / (p.downTotalMs || remain || 1)) * 100));
+      return `
+      <div class="coolrow">
+        <div class="ctop">
+          <span>${escapeHtml(p.name)}</span>
+          <span class="cd" data-deaduntil="${Date.now() + remain}">back in ${Math.ceil(remain / 1000)}s</span>
+        </div>
+        <div class="cooltrack"><div class="coolfill" style="width:${pct}%"></div></div>
+      </div>`;
+    }).join('')
+    : '<div class="wsub" style="color:var(--green)">✓ all providers healthy</div>';
+
+  // latency leaderboard
+  const lat = ps
+    .filter((p) => p.status === 'up' && p.stats.emaLatencyMs != null)
+    .sort((a, b) => a.stats.emaLatencyMs - b.stats.emaLatencyMs);
+  $('wLatency').innerHTML = lat.length
+    ? (() => {
+      const max = Math.max(...lat.map((p) => p.stats.emaLatencyMs), 1);
+      return lat.map((p) => `
+        <div class="latrow">
+          <span class="lname">${escapeHtml(p.name)}</span>
+          <span class="ltrack"><span class="lfill" style="width:${Math.round(p.stats.emaLatencyMs / max * 100)}%"></span></span>
+          <span class="lms">${p.stats.emaLatencyMs}ms</span>
+        </div>`).join('');
+    })()
+    : '<div class="wsub">no latency data yet</div>';
+}
+
+/* ---- keyboard shortcuts ---- */
+const VIEWS = ['overview', 'providers', 'discover', 'usage', 'settings'];
+document.addEventListener('keydown', (ev) => {
+  if (ev.target.tagName === 'INPUT' || ev.target.tagName === 'SELECT' || ev.target.tagName === 'TEXTAREA') return;
+  const n = parseInt(ev.key, 10);
+  if (n >= 1 && n <= VIEWS.length) gotoView(VIEWS[n - 1]);
+});
+
+/* ---- smooth countdown ticker (1s) ---- */
+setInterval(() => {
+  document.querySelectorAll('.cd[data-deaduntil]').forEach((el) => {
+    const remain = Math.max(0, parseInt(el.dataset.deaduntil, 10) - Date.now());
+    el.textContent = remain > 0 ? `back in ${Math.ceil(remain / 1000)}s` : 'recovering…';
+  });
+}, 1000);
+
+/* ---- polling ---- */
+function renderHero() {
+  const ps = statusState.providers || [];
+  const up = ps.filter((p) => p.status === 'up').length;
+  const active = statusState.providers.find((p) => p.status === 'up')?.name;
+  $('heroActive').textContent = active || 'none available';
+  $('heroState').textContent = up ? `${up} of ${ps.length} healthy` : ps.length ? 'all providers down' : 'no providers';
+  $('heroState').className = 'pill ' + (up ? 'ok' : ps.length ? 'bad' : '');
+  $('heroUp').textContent = `${up} up · ${ps.length - up} not`;
+  $('heroUptime').textContent = `proxy uptime ${fmtUptime(statusState.uptimeSec)}`;
+}
+
+async function refresh() {
+  try {
+    const [s, u, c] = await Promise.all([api('/api/status'), api('/api/usage'), api('/api/catalog')]);
+    statusState = s;
+    usage = u;
+    catalog = c;
+    port = s.port;
+    $('ovConn').textContent = `proxy running on http://127.0.0.1:${s.port}`;
+    $('sideStatus').textContent = 'running';
+    $('sideDot').className = 'pulse ok';
+    $('sidePort').textContent = ':' + s.port;
+    renderProviders();
+    renderUsage();
+    renderCatalog();
+    renderSettings();
+    renderHero();
+    renderFlow();
+    renderWidgets();
+    renderSpark('sparkTokens', (usage.daily || []).map((d) => (d.inputTokens || 0) + (d.outputTokens || 0)));
+    renderSpark('sparkReqs', (usage.daily || []).map((d) => d.requests || 0));
+  } catch {
+    $('ovConn').textContent = 'proxy unreachable';
+    $('sideStatus').textContent = 'unreachable';
+    $('sideDot').className = 'pulse bad';
+  }
+}
+
+/* ---- motion preference (localStorage, per-browser) ---- */
+function motionStore(get, v) {
+  try {
+    if (get) return localStorage.getItem('switchx-motion');
+    localStorage.setItem('switchx-motion', v);
+  } catch { /* private mode / blocked storage — fall back to auto for this tab */ }
+  return null;
+}
+function applyMotion() {
+  const pref = motionStore(true) || 'auto';
+  document.documentElement.classList.toggle('force-motion', pref === 'on');
+  document.documentElement.classList.toggle('no-motion', pref === 'off');
+  $('motionPref').value = pref;
+  const osReduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  $('motionDetect').textContent = `OS requests reduced motion: ${osReduced ? 'yes' : 'no'} · effective: ${pref === 'auto' ? (osReduced ? 'reduced' : 'animated') : pref}`;
+}
+window.setMotion = (v) => {
+  motionStore(false, v);
+  applyMotion();
+};
+applyMotion();
+
+refresh();
+setInterval(refresh, 3000);
+</script>
+</body>
+</html>
