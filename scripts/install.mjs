@@ -53,6 +53,51 @@ async function ensureProxy() {
   return false;
 }
 
+// Detect ANTHROPIC_* overrides that would actually affect FUTURE sessions.
+// process.env is useless here: Claude Code injects settings.json values into
+// its own process, so children always "see" the old values — a false positive.
+// Instead check the real persistent sources: Windows registry scopes, or
+// shell profile files on macOS/Linux.
+function detectExternalEnvConflicts() {
+  const conflicts = [];
+  const keys = Object.keys(ENV_TO_SET);
+
+  if (process.platform === 'win32') {
+    const read = (hive) => {
+      try {
+        return spawnSync('reg', ['query', hive], { encoding: 'utf8' }).stdout || '';
+      } catch {
+        return '';
+      }
+    };
+    const userEnv = read('HKCU\\Environment');
+    const machineEnv = read('HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment');
+    for (const k of keys) {
+      const re = new RegExp(`^\\s+${k}\\s+REG_[A-Z_]+\\s+(.+)$`, 'im');
+      const inUser = userEnv.match(re);
+      const inMachine = machineEnv.match(re);
+      const m = inUser || inMachine;
+      if (m) conflicts.push(`${k} = ${m[1].trim()}  (Windows ${inUser ? 'user' : 'machine'} scope)`);
+    }
+  } else {
+    const profiles = ['.bashrc', '.zshrc', '.zshenv', '.zprofile', '.profile', '.bash_profile'];
+    for (const f of profiles) {
+      let txt;
+      try {
+        txt = fs.readFileSync(path.join(os.homedir(), f), 'utf8');
+      } catch {
+        continue;
+      }
+      for (const k of keys) {
+        const re = new RegExp(`(?:export\\s+)?${k}\\s*=\\s*["']?([^"'\\n#]+)`);
+        const m = txt.match(re);
+        if (m) conflicts.push(`${k} = ${m[1].trim()}  (from ~/${f})`);
+      }
+    }
+  }
+  return conflicts;
+}
+
 async function main() {
   console.log('switchXprovider setup\n');
 
@@ -148,12 +193,12 @@ To skip these safety checks anyway:  node scripts/install.mjs --force
   console.log(`Updated: ${settingsPath}\n`);
   console.log(changes.join('\n'));
 
-  // Shell/system env vars can shadow settings.json env — surface any conflicts.
-  const conflicts = Object.keys(ENV_TO_SET).filter((k) => process.env[k]);
+  // Persistent env overrides (registry / shell profile) shadow settings.json.
+  const conflicts = detectExternalEnvConflicts();
   if (conflicts.length) {
-    console.log(`\nWARNING: these environment variables are also set in your shell/system and may override settings.json:`);
-    for (const k of conflicts) console.log(`  ${k} = ${process.env[k]}`);
-    console.log('Remove them (System Properties → Environment Variables, or your shell profile) so the proxy settings take effect.');
+    console.log(`\nWARNING: these environment variables are set outside settings.json and will override it:`);
+    for (const c of conflicts) console.log(`  ${c}`);
+    console.log('Remove them (System Properties → Environment Variables, or edit the profile file) so the proxy settings take effect.');
   }
 
   console.log(`
