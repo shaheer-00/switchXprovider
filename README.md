@@ -7,6 +7,42 @@
 
 A Claude Code plugin that acts as a local API router — an alternative to OmniRouter. Claude Code always talks to `http://127.0.0.1:8787`; the plugin forwards traffic to whichever provider is active, switches automatically when a provider dies, and recovers automatically when it comes back.
 
+![switchXprovider dashboard](docs/screenshots/overview.png)
+
+<details>
+<summary><b>More screenshots</b></summary>
+
+| Providers — priority & failover state | Discover — curated catalog |
+|---|---|
+| ![Providers](docs/screenshots/providers.png) | ![Discover](docs/screenshots/discover.png) |
+
+| Usage — per provider & model | Settings |
+|---|---|
+| ![Usage](docs/screenshots/usage.png) | ![Settings](docs/screenshots/settings.png) |
+
+</details>
+
+## How it differs from OmniRoute
+
+Both projects solve "never stop coding when a provider dies" — but with opposite trust models. **OmniRoute pools free community tokens and routes your traffic through their infrastructure. switchXprovider routes your traffic directly to providers you control.**
+
+| | switchXprovider | OmniRoute |
+|---|---|---|
+| **Traffic path** | Claude Code → your machine → your provider, directly | Claude Code → OmniRoute's gateway → pooled providers |
+| **Keys** | Yours only — never leaves your `~/.claude` | Pooled community keys handled by their service |
+| **Free tokens** | Depends on your providers' free tiers | ~1.5B/month pooled across 352+ providers |
+| **Footprint** | One Node process, 0 dependencies, ~10 files | Full gateway infrastructure |
+| **Auditability** | ~1,800 lines you can read in an afternoon | Centralized service |
+| **Provider choice** | Any Anthropic-compatible endpoint you have a key for | Their supported provider pool |
+| **Usage analytics** | Token/latency/success tracking of *your* traffic, locally | Gateway-side stats |
+| **Cost** | Free (your provider usage) | Free tier + premium |
+
+**Pick switchXprovider if:** you have provider keys or subscriptions (Anthropic, Z.AI GLM coding plan, DeepSeek, OpenRouter, gateways), want your API traffic to go straight to the provider with no middleman, and want a tiny auditable proxy instead of a service.
+
+**Pick OmniRoute if:** you have no keys at all and want free pooled community tokens, accepting a third party in the path.
+
+They also compose — run OmniRouter as one provider entry in switchXprovider, and its outage fails over to your backup key automatically.
+
 ## Install
 
 **Via plugin marketplace (recommended):**

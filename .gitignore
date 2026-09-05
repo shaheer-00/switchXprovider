@@ -1,6 +1,6 @@
 node_modules/
 .playwright-mcp/
-*.png
 *.log
 .DS_Store
 Thumbs.db
+overview.png
