@@ -208,7 +208,7 @@ export async function handleApi(req, res, pathname, cfg) {
         providers: enabledSorted(cfg)
           .concat(cfg.providers.filter((p) => !p.enabled))
           .map((p) => providerView(cfg, p)),
-        events: cfg.events.slice(0, 100),
+        events: cfg.events.slice(0, 200),
       });    }
 
     if (method === 'GET' && resource === 'events') {

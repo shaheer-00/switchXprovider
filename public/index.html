@@ -94,6 +94,13 @@
   }
   nav .ico { width: 18px; height: 18px; display: grid; place-items: center; flex-shrink: 0; }
   nav .ico svg { width: 17px; height: 17px; }
+  .navbadge {
+    margin-left: auto; font-family: var(--mono); font-size: 10px; line-height: 1;
+    padding: 3px 7px; border-radius: 999px; color: var(--muted);
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+  }
+  .navbadge:empty { display: none; }
+  nav button.active .navbadge { color: #fff; border-color: rgba(99,102,241,0.4); background: rgba(99,102,241,0.18); }
 
   .sidebottom { margin-top: auto; padding: 14px 10px 2px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--muted); }
   .sidebottom .row { display: flex; align-items: center; gap: 7px; margin-top: 6px; }
@@ -504,6 +511,11 @@
         <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z"/></svg></span>
         <span class="lbl">Settings</span>
       </button>
+      <button data-view="events">
+        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h10M4 10h13M4 15h8M4 20h11"/><circle cx="19.5" cy="15" r="2.5"/></svg></span>
+        <span class="lbl">Events</span>
+        <span class="navbadge" id="navEvents"></span>
+      </button>
     </nav>
     <div class="sidebottom">
       <div class="row"><span class="pulse" id="sideDot" style="background:var(--dim)"></span><span id="sideStatus" class="sideText">connecting…</span></div>
@@ -630,7 +642,7 @@
         <span class="sub">priority order · traffic goes to the highest healthy one</span>
         <span class="spacer"></span>
         <button class="primary" id="testAllBtn" style="align-self:center" onclick="testAll()">Test all</button>
-        <span class="sub"><span class="kbd">1</span>–<span class="kbd">5</span> switch views</span>
+        <span class="sub"><span class="kbd">1</span>–<span class="kbd">6</span> switch views</span>
       </div>
       <div class="searchbar">
         <span class="sic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
@@ -688,12 +700,6 @@
             <button type="button" onclick="resetForm()">Cancel</button>
           </div>
         </form>
-      </div>
-
-      <div class="panelcard">
-        <h2>Event log</h2>
-        <div class="hint">failovers, recoveries, cooldowns, config changes</div>
-        <ul class="events" id="events"></ul>
       </div>
     </section>
 
@@ -821,6 +827,23 @@
           <div class="t">settings.json backup (made by installer)</div>
           <div class="mono">~/.claude/settings.json.switchx-backup</div>
         </div></div>
+      </div>
+    </section>
+
+    <!-- ============ EVENTS ============ -->
+    <section class="view" id="view-events">
+      <div class="viewhead">
+        <h1>Events</h1>
+        <span class="sub">failovers, recoveries, cooldowns, config changes</span>
+        <span class="spacer"></span>
+        <button class="danger" id="clearEventsBtn" onclick="clearEvents()">Clear log</button>
+      </div>
+      <div class="searchbar">
+        <span class="sic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
+        <input id="evSearch" placeholder="filter events by text — e.g. a provider name, &quot;down&quot;, &quot;recovered&quot;…" oninput="renderEvents()">
+      </div>
+      <div class="panelcard">
+        <ul class="events" id="events"></ul>
       </div>
     </section>
   </main>
@@ -1045,13 +1068,22 @@ function renderProviders() {
        <b style="color:var(--amber)">Important:</b> add at least one provider with an API key and enable it <i>before</i> running
        <span style="font-family:var(--mono)">scripts/install.mjs</span> — once settings.json points here, Claude Code has no API
        except through the providers configured on this page. The installer refuses to continue until that's done.`}</div>`;
-  $('events').innerHTML = statusState.events.length
-    ? statusState.events.slice(0, 80).map((e) => `<li><b>${fmtAgo(e.ts)}</b> ${escapeHtml(e.msg)}</li>`).join('')
-    : '<li class="empty">no events yet</li>';
   const up = statusState.providers.filter((p) => p.status === 'up').length;
   $('stProv').textContent = `${up}/${statusState.providers.length}`;
   const active = statusState.providers.find((p) => p.status === 'up')?.name || '—';
   $('sideActive').textContent = 'active: ' + active;
+}
+
+/* ---- events view ---- */
+function renderEvents() {
+  const all = statusState.events || [];
+  const q = ($('evSearch').value || '').toLowerCase().trim();
+  const list = q ? all.filter((e) => String(e.msg || '').toLowerCase().includes(q)) : all;
+  $('events').innerHTML = list.length
+    ? list.slice(0, 300).map((e) => `<li><b>${fmtAgo(e.ts)}</b> ${escapeHtml(e.msg)}</li>`).join('')
+    : `<li class="empty">${all.length ? 'No events match your filter.' : 'no events yet'}</li>`;
+  $('navEvents').textContent = all.length ? (all.length > 99 ? '99+' : all.length) : '';
+  $('clearEventsBtn').disabled = !all.length;
 }
 
 /* ---- usage rendering ---- */
@@ -1376,8 +1408,10 @@ window.importConfig = async (ev) => {
 };
 
 window.clearEvents = async () => {
+  if (!confirm('Clear the entire event log? Provider config and usage statistics are kept.')) return;
   try {
     await api('/api/events/clear', { method: 'POST' });
+    toast('Event log cleared');
     refresh();
   } catch (e) { toast(e.message, true); }
 };
@@ -1448,7 +1482,7 @@ function renderWidgets() {
 }
 
 /* ---- keyboard shortcuts ---- */
-const VIEWS = ['overview', 'providers', 'discover', 'usage', 'settings'];
+const VIEWS = ['overview', 'providers', 'discover', 'usage', 'settings', 'events'];
 document.addEventListener('keydown', (ev) => {
   if (ev.target.tagName === 'INPUT' || ev.target.tagName === 'SELECT' || ev.target.tagName === 'TEXTAREA') return;
   const n = parseInt(ev.key, 10);
@@ -1487,6 +1521,7 @@ async function refresh() {
     $('sideDot').className = 'pulse ok';
     $('sidePort').textContent = ':' + s.port;
     renderProviders();
+    renderEvents();
     renderUsage();
     renderCatalog();
     renderSettings();
