@@ -130,12 +130,13 @@
 
   /* ---- hero (overview) ---- */
   .hero {
-    display: grid; grid-template-columns: 1fr 1.25fr; gap: 22px; margin-bottom: 22px;
+    display: grid; grid-template-columns: 0.72fr 1fr; gap: 22px; margin-bottom: 22px;
+    align-items: start;
   }
   .hero-left {
     background: var(--panel); backdrop-filter: blur(12px);
     border: 1px solid var(--border); border-radius: var(--r);
-    padding: 24px; position: relative; overflow: hidden;
+    padding: 22px 24px; position: relative; overflow: hidden;
     box-shadow: 0 10px 40px rgba(0,0,0,0.35);
   }
   .hero-left::before {
@@ -144,7 +145,7 @@
   }
   .hero-left .lbl { color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.1em; }
   .hero-left .bigname {
-    font-size: 30px; font-weight: 800; letter-spacing: -0.03em; margin: 6px 0 2px;
+    font-size: 34px; font-weight: 800; letter-spacing: -0.03em; margin: 8px 0 4px;
     background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
     word-break: break-word;
   }
@@ -174,8 +175,16 @@
     border: 1px solid var(--border); border-radius: var(--r);
     padding: 18px 20px 10px; overflow: hidden;
     box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+    display: flex; flex-direction: column; min-height: 0;
   }
   .hero-right h2 { font-size: 13px; margin: 0 0 2px; color: var(--muted); font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; }
+  .flowwrap {
+    overflow-y: auto; overscroll-behavior: contain; flex: 1; min-height: 0; max-height: 420px;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+    margin: 0 -6px; padding: 0 6px 8px;
+  }
+  .flowwrap::-webkit-scrollbar { width: 8px; }
+  .flowwrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
   .flowsvg { width: 100%; height: auto; display: block; }
   .flowsvg .edge { stroke: rgba(130,150,200,0.18); stroke-width: 1.5; fill: none; }
   .flowsvg .edge.active {
@@ -191,6 +200,14 @@
   .flowsvg .node .sub { fill: var(--dim); font-size: 9px; }
   .flowsvg .node.active rect { stroke: rgba(99,102,241,0.55); filter: drop-shadow(0 0 8px rgba(99,102,241,0.35)); }
   .flowsvg .core rect { fill: rgba(99,102,241,0.12); stroke: rgba(99,102,241,0.5); }
+  .flowsvg .pnode { cursor: pointer; }
+  .flowsvg .pnode rect { transition: stroke 0.15s ease, filter 0.15s ease; }
+  .flowsvg .pnode:hover rect, .flowsvg .pnode.sel rect { stroke: var(--acc1); filter: drop-shadow(0 0 8px rgba(99,102,241,0.45)); }
+  .flowsvg .pnode:hover .pname, .flowsvg .pnode.sel .pname { fill: #fff; }
+  .flowsvg .pnode .psub { fill: var(--dim); font-size: 9px; }
+  .flowsvg .edge.hi { stroke: rgba(99,102,241,0.8); stroke-width: 2.4; }
+  .flowhint { font-size: 10.5px; color: var(--dim); text-align: center; margin: 4px 0 2px; }
+  .flowhint .kbd { font-size: 9.5px; }
 
   /* ---- stat cards ---- */
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 15px; margin-bottom: 22px; }
@@ -523,7 +540,10 @@
         </div>
         <div class="hero-right">
           <h2>Traffic flow</h2>
-          <svg class="flowsvg" id="flowsvg" viewBox="0 0 460 220" preserveAspectRatio="xMidYMid meet"></svg>
+          <div class="flowwrap" id="flowwrap">
+            <svg class="flowsvg" id="flowsvg" viewBox="0 0 460 220" preserveAspectRatio="xMidYMid meet"></svg>
+          </div>
+          <div class="flowhint">hover a provider to trace its route · click to open it in <span class="kbd">Providers</span></div>
         </div>
       </div>
 
@@ -888,28 +908,30 @@ function countUp(id, target) {
 
 /* ---- flow diagram ---- */
 let flowSig = '';
+let flowSel = null; // id of provider node being hovered/selected
 function renderFlow() {
   const ps = statusState.providers || [];
-  const shown = ps.slice(0, 4);
   // Rebuilding the SVG restarts its CSS dash animation from zero — skip the
   // rebuild when nothing actually changed so the flow keeps moving smoothly.
-  const sig = JSON.stringify(shown.map((p) => [p.name, p.status])) + '|' + port;
+  const sig = JSON.stringify(ps.map((p) => [p.name, p.status])) + '|' + port;
   if (sig === flowSig && $('flowsvg').innerHTML) return;
   flowSig = sig;
 
-  const H = 56 + shown.length * 44;
+  // Height fits the provider column exactly (last node bottom + padding), with a
+  // floor that keeps the Claude Code / switchX nodes fully visible.
+  const H = Math.max(150, 26 + Math.max(0, ps.length - 1) * 44 + 25);
   const svg = $('flowsvg');
   svg.setAttribute('viewBox', `0 0 460 ${H}`);
   // First healthy provider in priority order = the active route.
-  const activeIdx = shown.findIndex((p) => p.status === 'up');
+  const activeIdx = ps.findIndex((p) => p.status === 'up');
   let defs = `<defs>
-    <linearGradient id="edgeGrad" x1="0" y1="0" x2="1" y2="0">
+    <linearGradient id="edgeGrad" gradientUnits="userSpaceOnUse" x1="90" y1="0" x2="460" y2="0">
       <stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#22d3ee"/>
     </linearGradient>
   </defs>`;
 
-  // client node
-  const midY = H / 2 - 12;
+  // client + core nodes, vertically centered on the *visible* area
+  const midY = Math.min(H / 2 - 12, 118);
   let out = defs;
   out += `
     <g class="node">
@@ -924,23 +946,52 @@ function renderFlow() {
     </g>
     <path class="edge active" d="M104 ${midY} H160"/>`;
 
-  shown.forEach((p, i) => {
+  ps.forEach((p, i) => {
     const y = 26 + i * 44;
     const isActive = i === activeIdx;
     const cls = isActive ? 'active' : p.status === 'down' ? 'dead' : p.status === 'disabled' ? 'disabled' : '';
+    const dot = p.status === 'up' ? '#34d399' : p.status === 'down' ? '#f87171' : '#5d677e';
+    const sub = p.status === 'down' && p.downForMs
+      ? `back in ~${Math.ceil(p.downForMs / 1000)}s`
+      : p.status === 'disabled' ? 'disabled'
+      : p.stats?.emaLatencyMs != null ? p.stats.emaLatencyMs + 'ms' : 'ready';
     out += `
-      <path class="edge ${cls}" d="M270 ${midY} C 320 ${midY}, 320 ${y}, 346 ${y}"/>
-      <g class="node ${isActive ? 'active' : ''}">
+      <path id="fe-${p.id}" class="edge ${cls}" d="M270 ${midY} C 320 ${midY}, 320 ${y}, 346 ${y}"/>
+      <g class="node pnode ${isActive ? 'active' : ''}" data-pid="${p.id}"
+         onmouseenter="flowHover('${p.id}')" onmouseleave="flowHover(null)" onclick="flowOpen('${p.id}')">
         <rect x="346" y="${y - 15}" width="106" height="30" rx="9"/>
-        <text x="399" y="${y + 4}" text-anchor="middle">${escapeHtml(p.name.slice(0, 16))}</text>
+        <text x="399" y="${y - 1}" text-anchor="middle" class="pname">${escapeHtml(p.name.slice(0, 16))}</text>
+        <text x="399" y="${y + 10}" text-anchor="middle" class="psub">${escapeHtml(sub)}</text>
       </g>
-      <circle cx="346" cy="${y}" r="3.5" fill="${p.status === 'up' ? '#34d399' : p.status === 'down' ? '#f87171' : '#5d677e'}"/>`;
+      <circle cx="346" cy="${y}" r="3.5" fill="${dot}"/>`;
   });
-  if (ps.length > 4) {
-    out += `<text x="399" y="${26 + 4 * 44}" text-anchor="middle" class="sub">+ ${ps.length - 4} more…</text>`;
-  }
   svg.innerHTML = out;
+  if (flowSel) applyFlowSel();
 }
+
+function applyFlowSel() {
+  document.querySelectorAll('#flowsvg .pnode').forEach((n) => {
+    n.classList.toggle('sel', n.dataset.pid === flowSel);
+    const e = $('fe-' + n.dataset.pid);
+    if (e) e.classList.toggle('hi', n.dataset.pid === flowSel);
+  });
+}
+
+window.flowHover = (id) => {
+  flowSel = id;
+  applyFlowSel();
+};
+
+window.flowOpen = (id) => {
+  const p = (statusState.providers || []).find((x) => x.id === id);
+  gotoView('providers');
+  if (p) {
+    const input = $('provSearch');
+    input.value = p.name;
+    renderProviders();
+    input.focus();
+  }
+};
 
 /* ---- providers view ---- */
 function providerCard(p) {

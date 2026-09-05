@@ -8,6 +8,7 @@
 import { statsFor, logEvent, persistSoon } from './config.mjs';
 
 const PROBE_LEAD_MS = 10_000; // probe this long before cooldown expiry
+const RECHECK_MS = 30_000;    // re-probe down providers at most this often
 const LOOP_MS = 5_000;
 const PROBE_TIMEOUT_MS = 10_000;
 // Some gateways (e.g. agentrouter.org) fingerprint the client and reject
@@ -50,8 +51,13 @@ export function startHealthLoop(getCfg) {
       if (!p.enabled || !p.apiKey) continue;
       const s = statsFor(cfg, p.id);
       if (!s.deadUntil || s.deadUntil <= Date.now()) continue; // healthy
-      if (s.deadUntil - Date.now() > PROBE_LEAD_MS) continue; // not yet due
-      if (Date.now() - (s.lastCheck || 0) < LOOP_MS) continue; // already checked recently
+      // Probe down providers periodically (RECHECK_MS) regardless of remaining
+      // cooldown — long cooldowns (auth: up to 8h with backoff) otherwise keep
+      // providers "down" on the dashboard long after they recover, while the
+      // request path's all-down reset serves traffic just fine.
+      const due = s.deadUntil - Date.now() <= PROBE_LEAD_MS
+        || Date.now() - (s.lastCheck || 0) >= RECHECK_MS;
+      if (!due) continue;
 
       s.lastCheck = Date.now();
       if (await probe(p)) {
