@@ -3,4 +3,4 @@ node_modules/
 *.log
 .DS_Store
 Thumbs.db
-overview.png
+/overview.png
