@@ -715,6 +715,13 @@
         <input id="catSearch" placeholder="filter by name, tag, or pricing…" oninput="renderCatalog()">
       </div>
 
+      <div class="panelcard" style="padding:14px 20px">
+        <div class="hint" style="margin:0">
+          Sign-up links are affiliate links — they support development at no extra cost to you.
+          Most providers give <b style="color:var(--text)">daily login rewards</b>: sign out and back in every day to claim free credits.
+        </div>
+      </div>
+
       <div class="panelcard">
         <h2>Remote catalog</h2>
         <div class="hint">Point at a raw JSON catalog (e.g. your GitHub repo) to extend/override the built-in list. Same schema as the seed — see README.</div>
@@ -1223,7 +1230,7 @@ function renderCatalog() {
         ${c.source === 'remote' ? '<span class="fact free">remote</span>' : ''}
       </div>
       <div class="urls">
-        ${c.website ? `<a href="${escapeHtml(c.website)}" target="_blank" rel="noopener">website ↗</a>` : ''}
+        ${c.website ? `<a href="${escapeHtml(c.website)}" target="_blank" rel="noopener">${/sign-up|register|invite/.test(c.website) ? 'sign up ↗' : 'website ↗'}</a>` : ''}
         ${c.docsUrl ? `<a href="${escapeHtml(c.docsUrl)}" target="_blank" rel="noopener">docs ↗</a>` : ''}
       </div>
       <div class="formactions" style="margin:0">

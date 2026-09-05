@@ -85,7 +85,11 @@ node switchXprovider/server/ensure.mjs
 - **Auto-learning cooldowns** — cooldowns scale up to 8× with consecutive failures (exponential backoff), and honor upstream `retry-after` headers. Each provider tracks requests, success rate, and EMA latency.
 - **Auto-recovery** — a background health probe re-tests down providers just before their cooldown expires; a recovered provider returns to rotation automatically at its priority (e.g. when your Claude subscription window resets, you drift back to provider #1 with zero action).
 - **Usage analytics** — the proxy reads token usage (`input`/`output`/`cache_read`/`cache_creation`) out of every response — streaming and non-streaming — without touching the stream, and tracks totals per provider, per model, and per day. The dashboard shows animated stat cards, a 14-day usage chart, per-provider token share, a per-model table, and a live request feed (model, tokens, latency, status).
-- **Provider discovery** — a curated catalog (Anthropic, OpenRouter, Z.AI GLM, DeepSeek, Moonshot Kimi, AgentRouter, …) with descriptions, ratings, pricing notes, and one-click prefill of the add-provider form. A remote catalog (same JSON schema, e.g. a raw GitHub file) can be set in Settings and overrides matching entries — useful for community-maintained lists.
+- **Provider discovery** — a curated catalog of gateways (AgentRouter, Bynara, SeekAi, GoRouter, TabiToken, BlueSminds, B.AI, …) with descriptions, ratings, pricing notes, and one-click prefill of the add-provider form. A remote catalog (same JSON schema, e.g. a raw GitHub file) can be set in Settings and overrides matching entries — useful for community-maintained lists.
+
+> **Affiliate disclosure:** sign-up links in the Discover catalog are affiliate/referral links — signing up through them supports switchXprovider development at no extra cost to you.
+>
+> **Daily login rewards:** most of these providers hand out free credits or tokens for a daily check-in — you have to sign out and sign back in **every day** to claim them. Worth it if you're running free-tier models.
 - **Config backup** — export/import the full provider list (including keys) as JSON from the dashboard.
 - **Install status detection** — the dashboard reads `~/.claude/settings.json` and shows whether Claude Code is actually routed through the proxy.
 - **Deadlock protection** — if *every* provider is down, cooldowns reset once and the request is retried rather than hard-failing.
