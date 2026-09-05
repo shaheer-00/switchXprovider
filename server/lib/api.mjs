@@ -7,7 +7,7 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { newId, statsFor, logEvent, persistSoon, emptyUsage, DIR, PROCESS_START } from './config.mjs';
 import { enabledSorted, isDown, COOLDOWNS } from './proxy.mjs';
-import { probe } from './health.mjs';
+import { probe, deepCheck } from './health.mjs';
 
 const JSON_HDR = { 'content-type': 'application/json' };
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -367,7 +367,7 @@ export async function handleApi(req, res, pathname, cfg) {
         if (!p) return send(res, 404, { error: 'provider not found' });
 
         if (action === 'test') {
-          const ok = await probe(p);
+          const { ok, missing } = await deepCheck(p);
           const s = statsFor(cfg, p.id);
           if (ok && s.deadUntil) {
             s.deadUntil = 0;
@@ -376,8 +376,11 @@ export async function handleApi(req, res, pathname, cfg) {
           } else if (!ok) {
             logEvent(cfg, `Provider "${p.name}" failed manual test`);
           }
+          if (missing.length) {
+            logEvent(cfg, `Provider "${p.name}" missing model IDs: ${missing.join(', ')}`);
+          }
           persistSoon(cfg, 0);
-          return send(res, 200, { ok });
+          return send(res, 200, { ok, missing });
         }
 
         if (action === 'reset') {

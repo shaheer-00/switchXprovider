@@ -20,27 +20,60 @@ const CLAUDE_UA = 'claude-cli/2.0.14 (external, cli)';
 // Auth/payment/rate/server errors and network failures count as still down.
 export async function probe(p) {
   try {
-    let base = String(p.baseUrl || '').replace(/\/+$/, '');
-    const url = /\/v\d+$/.test(base) ? `${base}/models` : `${base}/v1/models`;
-    const style = p.authStyle || 'auto';
-    let headers;
-    if (style === 'bearer') {
-      headers = { authorization: `Bearer ${p.apiKey}`, 'user-agent': CLAUDE_UA };
-    } else if (style === 'anthropic') {
-      headers = { 'x-api-key': p.apiKey, 'anthropic-version': '2023-06-01', 'user-agent': CLAUDE_UA };
-    } else {
-      headers = { 'x-api-key': p.apiKey, authorization: `Bearer ${p.apiKey}`, 'anthropic-version': '2023-06-01', 'user-agent': CLAUDE_UA };
-    }
-    const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), PROBE_TIMEOUT_MS);
-    try {
-      const resp = await fetch(url, { headers, signal: ac.signal });
-      return ![401, 402, 403, 429, 500, 502, 503, 504, 529].includes(resp.status);
-    } finally {
-      clearTimeout(timer);
-    }
+    const resp = await fetchModels(p);
+    return ![401, 402, 403, 429, 500, 502, 503, 504, 529].includes(resp.status);
   } catch {
     return false;
+  }
+}
+
+async function fetchModels(p) {
+  let base = String(p.baseUrl || '').replace(/\/+$/, '');
+  const url = /\/v\d+$/.test(base) ? `${base}/models` : `${base}/v1/models`;
+  const style = p.authStyle || 'auto';
+  let headers;
+  if (style === 'bearer') {
+    headers = { authorization: `Bearer ${p.apiKey}`, 'user-agent': CLAUDE_UA };
+  } else if (style === 'anthropic') {
+    headers = { 'x-api-key': p.apiKey, 'anthropic-version': '2023-06-01', 'user-agent': CLAUDE_UA };
+  } else {
+    headers = { 'x-api-key': p.apiKey, authorization: `Bearer ${p.apiKey}`, 'anthropic-version': '2023-06-01', 'user-agent': CLAUDE_UA };
+  }
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), PROBE_TIMEOUT_MS);
+  try {
+    return await fetch(url, { headers, signal: ac.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Deep probe for manual tests: like probe(), but when the provider exposes a
+// model list it also verifies the configured opus/sonnet/haiku IDs exist
+// there. A provider can answer "reachable" while every real request 404s on
+// a typo'd or retired model ID — this catches that.
+export async function deepCheck(p) {
+  let resp;
+  try {
+    resp = await fetchModels(p);
+  } catch {
+    return { ok: false, missing: [] };
+  }
+  if ([401, 402, 403, 429, 500, 502, 503, 504, 529].includes(resp.status)) {
+    return { ok: false, missing: [] };
+  }
+  const configured = Object.entries(p.models || {})
+    .filter(([, id]) => id)
+    .map(([slot, id]) => ({ slot, id }));
+  if (!configured.length || !resp.ok) return { ok: true, missing: [] };
+  try {
+    const data = await resp.json();
+    const ids = new Set((data.data || data.models || []).map((m) => m && (m.id || m.name)).filter(Boolean));
+    if (!ids.size) return { ok: true, missing: [] };
+    const missing = configured.filter(({ id }) => !ids.has(id)).map(({ slot, id }) => `${slot}:${id}`);
+    return { ok: true, missing };
+  } catch {
+    return { ok: true, missing: [] };
   }
 }
 

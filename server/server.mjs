@@ -20,6 +20,31 @@ import { startHealthLoop } from './lib/health.mjs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const INDEX_PATH = path.join(__dirname, '..', 'public', 'index.html');
 
+// The proxy is bound to 127.0.0.1 and holds provider API keys in memory, so
+// requests must actually come from this machine. A page at attacker.test can
+// rebind its DNS to 127.0.0.1, making its fetches same-origin and invisible
+// to CORS — unless the Host header is checked. Every accepted request must
+// name us as its host, and any Origin header must be our own origin.
+const LOCAL_HOSTNAMES = new Set(['127.0.0.1', 'localhost', '[::1]', '::1']);
+function hostAllowed(host) {
+  if (!host) return false;
+  const hostname = host.replace(/:\d+$/, '').toLowerCase();
+  return LOCAL_HOSTNAMES.has(hostname);
+}
+function originAllowed(origin, port) {
+  if (!origin || origin === 'null') return false;
+  try {
+    const u = new URL(origin);
+    return u.port === String(port) && LOCAL_HOSTNAMES.has(u.hostname.replace(/^\[|\]$/g, '') || u.hostname);
+  } catch {
+    return false;
+  }
+}
+function forbidden(res, why) {
+  res.writeHead(403, { 'content-type': 'application/json' });
+  res.end(JSON.stringify({ error: `switchXprovider: request rejected (${why}). This proxy only accepts requests addressed to 127.0.0.1:${PORT}.` }));
+}
+
 const cfg = load();
 const PORT = cfg.port || 8787;
 const MAX_BODY = 200 * 1024 * 1024; // matches current provider request-body limits
@@ -55,7 +80,16 @@ function serveIndex(res) {
 }
 
 const server = http.createServer(async (req, res) => {
-  const pathname = new URL(req.url, 'http://127.0.0.1').pathname;
+  // Applies to every route, proxied traffic included: rebinding protection.
+  if (req.headers.origin !== undefined && !originAllowed(req.headers.origin, PORT)) {
+    forbidden(res, `bad origin ${req.headers.origin}`);
+    return;
+  }
+  if (!hostAllowed(req.headers.host)) {
+    forbidden(res, `bad host ${req.headers.host}`);
+    return;
+  }
+  const pathname = new URL(req.url, `http://127.0.0.1:${PORT}`).pathname;
 
   try {
     if (pathname === '/healthz') {

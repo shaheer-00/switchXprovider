@@ -1334,7 +1334,8 @@ window.test = async (id) => {
   toast('Testing… (up to 10s)');
   try {
     const r = await api(`/api/providers/${id}/test`, { method: 'POST' });
-    toast(r.ok ? 'Provider reachable ✓' : 'Provider unreachable ✗', !r.ok);
+    const detail = r.missing?.length ? ` — missing models: ${r.missing.join(', ')}` : '';
+    toast(r.ok ? `Provider reachable ✓${detail}` : 'Provider unreachable ✗', !r.ok);
     refresh();
   } catch (e) { toast(e.message, true); }
 };
@@ -1349,18 +1350,20 @@ window.testAll = async () => {
   const step = () => { btn.textContent = `testing ${done}/${ps.length}…`; };
   step();
   const results = await Promise.all(ps.map(async (p) => {
-    let ok = false, err = null;
-    try { const r = await api(`/api/providers/${p.id}/test`, { method: 'POST' }); ok = !!r.ok; }
+    let ok = false, err = null, missing = [];
+    try { const r = await api(`/api/providers/${p.id}/test`, { method: 'POST' }); ok = !!r.ok; missing = r.missing || []; }
     catch (e) { err = e.message; }
     done++; step();
-    return { p, ok, err };
+    return { p, ok, err, missing };
   }));
   btn.disabled = false;
   btn.textContent = orig;
   const ok = results.filter((r) => r.ok);
   const bad = results.filter((r) => !r.ok);
+  const missingMsg = results.filter((r) => r.ok && r.missing.length)
+    .map((r) => `${r.p.name} missing ${r.missing.join(', ')}`).join('; ');
   const failed = bad.length ? ' — failed: ' + bad.map((r) => `${r.p.name}${r.err ? ` (${r.err})` : ''}`).join(', ') : '';
-  toast(`${ok.length}/${ps.length} healthy${failed}`, bad.length > 0);
+  toast(`${ok.length}/${ps.length} healthy${failed}${missingMsg ? ' · ' + missingMsg : ''}`, bad.length > 0);
   refresh();
 };
 
