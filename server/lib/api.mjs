@@ -412,6 +412,25 @@ export async function handleApi(req, res, pathname, cfg) {
           }
           return send(res, 200, { ok: true });
         }
+
+        if (action === 'reorder') {
+          const body = await readJson(req);
+          // Sort by priority first — the array itself may not be in priority order.
+          const sorted = cfg.providers.slice().sort((a, b) => (a.priority || 99) - (b.priority || 99));
+          const idx = Math.max(0, Math.min(sorted.length - 1, parseInt(body.index, 10) || 0));
+          const cur = sorted.findIndex((x) => x.id === id);
+          if (cur === -1) return send(res, 404, { error: 'provider not found' });
+          const [moved] = sorted.splice(cur, 1);
+          sorted.splice(idx, 0, moved);
+          // The array order IS the priority order now — assign dense 1..n from
+          // position. normalizePriorities() would re-sort by the old numbers
+          // and undo the move.
+          cfg.providers = sorted;
+          sorted.forEach((p, i) => (p.priority = i + 1));
+          logEvent(cfg, `Provider "${moved.name}" moved to priority ${idx + 1}`);
+          persistSoon(cfg, 0);
+          return send(res, 200, { ok: true });
+        }
       }
     }
 
