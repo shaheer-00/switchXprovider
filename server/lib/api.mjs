@@ -14,6 +14,10 @@ const JSON_HDR = { 'content-type': 'application/json', 'cache-control': 'no-stor
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CATALOG_SEED_PATH = path.join(__dirname, '..', 'catalog.json');
 const CATALOG_CACHE_PATH = path.join(DIR, 'catalog-cache.json');
+// Official upstream catalog — the copy shipped in this repo, served raw from GitHub.
+// "Restore official" syncs the local cache to it so users always get the maintained list.
+const OFFICIAL_CATALOG_URL =
+  'https://raw.githubusercontent.com/shaheer-00/switchXprovider/master/server/catalog.json';
 
 function send(res, status, obj) {
   res.writeHead(status, JSON_HDR);
@@ -301,6 +305,30 @@ export async function handleApi(req, res, pathname, cfg) {
       } catch (err) {
         return send(res, 502, { error: `catalog refresh failed: ${err.message}` });
       }
+    }
+
+    // Restore the official catalog: clear any custom remote overlay and re-sync to
+    // the upstream GitHub copy (falls back to the shipped seed if GitHub is unreachable).
+    if (method === 'POST' && resource === 'catalog' && id === 'reset') {
+      let fellBack = false;
+      let fetched = 0;
+      try {
+        const cache = await refreshRemoteCatalog(cfg, OFFICIAL_CATALOG_URL);
+        fetched = cache.providers.length;
+      } catch {
+        // Offline / GitHub unreachable: drop the custom overlay, keep the shipped seed.
+        fellBack = true;
+        try { fs.rmSync(CATALOG_CACHE_PATH, { force: true }); } catch {}
+        delete cfg.catalogUrl;
+        persistSoon(cfg, 0);
+        logEvent(cfg, 'Provider catalog restored to the official list (offline — using shipped catalog)');
+      }
+      return send(res, 200, {
+        ok: true,
+        fetched,
+        offline: fellBack,
+        fetchedFrom: fellBack ? null : OFFICIAL_CATALOG_URL,
+      });
     }
 
     // ---- config backup / restore ----

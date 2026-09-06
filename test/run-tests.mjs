@@ -249,7 +249,7 @@ async function main() {
   console.log('\n— catalog / reset / export-import / install status —');
   let cat = await (await fetch(`${proxyUrl}/api/catalog`)).json();
   assert(Array.isArray(cat.providers) && cat.providers.length >= 5, 'seed catalog served', `got ${cat.providers?.length}`);
-  assert(cat.providers.some((p) => p.id === 'anthropic' && p.baseUrl === 'https://api.anthropic.com'), 'anthropic entry present');
+  assert(cat.providers.some((p) => p.id === 'agentrouter' && /^https:\/\/agentrouter\.org/.test(p.baseUrl)), 'curated gateway entry present');
   assert(cat.providers.every((p) => typeof p.rating === 'number'), 'catalog entries have ratings');
 
   const st = await (await fetch(`${proxyUrl}/api/status`)).json();
