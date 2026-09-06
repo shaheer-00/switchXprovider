@@ -71,7 +71,10 @@ function readRawBody(req, limit = MAX_BODY) {
 function serveIndex(res) {
   try {
     const html = fs.readFileSync(INDEX_PATH);
-    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    // no-store: the dashboard file changes between plugin versions and during
+    // development; a heuristically-cached stale copy breaks the UI in ways
+    // that look like random bugs (half-loaded scripts, dead buttons).
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
     res.end(html);
   } catch {
     res.writeHead(500, { 'content-type': 'text/plain' });
@@ -93,7 +96,7 @@ const server = http.createServer(async (req, res) => {
 
   try {
     if (pathname === '/healthz') {
-      res.writeHead(200, { 'content-type': 'application/json' });
+      res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
       res.end(JSON.stringify({ ok: true, port: PORT, uptimeSec: Math.round((Date.now() - STARTED_AT) / 1000) }));
       return;
     }

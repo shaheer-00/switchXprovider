@@ -8,8 +8,9 @@ import { fileURLToPath } from 'node:url';
 import { newId, statsFor, logEvent, persistSoon, emptyUsage, DIR, PROCESS_START } from './config.mjs';
 import { enabledSorted, isDown, COOLDOWNS } from './proxy.mjs';
 import { probe, deepCheck } from './health.mjs';
+import { enableRouting, disableRouting } from './routing.mjs';
 
-const JSON_HDR = { 'content-type': 'application/json' };
+const JSON_HDR = { 'content-type': 'application/json', 'cache-control': 'no-store' };
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CATALOG_SEED_PATH = path.join(__dirname, '..', 'catalog.json');
 const CATALOG_CACHE_PATH = path.join(DIR, 'catalog-cache.json');
@@ -268,6 +269,21 @@ export async function handleApi(req, res, pathname, cfg) {
       logEvent(cfg, 'Usage statistics reset');
       persistSoon(cfg, 0);
       return send(res, 200, { ok: true });
+    }
+
+    // ---- routing toggle (subscription users: off until usage warning) ----
+    if (method === 'POST' && resource === 'routing') {
+      const body = await readJson(req);
+      const enabled = body.enabled === true;
+      // Enabling needs at least one enabled provider — otherwise Claude Code
+      // would be left with no API at all.
+      if (enabled && !enabledSorted(cfg).length) {
+        return send(res, 400, { error: 'add and enable at least one provider first' });
+      }
+      const result = enabled
+        ? enableRouting(cfg.port, (msg) => logEvent(cfg, msg))
+        : disableRouting(cfg.port, (msg) => logEvent(cfg, msg));
+      return send(res, 200, { ok: true, ...result, ...claudeCodeStatus(cfg) });
     }
 
     // ---- provider catalog ----

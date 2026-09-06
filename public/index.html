@@ -252,6 +252,65 @@
   .flowhint { font-size: 10.5px; color: var(--dim); text-align: center; margin: 4px 0 2px; }
   .flowhint .kbd { font-size: 9.5px; }
 
+  /* ---- first-run wizard ---- */
+  /* The hidden attribute must always win over any display rule below —
+     without this, .wiz's display:grid keeps the overlay on screen even
+     after el.hidden = true. */
+  [hidden] { display: none !important; }
+  .wizlaunch {
+    position: fixed; top: 14px; right: 18px; z-index: 40;
+    background: var(--panel-solid); border: 1px solid var(--border); border-radius: 999px;
+    color: var(--muted); font-size: 12px; font-weight: 600; padding: 7px 14px;
+    cursor: pointer; backdrop-filter: blur(8px);
+    box-shadow: 0 4px 18px rgba(0,0,0,0.3);
+    transition: all 0.15s ease;
+  }
+  .wizlaunch:hover { border-color: var(--acc1); color: var(--text); box-shadow: 0 4px 22px rgba(99,102,241,0.25); }
+  .wiz {
+    position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
+    background: rgba(8, 11, 22, 0.72); backdrop-filter: blur(6px);
+    animation: viewin 0.25s ease;
+  }
+  .wizcard {
+    width: min(640px, calc(100vw - 40px)); max-height: calc(100vh - 80px);
+    background: var(--panel-solid); border: 1px solid var(--border-hi); border-radius: 16px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6); padding: 26px 30px 20px;
+    display: flex; flex-direction: column; position: relative; overflow-y: auto;
+  }
+  .wizcard::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--grad3); background-size: 200% 100%; animation: hue 6s linear infinite;
+  }
+  .wizsteps { display: flex; gap: 6px; margin-bottom: 18px; }
+  .wizsteps i { flex: 1; height: 4px; border-radius: 2px; background: rgba(130,150,200,0.15); }
+  .wizsteps i.on { background: var(--grad); box-shadow: 0 0 8px rgba(99,102,241,0.5); }
+  .wizbody h2 { margin: 0 0 6px; font-size: 21px; letter-spacing: -0.02em; }
+  .wizbody p { color: var(--muted); font-size: 13.5px; line-height: 1.55; margin: 0 0 14px; }
+  .wizbody .big { font-size: 15px; }
+  .wizgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .wizopt {
+    background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px;
+    padding: 13px 15px; cursor: pointer; transition: all 0.15s ease; text-align: left;
+    color: var(--text); font: inherit;
+  }
+  .wizopt:hover { border-color: var(--acc1); background: rgba(99,102,241,0.07); transform: translateY(-2px); }
+  .wizopt .ot { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+  .wizopt .od { color: var(--muted); font-size: 12px; margin-top: 4px; line-height: 1.4; }
+  .wizopt .fact { display: inline-block; margin-top: 6px; font-size: 10.5px; padding: 2px 8px; border-radius: 999px; }
+  .wizopt .fact.free { color: var(--green); border: 1px solid rgba(52,211,153,0.4); background: rgba(52,211,153,0.07); }
+  .wizform label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 4px; }
+  .wizform input {
+    width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px;
+    color: var(--text); font: inherit; font-family: var(--mono);
+  }
+  .wizform input:focus { outline: none; border-color: var(--acc1); box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+  .wizactions { display: flex; gap: 10px; margin-top: 20px; }
+  .wizactions .spacer { flex: 1; }
+  .wizskip { display: block; text-align: center; margin-top: 14px; color: var(--dim); font-size: 12px; text-decoration: none; }
+  .wizskip:hover { color: var(--muted); }
+  .wiztest { margin-top: 4px; font-size: 13px; min-height: 20px; }
+
   /* ---- stat cards ---- */
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 15px; margin-bottom: 22px; }
   .stat {
@@ -826,8 +885,15 @@
 
       <div class="panelcard" id="installCard">
         <h2>Claude Code connection</h2>
-        <div class="hint">is Claude Code's settings.json pointed at this proxy?</div>
-        <div id="installStatus"></div>
+        <div class="hint">route Claude Code traffic through this proxy, or back to Anthropic directly</div>
+        <div class="setrow">
+          <div class="info">
+            <div class="t">Route through switchX</div>
+            <div class="d" id="routingDesc">…</div>
+          </div>
+          <button class="primary" id="routingBtn" onclick="toggleRouting()">…</button>
+        </div>
+        <div class="hint" id="routingHint" style="margin-top:10px"></div>
       </div>
 
       <div class="panelcard">
@@ -914,6 +980,16 @@
       </div>
     </section>
   </main>
+</div>
+<!-- first-run setup wizard -->
+<button class="wizlaunch" onclick="runWizard()" title="Run the setup wizard">⚙ Setup wizard</button>
+<div class="wiz" id="wiz" hidden>
+  <div class="wizcard">
+    <div class="wizsteps" id="wizSteps"></div>
+    <div class="wizbody" id="wizBody"></div>
+    <div class="wizactions" id="wizActions"></div>
+    <a class="wizskip" href="#" onclick="wizSkip(); return false">skip — I'll explore myself</a>
+  </div>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -1380,17 +1456,244 @@ function renderUsage() {
 /* ---- settings view ---- */
 function renderSettings() {
   const cc = statusState.claudeCode || {};
-  $('installStatus').innerHTML = cc.configured
-    ? `<span class="pill ok">✓ connected</span> <span class="hint" style="display:inline">Claude Code is routed through this proxy (${escapeHtml(cc.baseUrl)}).</span>`
-    : `<span class="pill bad">✗ not connected</span>
-       <div class="hint" style="margin-top:10px">
-         Claude Code's settings.json ${cc.baseUrl ? `points at <span style="font-family:var(--mono)">${escapeHtml(cc.baseUrl)}</span>` : 'has no ANTHROPIC_BASE_URL set'}.
-         To switch it over: make sure a provider is added and tested, then run
-         <span style="font-family:var(--mono)">node scripts/install.mjs</span> from the plugin folder and restart Claude Code.
-       </div>`;
+  const hasProviders = (statusState.providers || []).some((p) => p.enabled);
+  const btn = $('routingBtn');
+  btn.textContent = cc.configured ? 'Turn off — use my Claude plan' : 'Turn on — route through switchX';
+  btn.className = cc.configured ? 'danger' : 'primary';
+  btn.disabled = !cc.configured && !hasProviders;
+  $('routingDesc').innerHTML = cc.configured
+    ? `Claude Code is routed through this proxy (<span style="font-family:var(--mono)">${escapeHtml(cc.baseUrl || '')}</span>). Turn off to use your Claude subscription again — your providers and stats are kept.`
+    : `Claude Code talks to Anthropic directly${cc.baseUrl ? ` (<span style="font-family:var(--mono)">${escapeHtml(cc.baseUrl)}</span>)` : ''}. Turn on to route traffic through your configured providers.`;
+  $('routingHint').innerHTML = cc.configured
+    ? 'Subscription user? Typical flow: keep this off while your plan quota lasts; when Claude Code shows the ~90% usage warning, come here and turn it on — then restart Claude Code. Flip it back off when your quota resets.'
+    : (hasProviders
+      ? 'Changes take effect after you restart Claude Code.'
+      : 'Add at least one enabled provider before turning routing on.');
   $('setPort').textContent = `http://127.0.0.1:${port}`;
   if (statusState.catalogUrl) $('catalogUrl').value = statusState.catalogUrl;
 }
+
+window.toggleRouting = async () => {
+  const cc = statusState.claudeCode || {};
+  const enabling = !cc.configured;
+  if (enabling && !confirm('Route all Claude Code traffic through switchX? Restart Claude Code afterwards to apply.')) return;
+  if (!enabling && !confirm('Stop routing through switchX and use your Claude plan directly? Restart Claude Code afterwards to apply.')) return;
+  try {
+    const r = await api('/api/routing', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled: enabling }) });
+    toast(r.configured ? 'Routing ON — restart Claude Code to apply' : 'Routing OFF — restart Claude Code to apply');
+    refresh();
+  } catch (e) { toast(e.message, true); }
+};
+
+/* ---- first-run setup wizard ---- */
+const WIZ_STEPS = ['Welcome', 'Provider', 'API key', 'Activate', 'Done'];
+let wizStep = 0;
+let wizPick = null;      // catalog entry or {manual:true}
+let wizAdded = null;     // provider added in step 3
+let wizTesting = false;
+let wizManual = false;   // wizard opened via the corner button — stays open across refreshes
+let wizRouted = false;
+
+// Wizard dismissal survives three ways, most- to least-durable: localStorage
+// (across sessions), sessionStorage (across reloads), in-memory (this page).
+// Blocked storage (private mode, embedded webviews) only costs durability,
+// never the ability to dismiss.
+let wizDismissed = false;
+function wizDone() {
+  if (wizDismissed) return true;
+  try { if (localStorage.getItem('switchx-wizard-done') === '1') return true; } catch { /* blocked */ }
+  try { if (sessionStorage.getItem('switchx-wizard-done') === '1') return true; } catch { /* blocked */ }
+  return false;
+}
+function wizFinishMark() {
+  wizDismissed = true;
+  try { localStorage.setItem('switchx-wizard-done', '1'); } catch { /* blocked */ }
+  try { sessionStorage.setItem('switchx-wizard-done', '1'); } catch { /* blocked */ }
+}
+
+function maybeShowWizard() {
+  if (wizManual) return; // user opened it deliberately — refresh must not close it
+  const empty = !(statusState.providers || []).length;
+  const el = $('wiz');
+  if (empty && !wizDone()) {
+    if (el.hidden) { wizStep = 0; renderWizard(); }
+    el.hidden = false;
+  } else {
+    el.hidden = true;
+  }
+}
+
+// Manual launch — anyone, any time, from the corner button.
+window.runWizard = () => {
+  wizManual = true;
+  wizStep = 0;
+  wizPick = null;
+  wizAdded = null;
+  wizRouted = false;
+  renderWizard();
+  $('wiz').hidden = false;
+};
+
+window.wizSkip = () => { wizManual = false; wizFinishMark(); $('wiz').hidden = true; };
+
+function renderWizard() {
+  $('wizSteps').innerHTML = WIZ_STEPS.map((_, i) => `<i class="${i <= wizStep ? 'on' : ''}"></i>`).join('');
+  const bodies = [wizWelcome, wizPickProvider, wizKey, wizActivate, wizDone_];
+  bodies[wizStep]();
+}
+
+function wizNav(back, next, nextLabel = 'Next', nextClass = 'primary') {
+  $('wizActions').innerHTML = `
+    ${back ? '<button onclick="wizGo(-1)">Back</button>' : ''}
+    <span class="spacer"></span>
+    ${next ? `<button class="${nextClass}" onclick="${next}">${nextLabel}</button>` : ''}`;
+}
+
+window.wizGo = (d) => { wizStep = Math.max(0, Math.min(WIZ_STEPS.length - 1, wizStep + d)); renderWizard(); };
+
+function wizWelcome() {
+  $('wizBody').innerHTML = `
+    <h2>Welcome to switch<span style="background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent">X</span>provider</h2>
+    <p class="big">A local API router for Claude Code — <b>traffic goes to whichever provider is alive</b>, and fails over automatically when one dies.</p>
+    <p>You'll set up <b>one provider</b> to start (you can add more any time — more providers = better failover).
+    Then choose whether Claude Code routes through switchX right away, or stays on your Claude plan and you flip the switch when you hit your usage limit.</p>
+    <p style="color:var(--dim);font-size:12.5px">Everything runs on <span style="font-family:var(--mono)">127.0.0.1:${port}</span> — your machine only. Keys are stored locally.</p>`;
+  wizNav(false, 'wizGo(1)', 'Get started');
+}
+
+function wizPickProvider() {
+  const cats = (catalog?.providers || []).slice(); // catalog already sorted by rating
+  const free = cats.filter((c) => c.freeTier);
+  const rest = cats.filter((c) => !c.freeTier);
+  const card = (c) => `
+    <button class="wizopt" onclick='wizChoose(${JSON.stringify(c.id ? { id: c.id } : c).replace(/'/g, "&#39;")})'>
+      <span class="ot">${escapeHtml(c.name)}</span>
+      <span class="od">${escapeHtml((c.description || '').split('.')[0])}</span>
+      ${c.freeTier ? '<span class="fact free">free models — good first pick</span>' : ''}
+    </button>`;
+  $('wizBody').innerHTML = `
+    <h2>Pick your first provider</h2>
+    <p>No provider yet? The <b>free-tier gateways</b> below need only a sign-up — no credit card. Already have a key for something else? Add it manually.</p>
+    <div class="wizgrid">
+      ${free.map(card).join('')}
+      ${rest.length ? `<button class="wizopt" onclick="wizChooseManual()">
+        <span class="ot">＋ Enter manually</span>
+        <span class="od">Anthropic, OpenRouter, or any Anthropic-compatible endpoint you already have a key for</span>
+      </button>` : ''}
+    </div>`;
+  wizNav(true, wizPick ? 'wizGo(1)' : null, 'Next');
+}
+
+window.wizChoose = (sel) => {
+  const id = typeof sel === 'string' ? sel : sel?.id;
+  wizPick = (catalog?.providers || []).find((c) => c.id === id) || null;
+  if (!wizPick) return;
+  wizStep = 2; // straight to the API-key step
+  renderWizard();
+};
+window.wizChooseManual = () => { wizPick = { manual: true }; renderWizard(); };
+
+function wizKey() {
+  const c = wizPick?.manual ? null : wizPick;
+  const name = c?.name || '';
+  const baseUrl = c?.baseUrl || '';
+  const models = c?.models || {};
+  $('wizBody').innerHTML = `
+    <h2>${c ? escapeHtml(name) : 'Your provider'}</h2>
+    ${c ? `<p>${escapeHtml(c.description || '')} Sign up: <a href="${escapeHtml(c.website || '#')}" target="_blank" rel="noopener" style="color:var(--acc2)">${escapeHtml((c.website || '').replace(/^https?:\/\//, ''))} ↗</a>${c.freeTier ? ' — check the daily login reward while you\'re there.' : ''}</p>` : '<p>Fill in the details of your Anthropic-compatible endpoint.</p>'}
+    <div class="wizform">
+      ${c ? '' : `
+      <label>Provider name</label>
+      <input id="wz_name" placeholder="My provider">
+      <label>Base URL</label>
+      <input id="wz_url" placeholder="https://api.anthropic.com">`}
+      <label>API key</label>
+      <input id="wz_key" type="password" placeholder="${c ? 'paste the key from your ' + escapeHtml(name) + ' dashboard' : 'sk-...'}" onkeydown="if(event.key==='Enter')window.wizTest()">
+      ${c ? '' : `
+      <label>Sonnet model ID <span style="color:var(--dim)">(optional — for Anthropic-compatible gateways)</span></label>
+      <input id="wz_sonnet" placeholder="claude-sonnet-5">`}
+    </div>
+    <div class="wiztest" id="wz_test"></div>`;
+  wizNav(true, 'wizTest()', 'Test & save', 'primary');
+}
+
+window.wizTest = async () => {
+  if (wizTesting) return;
+  const c = wizPick?.manual ? null : wizPick;
+  const body = {
+    name: c ? c.name : $('wz_name').value.trim(),
+    baseUrl: c ? c.baseUrl : $('wz_url').value.trim(),
+    apiKey: $('wz_key').value.trim(),
+    authStyle: (c && c.authStyle) || 'auto',
+    enabled: true,
+    models: c ? (c.models || {}) : { sonnet: $('wz_sonnet').value.trim() },
+  };
+  if (!body.name || !/^https?:\/\//.test(body.baseUrl) || !body.apiKey) {
+    $('wz_test').innerHTML = '<span style="color:var(--red)">Fill in name, base URL, and API key first.</span>';
+    return;
+  }
+  wizTesting = true;
+  $('wz_test').innerHTML = '<span style="color:var(--muted)">Adding provider and testing… (up to 10s)</span>';
+  try {
+    const added = await api('/api/providers', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const t = await api(`/api/providers/${added.id}/test`, { method: 'POST' });
+    wizAdded = added;
+    if (t.ok && !(t.missing || []).length) {
+      $('wz_test').innerHTML = `<span style="color:var(--green)">✓ Provider reachable${(t.missing || []).length ? '' : ' and model IDs check out'}</span>`;
+    } else if (t.ok) {
+      $('wz_test').innerHTML = `<span style="color:var(--amber)">✓ Reachable, but some model IDs are missing on this provider: ${escapeHtml((t.missing || []).join(', '))} — you can fix them later in Providers.</span>`;
+    } else {
+      $('wz_test').innerHTML = `<span style="color:var(--amber)">Saved, but the test failed${t.missing?.length ? ' — missing models: ' + escapeHtml(t.missing.join(', ')) : ''}. You can retry from the Providers view.</span>`;
+    }
+    setTimeout(() => { wizTesting = false; wizStep = 3; renderWizard(); }, 900);
+  } catch (e) {
+    wizTesting = false;
+    $('wz_test').innerHTML = `<span style="color:var(--red)">${escapeHtml(e.message)}</span>`;
+  }
+};
+
+function wizActivate() {
+  $('wizBody').innerHTML = `
+    <h2>How should switchX activate?</h2>
+    <div class="wizgrid">
+      <button class="wizopt" onclick="wizRoute(true)">
+        <span class="ot">⚡ Route everything now</span>
+        <span class="od">settings.json points at switchX immediately. Best if you don't have a Claude plan, or it's already exhausted.</span>
+      </button>
+      <button class="wizopt" onclick="wizRoute(false)">
+        <span class="ot">🛡️ Keep my Claude plan</span>
+        <span class="od">Stay on your subscription. When Claude Code shows the ~90% usage warning, open Settings here and flip routing on — then restart Claude Code.</span>
+      </button>
+    </div>
+    <p style="margin-top:14px;color:var(--dim);font-size:12px">switchX can't watch your subscription usage — while routing is off, Claude Code talks to Anthropic directly and this proxy sees none of that traffic. Flipping the switch is always manual, always in Settings.</p>`;
+  wizNav(true, null);
+}
+
+window.wizRoute = async (on) => {
+  try {
+    if (on) await api('/api/routing', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled: true }) });
+    wizRouted = on;
+    wizStep = 4;
+    renderWizard();
+  } catch (e) { toast(e.message, true); }
+};
+
+function wizDone_() {
+  const cc = statusState.claudeCode || {};
+  const routed = wizRouted || cc.configured;
+  $('wizBody').innerHTML = `
+    <h2>✓ You're set up</h2>
+    <p class="big">${routed
+      ? 'Claude Code now routes through <b>switchX</b>.'
+      : 'Routing is <b>off</b> — Claude Code uses your plan as usual.'}</p>
+    <p>${routed
+      ? '<b>Restart Claude Code</b> to apply the new settings. All requests now flow through your provider, with automatic failover once you add more.'
+      : 'Your provider is saved and tested. When you hit the usage limit, come back to <b>Settings → Route through switchX</b> and turn it on (restart Claude Code after). Flip it back off when your quota resets.'}</p>
+    <p style="color:var(--dim);font-size:12.5px">Next: add more providers in <b>Providers</b> for real failover, browse <b>Discover</b> for free-tier gateways, and watch traffic live on <b>Overview</b>.</p>`;
+  wizNav(false, 'wizClose()', 'Finish');
+}
+
+window.wizClose = () => { wizManual = false; wizFinishMark(); $('wiz').hidden = true; refresh(); };
 
 /* ---- discover view ---- */
 function stars(rating) {
@@ -1735,6 +2038,7 @@ async function refresh() {
     renderWidgets();
     renderSpark('sparkTokens', (usage.daily || []).map((d) => (d.inputTokens || 0) + (d.outputTokens || 0)));
     renderSpark('sparkReqs', (usage.daily || []).map((d) => d.requests || 0));
+    maybeShowWizard();
   } catch {
     $('ovConn').textContent = 'proxy unreachable';
     $('sideStatus').textContent = 'unreachable';
