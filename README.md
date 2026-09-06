@@ -83,8 +83,10 @@ node switchXprovider/server/ensure.mjs
   | 5xx / 529 | provider trouble | 1 min |
   | network / timeout | unreachable | 30 s |
 - **Auto-learning cooldowns** — cooldowns scale up to 8× with consecutive failures (exponential backoff), and honor upstream `retry-after` headers. Each provider tracks requests, success rate, and EMA latency.
-- **Auto-recovery** — a background health probe re-tests down providers just before their cooldown expires; a recovered provider returns to rotation automatically at its priority (e.g. when your Claude subscription window resets, you drift back to provider #1 with zero action).
+- **Auto-recovery** — a background health loop re-probes down providers every 30s (and just before cooldown expiry); a recovered provider returns to rotation automatically at its priority (e.g. when your Claude subscription window resets, you drift back to provider #1 with zero action).
 - **Usage analytics** — the proxy reads token usage (`input`/`output`/`cache_read`/`cache_creation`) out of every response — streaming and non-streaming — without touching the stream, and tracks totals per provider, per model, and per day. The dashboard shows animated stat cards, a 14-day usage chart, per-provider token share, a per-model table, and a live request feed (model, tokens, latency, status).
+- **Cost tracking** — every request is priced against a per-model rate table (Claude models at official Anthropic rates, free-tier gateway models at $0), so you can see roughly what your traffic would cost if you paid per-token. Estimated cost shows up as a hero pill, a stat card with today/7-day breakdowns, per-day chart tooltips, per-provider bars, and a per-model table column. Estimates only — gateway subscriptions, credits, and promos aren't modelled.
+- **Traffic flow playground** — the overview's Traffic flow widget renders your providers as free-floating bubbles around the switchX core. Drag them anywhere (both sides), toss them and watch them bounce off the walls — purely cosmetic, nothing about routing changes. Edges redraw live as bubbles move; the active route keeps its animated gradient. Click a bubble to open that provider in the Providers view.
 - **Provider discovery** — a curated catalog of gateways (AgentRouter, Bynara, SeekAi, GoRouter, TabiToken, BlueSminds, B.AI, …) with descriptions, ratings, pricing notes, and one-click prefill of the add-provider form. A remote catalog (same JSON schema, e.g. a raw GitHub file) can be set in Settings and overrides matching entries — useful for community-maintained lists.
 
 > **Affiliate disclosure:** sign-up links in the Discover catalog are affiliate/referral links — signing up through them supports switchXprovider development at no extra cost to you.
@@ -116,7 +118,7 @@ Or as a plugin: the `SessionStart` hook auto-starts the proxy, and `/switchx-ins
 
 ## Use
 
-- **Dashboard:** http://127.0.0.1:8787 — add/edit/delete providers, reorder priority (▲▼), test connectivity, watch status and the event log live.
+- **Dashboard:** http://127.0.0.1:8787 — add/edit/delete providers, reorder priority (▲▼), test connectivity (including a check that your configured model IDs actually exist on the provider), watch status and the event log live, and check estimated costs. The Traffic flow bubbles on the Overview page are draggable just for fun.
 - **Commands:** `/switchx` (status), `/switchx-add` (add provider), `/switchx-install` (run installer).
 - **Config lives in** `~/.claude/switchx/config.json` (providers + keys + stats). Server log: `~/.claude/switchx/server.log`.
 
