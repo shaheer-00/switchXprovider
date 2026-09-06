@@ -1,16 +1,28 @@
+<div align="center">
+
 # switchXprovider
+
+**Never stop coding when a provider dies.**
+
+A zero-dependency Claude Code plugin that routes your API traffic through a local
+proxy with automatic failover, auto-recovery, live usage analytics — and
+**several free (freemium) providers out of the box**, with more on the way.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node >=18](https://img.shields.io/badge/node-%3E%3D18-green.svg)](package.json)
 [![Zero dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](package.json)
 [![Buy me a coffee](https://img.shields.io/badge/%E2%98%95-buy%20me%20a%20coffee-FFDD00)](https://buymeacoffee.com/shaheer0.0)
 
-A Claude Code plugin that acts as a local API router — an alternative to OmniRouter. Claude Code always talks to `http://127.0.0.1:8787`; the plugin forwards traffic to whichever provider is active, switches automatically when a provider dies, and recovers automatically when it comes back.
+*An alternative to OmniRouter — your keys, your machine, no middleman.*
+
+</div>
+
+---
 
 ![switchXprovider dashboard](docs/screenshots/overview.png)
 
 <details>
-<summary><b>More screenshots</b></summary>
+<summary><b>📷 More screenshots</b></summary>
 
 | Providers — priority & failover state | Discover — curated catalog |
 |---|---|
@@ -26,15 +38,29 @@ A Claude Code plugin that acts as a local API router — an alternative to OmniR
 
 </details>
 
+## ✨ Highlights
+
+| | |
+|---|---|
+| 🆓 **Free providers included** | Ships with several freemium providers (AgentRouter, Bynara, SeekAi, …) — free models you can use today, and the catalog keeps growing |
+| 🔀 **Automatic failover** | Provider dies mid-request? Retried on the next one before you notice |
+| 🔁 **Auto-recovery** | Down providers are re-probed every 30s and return to rotation on their own |
+| 🔑 **Your keys, your machine** | Traffic goes straight to the provider — no third party in the path |
+| 🚀 **Zero dependencies** | One Node process, ~10 files, ~1,800 lines — readable in an afternoon |
+| 📊 **Usage & cost analytics** | Tokens, latency, success rate, and estimated cost per provider / model / day |
+| 🧭 **Provider discovery** | Curated catalog with one-click setup, plus community-maintained remote catalogs |
+
+---
+
 ## How it differs from OmniRoute
 
-Both projects solve "never stop coding when a provider dies" — but with opposite trust models. **OmniRoute pools free community tokens and routes your traffic through their infrastructure. switchXprovider routes your traffic directly to providers you control.**
+Both projects solve *"never stop coding when a provider dies"* — but with opposite trust models. **OmniRoute pools free community tokens and routes your traffic through their infrastructure. switchXprovider routes your traffic directly to providers you control.**
 
 | | switchXprovider | OmniRoute |
-|---|---|---|
+|---|:---:|:---:|
 | **Traffic path** | Claude Code → your machine → your provider, directly | Claude Code → OmniRoute's gateway → pooled providers |
 | **Keys** | Yours only — never leaves your `~/.claude` | Pooled community keys handled by their service |
-| **Free tokens** | Depends on your providers' free tiers | ~1.5B/month pooled across 352+ providers |
+| **Free tokens** | Freemium providers built in + your providers' free tiers | ~1.5B/month pooled across 352+ providers |
 | **Footprint** | One Node process, 0 dependencies, ~10 files | Full gateway infrastructure |
 | **Auditability** | ~1,800 lines you can read in an afternoon | Centralized service |
 | **Provider choice** | Any Anthropic-compatible endpoint you have a key for | Their supported provider pool |
@@ -46,6 +72,20 @@ Both projects solve "never stop coding when a provider dies" — but with opposi
 **Pick OmniRoute if:** you have no keys at all and want free pooled community tokens, accepting a third party in the path.
 
 They also compose — run OmniRouter as one provider entry in switchXprovider, and its outage fails over to your backup key automatically.
+
+## 🆓 Free providers, built in
+
+The plugin ships with a curated catalog in which **several providers are freemium** — they offer free models or free-tier credits you can route through right away:
+
+| Provider | Free offering |
+|---|---|
+| **AgentRouter** | Free GLM & DeepSeek models behind one endpoint |
+| **Bynara** | Generous free tier — MiMo, DeepSeek, MiniMax free models; solid last-resort fallback |
+| **SeekAi** | Free models at sign-up |
+
+Combine them with daily-login rewards (most gateways hand out free credits or tokens for a daily check-in — sign out and back in **every day** to claim) and failover, and you have a zero-cost coding pipeline with redundancy. **More free providers are being added to the catalog continually** — and you can plug in any community-maintained catalog via Settings → Remote catalog.
+
+> **Affiliate disclosure:** sign-up links in the Discover catalog are affiliate/referral links — signing up through them supports switchXprovider development at no extra cost to you.
 
 ## Install
 
@@ -91,18 +131,14 @@ node switchXprovider/server/ensure.mjs
 - **Usage analytics** — the proxy reads token usage (`input`/`output`/`cache_read`/`cache_creation`) out of every response — streaming and non-streaming — without touching the stream, and tracks totals per provider, per model, and per day. The dashboard shows animated stat cards, a 14-day usage chart, per-provider token share, a per-model table, and a live request feed (model, tokens, latency, status).
 - **Cost tracking** — every request is priced against a per-model rate table (Claude models at official Anthropic rates, free-tier gateway models at $0), so you can see roughly what your traffic would cost if you paid per-token. Estimated cost shows up as a hero pill, a stat card with today/7-day breakdowns, per-day chart tooltips, per-provider bars, and a per-model table column. Estimates only — gateway subscriptions, credits, and promos aren't modelled.
 - **Traffic flow playground** — the overview's Traffic flow widget renders your providers as free-floating bubbles around the switchX core. Drag them anywhere (both sides), toss them and watch them bounce off the walls — purely cosmetic, nothing about routing changes. Edges redraw live as bubbles move; the active route keeps its animated gradient. Click a bubble to open that provider in the Providers view.
-- **Provider discovery** — a curated catalog of gateways (AgentRouter, Bynara, SeekAi, GoRouter, TabiToken, BlueSminds, B.AI, …) with descriptions, ratings, pricing notes, and one-click prefill of the add-provider form. A remote catalog (same JSON schema, e.g. a raw GitHub file) can be set in Settings and overrides matching entries — useful for community-maintained lists.
-
-> **Affiliate disclosure:** sign-up links in the Discover catalog are affiliate/referral links — signing up through them supports switchXprovider development at no extra cost to you.
->
-> **Daily login rewards:** most of these providers hand out free credits or tokens for a daily check-in — you have to sign out and sign back in **every day** to claim them. Worth it if you're running free-tier models.
+- **Provider discovery** — a curated catalog of gateways — **including several freemium providers with free models, and more added over time** — with descriptions, ratings, pricing notes, and one-click prefill of the add-provider form. A remote catalog (same JSON schema, e.g. a raw GitHub file) can be set in Settings and overrides matching entries — useful for community-maintained lists.
 - **Config backup** — export/import the full provider list (including keys) as JSON from the dashboard.
 - **Install status detection** — the dashboard reads `~/.claude/settings.json` and shows whether Claude Code is actually routed through the proxy.
 - **Deadlock protection** — if *every* provider is down, cooldowns reset once and the request is retried rather than hard-failing.
 
 ## Setup
 
-**Order matters.** The moment `settings.json` points at the proxy, ALL Claude Code traffic goes through it — if no provider is configured yet, Claude Code is completely stuck with no API access. So the installer runs checks and **refuses to touch `settings.json` until the proxy is running and at least one enabled provider has an API key**.
+> ⚠️ **Order matters.** The moment `settings.json` points at the proxy, ALL Claude Code traffic goes through it — if no provider is configured yet, Claude Code is completely stuck with no API access. So the installer runs checks and **refuses to touch `settings.json` until the proxy is running and at least one enabled provider has an API key**.
 
 Correct order:
 
@@ -143,8 +179,8 @@ Claude Code sends `model: "switchx:sonnet"` (or opus/haiku) because that's what 
 
 ## Security
 
-- Proxy binds to **127.0.0.1 only** — never reachable from the network.
-- API keys are stored in plaintext in `~/.claude/switchx/config.json` (same trust level as your `~/.claude` directory) and are masked in all API/dashboard responses.
+- 🔒 Proxy binds to **127.0.0.1 only** — never reachable from the network.
+- 🔑 API keys are stored in plaintext in `~/.claude/switchx/config.json` (same trust level as your `~/.claude` directory) and are masked in all API/dashboard responses.
 
 ## Remote catalog schema
 
@@ -189,6 +225,7 @@ server/lib/config.mjs        config + stats + event log (~/.claude/switchx/)
 server/lib/proxy.mjs         forwarding, model rewrite, failover, cooldowns
 server/lib/health.mjs        background probes, auto-recovery
 server/lib/api.mjs           management REST API
+server/catalog.json          curated provider catalog (freemium gateways)
 public/index.html            dashboard (single file, no external assets)
 commands/switchx*.md         slash commands
 scripts/install.mjs          one-time settings.json installer
