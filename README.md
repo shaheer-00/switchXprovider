@@ -16,9 +16,13 @@ A Claude Code plugin that acts as a local API router — an alternative to OmniR
 |---|---|
 | ![Providers](docs/screenshots/providers.png) | ![Discover](docs/screenshots/discover.png) |
 
-| Usage — per provider & model | Settings |
+| Usage — per provider & model, estimated cost | Events — failovers, recoveries |
 |---|---|
-| ![Usage](docs/screenshots/usage.png) | ![Settings](docs/screenshots/settings.png) |
+| ![Usage](docs/screenshots/usage.png) | ![Events](docs/screenshots/events.png) |
+
+| Settings |
+|---|
+| ![Settings](docs/screenshots/settings.png) |
 
 </details>
 
