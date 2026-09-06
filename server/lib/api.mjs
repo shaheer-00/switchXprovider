@@ -230,6 +230,7 @@ export async function handleApi(req, res, pathname, cfg) {
           inputTokens: u.inputTokens || 0,
           outputTokens: u.outputTokens || 0,
           requests: u.requests || 0,
+          costUsd: u.costUsd || 0,
         });
       }
       const byProvider = Object.entries(usage.byProvider || {}).map(([id, u]) => ({
@@ -240,6 +241,7 @@ export async function handleApi(req, res, pathname, cfg) {
         cacheReadTokens: u.cacheReadTokens,
         cacheCreationTokens: u.cacheCreationTokens,
         requests: u.requests,
+        costUsd: u.costUsd || 0,
       }));
       const byModel = Object.entries(usage.byModel || {})
         .map(([model, u]) => ({
@@ -247,10 +249,11 @@ export async function handleApi(req, res, pathname, cfg) {
           inputTokens: u.inputTokens,
           outputTokens: u.outputTokens,
           requests: u.requests,
+          costUsd: u.costUsd || 0,
         }))
         .sort((a, b) => (b.inputTokens + b.outputTokens) - (a.inputTokens + a.outputTokens));
       return send(res, 200, {
-        totals: usage.totals || {},
+        totals: { ...emptyUsage(), ...(usage.totals || {}) },
         counters: cfg.counters || { failovers: 0 },
         byProvider,
         byModel,

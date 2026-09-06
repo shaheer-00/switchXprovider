@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
+import { estimateCost } from './pricing.mjs';
 
 // Home is overridable (SWITCHX_HOME) so tests can run against an isolated config.
 export const DIR = process.env.SWITCHX_HOME
@@ -119,29 +120,31 @@ export function logEvent(cfg, msg) {
 // ---- usage tracking ----
 
 export function emptyUsage() {
-  return { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0, requests: 0 };
+  return { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0, requests: 0, costUsd: 0 };
 }
 
-function bump(bucket, u) {
+function bump(bucket, u, cost) {
   bucket.inputTokens += u.input || 0;
   bucket.outputTokens += u.output || 0;
   bucket.cacheReadTokens += u.cacheRead || 0;
   bucket.cacheCreationTokens += u.cacheCreation || 0;
   bucket.requests++;
+  if (cost) bucket.costUsd = (bucket.costUsd || 0) + cost;
 }
 
 export function recordUsage(cfg, providerId, providerName, u, model) {
   if (!u || (!u.input && !u.output && !u.cacheRead && !u.cacheCreation)) return;
   if (!cfg.usage) cfg.usage = { totals: emptyUsage(), byProvider: {}, byModel: {}, daily: {} };
   const day = new Date().toISOString().slice(0, 10);
+  const cost = estimateCost(u, model);
   cfg.usage.byProvider[providerId] ??= { name: providerName, ...emptyUsage() };
   cfg.usage.daily[day] ??= emptyUsage();
-  bump(cfg.usage.totals, u);
-  bump(cfg.usage.byProvider[providerId], u);
-  bump(cfg.usage.daily[day], u);
+  bump(cfg.usage.totals, u, cost);
+  bump(cfg.usage.byProvider[providerId], u, cost);
+  bump(cfg.usage.daily[day], u, cost);
   if (model) {
     cfg.usage.byModel[model] ??= { ...emptyUsage() };
-    bump(cfg.usage.byModel[model], u);
+    bump(cfg.usage.byModel[model], u, cost);
   }
   persistSoon(cfg);
 }

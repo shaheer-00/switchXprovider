@@ -547,6 +547,7 @@
             <span class="pill" id="heroState">…</span>
             <span class="pill" id="heroUp">0 up</span>
             <span class="pill" id="heroTotalTok">0 tokens</span>
+            <span class="pill" id="heroCost" style="color:var(--amber);border-color:rgba(251,191,36,0.4);background:rgba(251,191,36,0.07)">$0</span>
           </div>
           <div class="uptime" id="heroUptime">uptime —</div>
         </div>
@@ -585,6 +586,12 @@
           <div class="toprow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#6ee7b7" stroke-width="2"><path d="M5 12a7 7 0 0 1 14 0v5a2 2 0 0 1-2 2h-2v-6h4M5 12v5a2 2 0 0 0 2 2h2v-6H5"/></svg></span><span class="label">Providers</span></div>
           <div class="value" id="stProv">0/0</div>
           <div class="detail">up / configured</div>
+        </div>
+        <div class="stat">
+          <div class="glowcorner" style="background:var(--amber)"></div>
+          <div class="toprow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M12 2v16M17 7H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span><span class="label">Estimated cost</span></div>
+          <div class="value" id="stCost" style="color:var(--amber)">$0</div>
+          <div class="detail" id="stCostDetail">all time</div>
         </div>
       </div>
 
@@ -899,6 +906,12 @@ function fmtTok(n) {
   if (n >= 1e3) return (n / 1e3).toFixed(1) + 'k';
   return String(n);
 }
+function fmtCost(n) {
+  if (n == null || !Number.isFinite(n)) return '—';
+  if (n < 0.01) return '<$0.01';
+  if (n < 1)    return '¢' + (n * 100).toFixed(0);
+  return '$' + n.toFixed(2);
+}
 function fmtClock(ts) { return new Date(ts).toTimeString().slice(0, 8); }
 function fmtUptime(sec) {
   if (sec == null) return '—';
@@ -1099,15 +1112,20 @@ function renderUsage() {
   const t = usage.totals || {};
   const inTok = (t.inputTokens || 0) + (t.cacheReadTokens || 0) + (t.cacheCreationTokens || 0);
   const outTok = t.outputTokens || 0;
+  const totalCost = t.costUsd || 0;
   countUp('stTotal', inTok + outTok);
   $('stTotalDetail').textContent = `in ${fmtTok(inTok)} · out ${fmtTok(outTok)}`;
   countUp('stReqs', t.requests || 0);
   $('heroTotalTok').textContent = `${fmtTok(inTok + outTok)} tokens`;
+  $('heroCost').textContent = fmtCost(totalCost);
 
   const todayKey = new Date().toISOString().slice(0, 10);
   const today = (usage.daily || []).find((d) => d.date === todayKey) || {};
+  const todayCost = today.costUsd || 0;
   countUp('stToday', (today.inputTokens || 0) + (today.outputTokens || 0));
-  $('stTodayDetail').textContent = `${today.requests || 0} requests today`;
+  $('stTodayDetail').textContent = `${today.requests || 0} requests today · ${fmtCost(todayCost)} today`;
+  countUp('stCost', totalCost);
+  $('stCostDetail').textContent = `${fmtCost(todayCost)} today · ${fmtCost((usage.daily || []).slice(-7).reduce((s, d) => s + (d.costUsd || 0), 0))} 7d`;
 
   // 14-day chart
   const days = usage.daily || [];
@@ -1116,9 +1134,10 @@ function renderUsage() {
     const inH = Math.round((d.inputTokens || 0) / maxDay * 100);
     const outH = Math.round((d.outputTokens || 0) / maxDay * 100);
     const lbl = d.date.slice(5).replace('-', '/');
+    const cost = d.costUsd || 0;
     return `
     <div class="barday">
-      <div class="tip">${d.date}<br>in ${fmtTok(d.inputTokens)} · out ${fmtTok(d.outputTokens)}<br>${d.requests} req</div>
+      <div class="tip">${d.date}<br>in ${fmtTok(d.inputTokens)} · out ${fmtTok(d.outputTokens)}<br>${d.requests} req · ${fmtCost(cost)}</div>
       <div class="barstack" data-in="${inH}" data-out="${outH}"><div class="bar-out" style="height:0"></div><div class="bar-in" style="height:0"></div></div>
       <span class="lbl">${lbl}</span>
     </div>`;
@@ -1137,11 +1156,12 @@ function renderUsage() {
     ? byProv.map((p) => {
       const tok = (p.inputTokens || 0) + (p.outputTokens || 0);
       const pct = Math.round(tok / maxProv * 100);
+      const cost = p.costUsd || 0;
       return `
       <div class="prow">
         <div class="ptop">
           <span>${escapeHtml(p.name || p.id)}</span>
-          <span class="tok">${fmtTok(tok)} tok · ${p.requests} req · in ${fmtTok(p.inputTokens)} / out ${fmtTok(p.outputTokens)}</span>
+          <span class="tok">${fmtTok(tok)} tok · ${p.requests} req · ${fmtCost(cost)}${cost > 0 ? ' · in ' + fmtTok(p.inputTokens) + ' / out ' + fmtTok(p.outputTokens) : ''}</span>
         </div>
         <div class="track"><div class="fill" data-pct="${pct}"></div></div>
       </div>`;
@@ -1154,15 +1174,19 @@ function renderUsage() {
   // by-model table
   const byModel = usage.byModel || [];
   $('modelTbl').innerHTML = byModel.length
-    ? `<tr><th>model</th><th>requests</th><th>input</th><th>output</th><th>total</th></tr>` +
-      byModel.map((m) => `
+    ? `<tr><th>model</th><th>requests</th><th>input</th><th>output</th><th>total</th><th>est. cost</th></tr>` +
+      byModel.map((m) => {
+        const cost = m.costUsd || 0;
+        return `
         <tr>
           <td>${escapeHtml(m.model)}</td>
           <td>${m.requests}</td>
           <td>${fmtTok(m.inputTokens)}</td>
           <td>${fmtTok(m.outputTokens)}</td>
           <td><b>${fmtTok((m.inputTokens || 0) + (m.outputTokens || 0))}</b></td>
-        </tr>`).join('')
+          <td style="color:var(--amber)">${fmtCost(cost)}</td>
+        </tr>`;
+      }).join('')
     : '<tr><td class="empty">no usage yet</td></tr>';
 
   // live feed
