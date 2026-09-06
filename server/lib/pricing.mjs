@@ -16,11 +16,17 @@
 
 export const PRICING = {
   // ── Claude models (Anthropic official) ──────────────────────────
-  'claude-opus-5':         { input: 15.00, output: 75.00, cacheRead: 1.50, cacheCreate: 18.75 },
-  'claude-opus-4-8':       { input: 15.00, output: 75.00, cacheRead: 1.50, cacheCreate: 18.75 },
-  'claude-opus-5-thinking':{ input: 15.00, output: 75.00, cacheRead: 1.50, cacheCreate: 18.75 },
-  'claude-sonnet-5':       { input:  3.00, output: 15.00, cacheRead: 0.30, cacheCreate:  3.75 },
-  'claude-haiku-4-5-20251001': { input: 0.80, output: 4.00, cacheRead: 0.08, cacheCreate: 1.00 },
+  // Opus 5 launched 2026-07-24 at the same price as Opus 4.8: $5/$25,
+  // cache read $0.50 (0.1x), cache write $6.25 (1.25x).
+  // https://www.anthropic.com/news/claude-opus-5
+  'claude-opus-5':         { input: 5.00, output: 25.00, cacheRead: 0.50, cacheCreate: 6.25 },
+  'claude-opus-4-8':       { input: 5.00, output: 25.00, cacheRead: 0.50, cacheCreate: 6.25 },
+  'claude-opus-5-thinking':{ input: 5.00, output: 25.00, cacheRead: 0.50, cacheCreate: 6.25 },
+  // Sonnet 5: the planned step-up to $3/$15 (set for 2026-09-01) was
+  // cancelled on 2026-08-10 — $2/$10 is the permanent standard rate.
+  'claude-sonnet-5':       { input:  2.00, output: 10.00, cacheRead: 0.20, cacheCreate:  2.50 },
+  // Haiku 4.5: $1/$5 (the previous $0.80/$4 row was Haiku 3.5 pricing).
+  'claude-haiku-4-5-20251001': { input: 1.00, output: 5.00, cacheRead: 0.10, cacheCreate: 1.25 },
 
   // ── DeepSeek (official, very cheap) ─────────────────────────────
   'deepseek-chat':         { input: 0.14, output: 0.28, cacheRead: 0.014, cacheCreate: 0.14 },
@@ -37,9 +43,9 @@ export const PRICING = {
   'minimax-m3-free':       { input: 0.00, output: 0.00, cacheRead: 0.00,  cacheCreate: 0.00  },
 
   // ── OpenRouter (example rates) ──────────────────────────────────
-  'anthropic/claude-opus-5':   { input: 15.00, output: 75.00, cacheRead: 1.50, cacheCreate: 18.75 },
-  'anthropic/claude-sonnet-5': { input:  3.00, output: 15.00, cacheRead: 0.30, cacheCreate:  3.75 },
-  'anthropic/claude-haiku-4.5':{ input:  0.80, output:  4.00, cacheRead: 0.08, cacheCreate:  1.00 },
+  'anthropic/claude-opus-5':   { input: 5.00, output: 25.00, cacheRead: 0.50, cacheCreate: 6.25 },
+  'anthropic/claude-sonnet-5': { input:  2.00, output: 10.00, cacheRead: 0.20, cacheCreate:  2.50 },
+  'anthropic/claude-haiku-4.5':{ input:  1.00, output:  5.00, cacheRead: 0.10, cacheCreate: 1.25 },
 };
 
 // Estimate cost in dollars for a set of token counts.
