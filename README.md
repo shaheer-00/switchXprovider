@@ -54,7 +54,7 @@ proxy with automatic failover, auto-recovery, live usage analytics — and
 | 🔀 **Automatic failover** | Provider dies mid-request? Retried on the next one before you notice |
 | 🔁 **Auto-recovery** | Down providers are re-probed every 30s and return to rotation on their own |
 | 🔑 **Your keys, your machine** | Traffic goes straight to the provider — no third party in the path |
-| 🚀 **Zero dependencies** | One Node process, ~10 files, under 5,000 lines — readable in an afternoon |
+| 🚀 **Zero dependencies** | One Node process, ~12 files, under 6,000 lines — readable in an afternoon |
 | 📊 **Usage & cost analytics** | Tokens, latency, success rate, and estimated cost per provider / model / day |
 | 💰 **Pricing editor** | Real market rates built in; set prices per model or per provider, alias same models under different names, and recalculate history when prices change |
 | 🆘 **Built-in Help** | Troubleshooting view in the dashboard — claude-mem capture sync, stale proxy after updates, env-var conflicts, cooldowns, and more |
@@ -72,8 +72,8 @@ Both projects solve *"never stop coding when a provider dies"* — but with oppo
 | **Traffic path** | Claude Code → your machine → your provider, directly | Claude Code → OmniRoute's gateway → pooled providers |
 | **Keys** | Yours only — never leaves your `~/.claude` | Pooled community keys handled by their service |
 | **Free tokens** | Freemium providers built in + your providers' free tiers | ~1.5B/month pooled across 352+ providers |
-| **Footprint** | One Node process, 0 dependencies, ~10 files | Full gateway infrastructure |
-| **Auditability** | under 5,000 lines you can read in an afternoon | Centralized service |
+| **Footprint** | One Node process, 0 dependencies, ~12 files | Full gateway infrastructure |
+| **Auditability** | under 6,000 lines you can read in an afternoon | Centralized service |
 | **Provider choice** | Any Anthropic-compatible endpoint you have a key for | Their supported provider pool |
 | **Usage analytics** | Token/latency/success tracking of *your* traffic, locally | Gateway-side stats |
 | **Cost** | Free (your provider usage) | Free tier + premium |
@@ -239,6 +239,8 @@ server/lib/config.mjs        config + stats + event log (~/.claude/switchx/)
 server/lib/proxy.mjs         forwarding, model rewrite, failover, cooldowns
 server/lib/health.mjs        background probes, auto-recovery
 server/lib/api.mjs           management REST API
+server/lib/pricing.mjs       model rate table, aliases, cost recalculation
+server/lib/routing.mjs       flip routing on/off (proxy vs direct Anthropic)
 server/catalog.json          curated provider catalog (freemium gateways)
 public/index.html            dashboard (single file, no external assets)
 commands/switchx*.md         slash commands
