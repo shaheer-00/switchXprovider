@@ -1,7 +1,7 @@
 {
   "name": "switchXprovider",
   "description": "Local proxy that routes Claude Code traffic to multiple API providers with automatic failover, user-set priority, adaptive cooldowns, and auto-recovery",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "hooks": {
     "SessionStart": [
       {
