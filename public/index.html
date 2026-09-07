@@ -6,124 +6,105 @@
 <title>switchXprovider</title>
 <style>
   :root {
-    --bg: #05070d;
-    --bg2: #090d18;
-    --panel: rgba(19, 24, 40, 0.72);
-    --panel-solid: #12172a;
-    --panel2: rgba(30, 37, 60, 0.65);
-    --border: rgba(130, 150, 200, 0.14);
-    --border-hi: rgba(120, 140, 255, 0.35);
-    --text: #e3e9f5;
-    --muted: #8b95ad;
-    --dim: #5d677e;
-    --acc1: #6366f1;
-    --acc2: #22d3ee;
-    --acc3: #a855f7;
-    --grad: linear-gradient(100deg, var(--acc1), var(--acc2));
-    --grad3: linear-gradient(100deg, var(--acc3), var(--acc1), var(--acc2));
+    --bg: #0a0a0c;
+    --surface: #111114;
+    --surface-2: #17171b;
+    --border: #1f1f23;
+    --text: #ececf1;
+    --muted: #8e8e96;
+    --dim: #5c5c64;
+    --accent: #6e79f4;
+    --accent-2: #22d3ee;
     --green: #34d399;
-    --red: #f87171;
     --amber: #fbbf24;
-    --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
-    --side: 240px;
-    --r: 16px;
+    --red: #f87171;
+    --mono: "JetBrains Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
+    --sans: Inter, -apple-system, "Segoe UI", system-ui, sans-serif;
+    --r-sm: 6px; --r-md: 8px; --r-lg: 10px;
+    --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-6: 24px;
   }
-  * { box-sizing: border-box; }
-  html, body { height: 100%; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { color-scheme: dark; }
   body {
-    margin: 0; color: var(--text);
-    font: 14px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
     background: var(--bg);
-    overflow: hidden;
+    color: var(--text);
+    font: 13px/1.5 var(--sans);
+    letter-spacing: -0.01em;
     -webkit-font-smoothing: antialiased;
   }
-
-  /* ---- ambient background ---- */
-  .bgfx { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
-  .bgfx .blob { position: absolute; border-radius: 50%; filter: blur(110px); opacity: 0.16; }
-  .blob.b1 { width: 620px; height: 620px; background: var(--acc1); top: -220px; left: -140px; animation: drift1 26s ease-in-out infinite alternate; }
-  .blob.b2 { width: 520px; height: 520px; background: var(--acc2); bottom: -200px; right: -120px; opacity: 0.11; animation: drift2 32s ease-in-out infinite alternate; }
-  .blob.b3 { width: 420px; height: 420px; background: var(--acc3); top: 40%; left: 55%; opacity: 0.07; animation: drift1 40s ease-in-out infinite alternate-reverse; }
-  @keyframes drift1 { to { transform: translate(90px, 60px) scale(1.15); } }
-  @keyframes drift2 { to { transform: translate(-70px, -80px) scale(0.9); } }
-  .bgfx .grid {
-    position: absolute; inset: 0;
-    background-image: linear-gradient(rgba(130,150,255,0.03) 1px, transparent 1px),
-                      linear-gradient(90deg, rgba(130,150,255,0.03) 1px, transparent 1px);
-    background-size: 44px 44px;
-    mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 20%, transparent 75%);
-  }
+  ::selection { background: rgba(110,121,244,.35); }
 
   /* ---- app shell ---- */
-  .app { position: relative; z-index: 1; display: grid; grid-template-columns: var(--side) 1fr; height: 100vh; }
-
+  .app { display: flex; min-height: 100vh; }
   aside {
-    background: rgba(9, 12, 22, 0.85); backdrop-filter: blur(14px);
-    border-right: 1px solid var(--border);
-    display: flex; flex-direction: column; padding: 20px 14px;
-    overflow-y: auto;
+    width: 220px; flex: none; display: flex; flex-direction: column;
+    border-right: 1px solid var(--border); background: var(--bg);
+    padding: var(--sp-4) var(--sp-3); gap: var(--sp-4);
   }
-  .brand { display: flex; align-items: center; gap: 11px; padding: 2px 8px 4px; }
+  .brand { display: flex; gap: 10px; align-items: center; padding: 0 var(--sp-2); }
   .brandmark {
-    width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
-    background: var(--grad3); background-size: 200% 200%;
-    display: grid; place-items: center; font-weight: 800; font-size: 15px; color: #fff;
-    box-shadow: 0 0 22px rgba(99, 102, 241, 0.45);
-    animation: hue 9s ease-in-out infinite;
+    width: 28px; height: 28px; border-radius: var(--r-sm); flex: none;
+    background: var(--accent); color: #fff; font-weight: 800; font-size: 14px;
+    display: grid; place-items: center;
   }
-  @keyframes hue { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
-  .brand .t { font-size: 15.5px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
-  .brand .t span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .brand .t { font-size: 14px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
   .brand .s { font-size: 10.5px; color: var(--dim); }
 
-  nav { display: flex; flex-direction: column; gap: 4px; margin-top: 18px; }
+  nav { display: flex; flex-direction: column; gap: var(--sp-4); flex: 1; }
+  .navgroup { display: flex; flex-direction: column; gap: 2px; }
+  .navlbl {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--dim); padding: 0 var(--sp-2) var(--sp-1);
+  }
   nav button {
-    all: unset; cursor: pointer; display: flex; align-items: center; gap: 11px;
-    padding: 9px 11px; border-radius: 11px; font-size: 13.5px; color: var(--muted);
-    transition: all 0.18s ease; position: relative;
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    background: none; border: 0; border-radius: var(--r-sm);
+    color: var(--muted); font: 500 13px var(--sans); padding: 6px var(--sp-2);
+    cursor: pointer; transition: background 150ms ease, color 150ms ease;
   }
-  nav button:hover { background: rgba(99, 102, 241, 0.08); color: var(--text); transform: translateX(2px); }
-  nav button.active {
-    background: linear-gradient(95deg, rgba(99, 102, 241, 0.16), rgba(34, 211, 238, 0.07));
-    color: #fff;
-    box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.25), 0 4px 18px rgba(99, 102, 241, 0.12);
-  }
-  nav button.active::before {
-    content: ''; position: absolute; left: -14px; top: 20%; bottom: 20%; width: 3px;
-    border-radius: 3px; background: var(--grad); box-shadow: 0 0 10px var(--acc1);
-  }
-  nav .ico { width: 18px; height: 18px; display: grid; place-items: center; flex-shrink: 0; }
-  nav .ico svg { width: 17px; height: 17px; }
+  nav button:hover { background: var(--surface-2); color: var(--text); }
+  nav button.active { background: var(--surface-2); color: var(--text); }
+  nav button.active .ico { color: var(--accent); }
+  nav button .ico { width: 16px; height: 16px; display: grid; place-items: center; color: var(--dim); }
+  nav button .ico svg { width: 15px; height: 15px; }
   .navbadge {
     margin-left: auto; font-family: var(--mono); font-size: 10px; line-height: 1;
     padding: 3px 7px; border-radius: 999px; color: var(--muted);
     background: rgba(255,255,255,0.05); border: 1px solid var(--border);
   }
   .navbadge:empty { display: none; }
-  nav button.active .navbadge { color: #fff; border-color: rgba(99,102,241,0.4); background: rgba(99,102,241,0.18); }
+  nav button.active .navbadge { color: var(--text); border-color: rgba(110,121,244,0.4); background: rgba(110,121,244,0.18); }
 
-  .sidebottom { margin-top: auto; padding: 14px 10px 2px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--muted); }
+  .sidebottom { margin-top: auto; padding-top: var(--sp-3); border-top: 1px solid var(--border); font-size: 11.5px; color: var(--muted); }
   .sidebottom .row { display: flex; align-items: center; gap: 7px; margin-top: 6px; }
   .sidebottom .row b { color: var(--text); font-weight: 500; }
   .bmc {
     display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 8px 11px;
-    border-radius: 11px; border: 1px solid rgba(251, 191, 36, 0.35);
+    border-radius: var(--r-md); border: 1px solid rgba(251, 191, 36, 0.35);
     background: rgba(251, 191, 36, 0.07); color: var(--amber);
     text-decoration: none; font-size: 12px; font-weight: 600;
-    transition: all 0.18s ease;
+    transition: background 150ms ease, color 150ms ease;
   }
-  .bmc:hover { background: rgba(251, 191, 36, 0.14); box-shadow: 0 4px 18px rgba(251, 191, 36, 0.18); transform: translateY(-1px); }
+  .bmc:hover { background: rgba(251, 191, 36, 0.14); }
   .bmc.gh { border-color: var(--border); background: rgba(255,255,255,0.02); color: var(--muted); }
-  .bmc.gh:hover { background: rgba(255,255,255,0.06); box-shadow: 0 4px 18px rgba(0,0,0,0.25); color: var(--text); }
+  .bmc.gh:hover { background: rgba(255,255,255,0.06); color: var(--text); }
 
-  main { overflow-y: auto; padding: 28px 38px 90px; scroll-behavior: smooth; }
-  .view { display: none; max-width: 1240px; margin: 0 auto; animation: viewin 0.3s ease; }
-  .view.active { display: block; }
+  main { flex: 1; min-width: 0; padding: var(--sp-6); max-width: 1200px; }
+  .view { display: none; }
+  .view.active { display: block; animation: viewfade 150ms ease; }
+  @keyframes viewfade { from { opacity: 0; } to { opacity: 1; } }
+  /* viewin is kept for the wizard/share overlays */
   @keyframes viewin { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  /* hue is kept for the hero/wizcard top-line gradients */
+  @keyframes hue { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
 
-  .viewhead { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 22px; }
-  .viewhead h1 { font-size: 22px; margin: 0; letter-spacing: -0.03em; }
+  .viewhead {
+    display: flex; align-items: center; gap: var(--sp-3);
+    margin-bottom: var(--sp-6);
+  }
+  .viewhead h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
   .viewhead .sub { color: var(--muted); font-size: 13px; }
+  .viewhead .actions { margin-left: auto; display: flex; gap: var(--sp-2); align-items: center; }
 
   /* ---- glowy panel ---- */
   .panelcard {
@@ -732,11 +713,11 @@
     .hero-left { display: none; }
   }
   @media (max-width: 860px) {
-    .app { grid-template-columns: 62px 1fr; }
-    .brand .t, .brand .s, nav button .lbl, .sidebottom .sideText { display: none; }
+    aside { width: 62px; padding: var(--sp-3) var(--sp-2); }
+    .brand .t, .brand .s, nav button .lbl, .navlbl, .sidebottom .sideText { display: none; }
     .brand { justify-content: center; }
     nav button { justify-content: center; }
-    main { padding: 18px 16px 90px; }
+    main { padding: var(--sp-4); }
   }
   /* Motion control: follow the OS reduced-motion preference by default, but
      let the user force animations on (html.force-motion) or off (html.no-motion). */
@@ -754,11 +735,29 @@
     animation: none !important;
     transition: none !important;
   }
+
+  /* ---- BRIDGE (delete per-view as restyled; all gone by Task 6) ---- */
+  /* Old token names still referenced by retained per-view CSS (cards, tables,
+     forms, wizard, share, toasts) and by inline styles inside JS template
+     strings — mapped onto the new token set. Per-view component rules keep
+     their old class names (.stat, .card, .prow, .formcard, .skel, …) and pick
+     up the new look through these aliases; each restyled view drops its rules
+     and the aliases shrink until Task 6 deletes this block entirely. */
+  :root {
+    --acc1: var(--accent);
+    --acc2: var(--accent-2);
+    --acc3: #a855f7;
+    --grad: linear-gradient(100deg, var(--accent), var(--accent-2));
+    --grad3: linear-gradient(100deg, var(--acc3), var(--accent), var(--accent-2));
+    --panel: var(--surface);
+    --panel-solid: var(--surface-2);
+    --bg2: var(--surface);
+    --border-hi: rgba(110, 121, 244, 0.45);
+    --r: var(--r-lg);
+  }
 </style>
 </head>
 <body>
-<div class="bgfx"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="grid"></div></div>
-
 <svg width="0" height="0" style="position:absolute">
   <defs>
     <linearGradient id="sparkGrad" x1="0" y1="0" x2="1" y2="0">
@@ -783,40 +782,49 @@
       </div>
     </div>
     <nav id="nav">
-      <button data-view="overview" class="active">
-        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v5.5M12 15.5V21M3 12h5.5M15.5 12H21"/></svg></span>
-        <span class="lbl">Overview</span>
-      </button>
-      <button data-view="providers">
-        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h13M4 12h9M4 17h13"/><path d="M18 5l3 2-3 2M18 15l3 2-3 2"/></svg></span>
-        <span class="lbl">Providers</span>
-      </button>
-      <button data-view="discover">
-        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg></span>
-        <span class="lbl">Discover</span>
-      </button>
-      <button data-view="usage">
-        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
-        <span class="lbl">Usage</span>
-      </button>
-      <button data-view="pricing">
-        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v20M17 6.5c0-1.9-2.2-3-5-3s-5 1.1-5 3 1.6 2.6 5 3.3 5 1.6 5 3.7-2.2 3-5 3-5-1.1-5-3"/></svg></span>
-        <span class="lbl">Pricing</span>
-        <span class="navbadge" id="navPricing"></span>
-      </button>
-      <button data-view="settings">
-        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z"/></svg></span>
-        <span class="lbl">Settings</span>
-      </button>
-      <button data-view="events">
-        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h10M4 10h13M4 15h8M4 20h11"/><circle cx="19.5" cy="15" r="2.5"/></svg></span>
-        <span class="lbl">Events</span>
-        <span class="navbadge" id="navEvents"></span>
-      </button>
-      <button data-view="help">
-        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg></span>
-        <span class="lbl">Help</span>
-      </button>
+      <div class="navgroup">
+        <div class="navlbl">Monitor</div>
+        <button data-view="overview" class="active">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v5.5M12 15.5V21M3 12h5.5M15.5 12H21"/></svg></span>
+          <span class="lbl">Overview</span>
+        </button>
+        <button data-view="usage">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
+          <span class="lbl">Usage</span>
+        </button>
+        <button data-view="events">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h10M4 10h13M4 15h8M4 20h11"/><circle cx="19.5" cy="15" r="2.5"/></svg></span>
+          <span class="lbl">Events</span>
+          <span class="navbadge" id="navEvents"></span>
+        </button>
+      </div>
+      <div class="navgroup">
+        <div class="navlbl">Configure</div>
+        <button data-view="providers">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h13M4 12h9M4 17h13"/><path d="M18 5l3 2-3 2M18 15l3 2-3 2"/></svg></span>
+          <span class="lbl">Providers</span>
+        </button>
+        <button data-view="pricing">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v20M17 6.5c0-1.9-2.2-3-5-3s-5 1.1-5 3 1.6 2.6 5 3.3 5 1.6 5 3.7-2.2 3-5 3-5-1.1-5-3"/></svg></span>
+          <span class="lbl">Pricing</span>
+          <span class="navbadge" id="navPricing"></span>
+        </button>
+        <button data-view="discover">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg></span>
+          <span class="lbl">Discover</span>
+        </button>
+      </div>
+      <div class="navgroup">
+        <div class="navlbl">System</div>
+        <button data-view="settings">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z"/></svg></span>
+          <span class="lbl">Settings</span>
+        </button>
+        <button data-view="help">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg></span>
+          <span class="lbl">Help</span>
+        </button>
+      </div>
     </nav>
     <div class="sidebottom">
       <div class="row"><span class="pulse" id="sideDot" style="background:var(--dim)"></span><span id="sideStatus" class="sideText">connecting…</span></div>
@@ -838,10 +846,12 @@
       <div class="viewhead">
         <h1>Overview</h1>
         <span class="sub" id="ovConn">connecting…</span>
-        <button class="sharebtn" onclick="openShare()" title="Create a shareable usage card">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>
-          Share stats
-        </button>
+        <div class="actions">
+          <button class="sharebtn" onclick="openShare()" title="Create a shareable usage card">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>
+            Share stats
+          </button>
+        </div>
       </div>
 
       <div class="hero">
@@ -968,9 +978,10 @@
       <div class="viewhead">
         <h1>Providers</h1>
         <span class="sub">priority order · traffic goes to the highest healthy one</span>
-        <span class="spacer"></span>
-        <button class="primary" id="testAllBtn" style="align-self:center" onclick="testAll()">Test all</button>
-        <span class="sub"><span class="kbd">1</span>–<span class="kbd">6</span> switch views</span>
+        <div class="actions">
+          <span class="sub"><span class="kbd">1</span>–<span class="kbd">8</span> switch views</span>
+          <button class="primary" id="testAllBtn" onclick="testAll()">Test all</button>
+        </div>
       </div>
       <div class="searchbar">
         <span class="sic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
@@ -1081,9 +1092,10 @@
       <div class="viewhead">
         <h1>Usage</h1>
         <span class="sub">tokens per provider and per model</span>
-        <button class="unpricedbadge" id="usageUnpricedBadge" onclick="gotoView('pricing')" hidden></button>
-        <span class="spacer"></span>
-        <button class="danger" onclick="resetUsage()">reset statistics</button>
+        <div class="actions">
+          <button class="unpricedbadge" id="usageUnpricedBadge" onclick="gotoView('pricing')" hidden></button>
+          <button class="danger" onclick="resetUsage()">reset statistics</button>
+        </div>
       </div>
 
       <div class="panelcard">
@@ -1104,11 +1116,12 @@
       <div class="viewhead">
         <h1>Pricing</h1>
         <span class="sub">per-model rates per 1M tokens · drives the estimated cost everywhere</span>
-        <span class="spacer"></span>
-        <button class="sharebtn" onclick="doRecalc()" title="Rewrite stored usage costs with the current prices — fixes history recorded before a price was set">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
-          Recalculate costs
-        </button>
+        <div class="actions">
+          <button class="sharebtn" onclick="doRecalc()" title="Rewrite stored usage costs with the current prices — fixes history recorded before a price was set">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
+            Recalculate costs
+          </button>
+        </div>
       </div>
 
       <div class="panelcard" id="unpricedCard" hidden>
@@ -1322,8 +1335,9 @@
       <div class="viewhead">
         <h1>Events</h1>
         <span class="sub">failovers, recoveries, cooldowns, config changes</span>
-        <span class="spacer"></span>
-        <button class="danger" id="clearEventsBtn" onclick="clearEvents()">Clear log</button>
+        <div class="actions">
+          <button class="danger" id="clearEventsBtn" onclick="clearEvents()">Clear log</button>
+        </div>
       </div>
       <div class="searchbar">
         <span class="sic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
@@ -2469,7 +2483,7 @@ function renderWidgets() {
 }
 
 /* ---- keyboard shortcuts ---- */
-const VIEWS = ['overview', 'providers', 'discover', 'usage', 'settings', 'events'];
+const VIEWS = ['overview', 'usage', 'events', 'providers', 'pricing', 'discover', 'settings', 'help'];
 document.addEventListener('keydown', (ev) => {
   if (ev.target.tagName === 'INPUT' || ev.target.tagName === 'SELECT' || ev.target.tagName === 'TEXTAREA') return;
   const n = parseInt(ev.key, 10);
