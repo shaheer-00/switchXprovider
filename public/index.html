@@ -117,29 +117,19 @@
   .panelcard .hint { color: var(--muted); font-size: 12.5px; margin-bottom: 14px; }
 
   /* ---- hero (overview) ---- */
-  .hero {
-    margin-bottom: 22px;
-  }
+  /* .hero-left stays display:none — it hosts the legacy IDs (heroActive,
+     heroState, heroUp, heroTotalTok, heroCost, heroUptime) that the JS keeps
+     writing to every refresh. Never remove that markup. */
   .hero-left { display: none; }
+  .hero { margin-bottom: var(--sp-4); }
   .hero-right {
-    background: var(--panel); backdrop-filter: blur(12px);
-    border: 1px solid var(--border); border-radius: var(--r);
-    padding: 18px 20px 10px; overflow: hidden;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.35);
-    display: flex; flex-direction: column; min-height: 0;
+    display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+    margin-bottom: var(--sp-4);
   }
-  .hero-left::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1.5px;
-    background: var(--grad3); background-size: 200% 100%; animation: hue 6s linear infinite;
+  .hero-right h2 {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--dim); font-weight: 600; margin: 0 0 var(--sp-2);
   }
-  .hero-left .lbl { color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.1em; }
-  .hero-left .bigname {
-    font-size: 34px; font-weight: 800; letter-spacing: -0.03em; margin: 8px 0 4px;
-    background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
-    word-break: break-word;
-  }
-  .hero-left .state { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
-  .hero-left .uptime { color: var(--dim); font-size: 12px; font-family: var(--mono); margin-top: 14px; }
 
   .pulse { width: 10px; height: 10px; border-radius: 50%; position: relative; flex-shrink: 0; }
   .pulse.ok { background: var(--green); box-shadow: 0 0 12px var(--green); }
@@ -158,15 +148,7 @@
   .pill.bad { color: var(--red); border-color: rgba(248, 113, 113, 0.4); background: rgba(248, 113, 113, 0.07); }
   .pill.warn { color: var(--amber); border-color: rgba(251, 191, 36, 0.4); background: rgba(251, 191, 36, 0.07); }
 
-  /* ---- flow diagram ---- */
-  .hero-right {
-    background: var(--panel); backdrop-filter: blur(12px);
-    border: 1px solid var(--border); border-radius: var(--r);
-    padding: 18px 20px 10px; overflow: hidden;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.35);
-    display: flex; flex-direction: column; min-height: 0;
-  }
-  .hero-right h2 { font-size: 13px; margin: 0 0 2px; color: var(--muted); font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; }
+  /* ---- flow diagram (traffic-flow bubbles) ---- */
   .flowwrap {
     overflow-y: auto; overscroll-behavior: contain; flex: 1; min-height: 0; max-height: 560px;
     scrollbar-width: thin; scrollbar-color: var(--border) transparent;
@@ -176,19 +158,19 @@
   .flowwrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
   .flowarea { position: relative; height: 460px; min-height: 320px; }
   .flowedges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
-  .flowedges .edge { stroke: rgba(130,150,200,0.18); stroke-width: 1.5; fill: none; }
+  .flowedges .edge { stroke: #3a3a41; stroke-width: 1.5; fill: none; }
   .flowedges .edge.active {
     stroke: url(#edgeGrad); stroke-width: 2.2;
     stroke-dasharray: 7 7; animation: dashmove 0.9s linear infinite;
-    filter: drop-shadow(0 0 4px rgba(99,102,241,0.6));
+    filter: drop-shadow(0 0 4px rgba(110,121,244,0.6));
   }
   .flowedges .edge.dead { stroke: rgba(248,113,113,0.35); stroke-dasharray: 2 5; }
-  .flowedges .edge.disabled { stroke: rgba(130,150,200,0.07); }
-  .flowedges .edge.hi { stroke: rgba(99,102,241,0.8); stroke-width: 2.4; }
+  .flowedges .edge.disabled { stroke: rgba(58,58,65,0.5); }
+  .flowedges .edge.hi { stroke: rgba(110,121,244,0.8); stroke-width: 2.4; }
   @keyframes dashmove { to { stroke-dashoffset: -14; } }
   .fnode {
     position: absolute; z-index: 2;
-    background: var(--panel-solid); border: 1px solid var(--border); border-radius: 12px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md);
     padding: 10px 16px; text-align: center; box-sizing: border-box; min-width: 120px;
   }
   .fnode .t { font-size: 13px; font-weight: 600; white-space: nowrap; }
@@ -201,8 +183,8 @@
   .fnode.fclient .t { color: var(--amber); }
   .fnode.fcore {
     left: 50%; top: 50%; transform: translate(-50%, -50%);
-    border-color: rgba(99,102,241,0.5); background: rgba(99,102,241,0.12);
-    box-shadow: 0 0 22px rgba(99,102,241,0.22);
+    border-color: rgba(110,121,244,0.5); background: rgba(110,121,244,0.12);
+    box-shadow: 0 0 22px rgba(110,121,244,0.22);
   }
   .fnode.fcore .t { font-weight: 800; font-size: 15px; }
   .flowedges .edge.cedge {
@@ -212,18 +194,18 @@
   }
   .fcard {
     position: absolute; z-index: 3;
-    background: var(--panel-solid); border: 1px solid var(--border); border-radius: 14px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md);
     padding: 10px 14px; display: flex; align-items: center; gap: 10px;
     cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none;
     box-shadow: 0 6px 20px rgba(0,0,0,0.3);
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
-  .fcard:hover, .fcard.sel { border-color: var(--acc1); box-shadow: 0 0 16px rgba(99,102,241,0.3); }
-  .fcard.active { border-color: rgba(99,102,241,0.55); box-shadow: 0 0 18px rgba(99,102,241,0.35); }
+  .fcard:hover, .fcard.sel { border-color: var(--accent); box-shadow: 0 0 16px rgba(110,121,244,0.3); }
+  .fcard.active { border-color: rgba(110,121,244,0.55); box-shadow: 0 0 18px rgba(110,121,244,0.35); }
   .fcard.dragging { cursor: grabbing; z-index: 9; box-shadow: 0 16px 40px rgba(0,0,0,0.5); scale: 1.04; }
   .fcard .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
   .fcard .pcol { min-width: 0; }
-  .fcard .pname { font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+  .fcard .pname { font-size: 12.5px; font-weight: 600; white-space: nowrap; color: var(--text); }
   .fcard .psub { font-size: 10px; color: var(--dim); white-space: nowrap; }
   .fcard .prnum {
     font-family: var(--mono); font-size: 10px; color: var(--muted);
@@ -463,37 +445,30 @@
   .helpbody pre code { background: none; padding: 0; color: var(--text); font-size: 12px; }
   .helpbody a { color: var(--acc2); }
 
-  /* ---- stat cards ---- */
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 15px; margin-bottom: 22px; }
-  .stat {
-    background: var(--panel); backdrop-filter: blur(12px);
-    border: 1px solid var(--border); border-radius: var(--r);
-    padding: 17px 19px; position: relative; overflow: hidden;
-    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-  }
-  .stat:hover { transform: translateY(-3px); border-color: var(--border-hi); box-shadow: 0 14px 34px rgba(99,102,241,0.14); }
+  /* ---- stat cards (overview hero row) ---- */
+  .stats { display: grid; grid-template-columns: 1.5fr repeat(4, 1fr); gap: var(--sp-3); margin-bottom: var(--sp-4); }
+  @media (max-width: 1100px) { .stats { grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); } }
+  .stats .stat { position: relative; overflow: hidden; }
+  .stat .toprow { display: flex; align-items: center; gap: var(--sp-2); }
+  .stat .ic { width: 26px; height: 26px; border-radius: var(--r-sm); display: grid; place-items: center; background: rgba(110,121,244,0.12); }
+  .stat .ic svg { width: 14px; height: 14px; }
   .stat .glowcorner {
     position: absolute; top: -40px; right: -40px; width: 110px; height: 110px; border-radius: 50%;
     filter: blur(38px); opacity: 0.35; pointer-events: none;
   }
-  .stat .toprow { display: flex; align-items: center; gap: 8px; }
-  .stat .ic { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: rgba(99,102,241,0.14); }
-  .stat .ic svg { width: 14px; height: 14px; }
-  .stat .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
-  .stat .value { font-size: 29px; font-weight: 800; font-variant-numeric: tabular-nums; margin-top: 6px; letter-spacing: -0.03em; }
-  .stat .detail { color: var(--dim); font-size: 11.5px; margin-top: 2px; font-family: var(--mono); }
+  .stat-big .statnum { font-size: 34px; }
 
   /* ---- chart ---- */
   .chart { display: flex; align-items: flex-end; gap: 6px; height: 170px; }
   .barday { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 5px; height: 100%; min-width: 0; position: relative; }
   .barstack { width: 100%; max-width: 42px; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; border-radius: 5px 5px 0 0; overflow: hidden; }
   .bar-in, .bar-out { width: 100%; transition: height 0.8s cubic-bezier(0.22, 1, 0.36, 1); }
-  .bar-in { background: linear-gradient(180deg, var(--acc1), rgba(99,102,241,0.25)); box-shadow: 0 0 14px rgba(99,102,241,0.25); }
-  .bar-out { background: linear-gradient(180deg, var(--acc2), rgba(34,211,238,0.2)); box-shadow: 0 0 14px rgba(34,211,238,0.2); }
+  .bar-in { background: linear-gradient(180deg, var(--accent), rgba(110,121,244,0.25)); box-shadow: 0 0 14px rgba(110,121,244,0.25); }
+  .bar-out { background: linear-gradient(180deg, var(--accent-2), rgba(34,211,238,0.2)); box-shadow: 0 0 14px rgba(34,211,238,0.2); }
   .barday .lbl { color: var(--dim); font-size: 10px; font-family: var(--mono); }
-  .barday:hover .barstack { outline: 1px solid var(--border-hi); }
+  .barday:hover .barstack { outline: 1px solid rgba(110,121,244,0.45); }
   .barday .tip {
-    display: none; position: absolute; z-index: 5; background: #0d1222; border: 1px solid var(--border-hi);
+    display: none; position: absolute; z-index: 5; background: var(--surface-2); border: 1px solid rgba(110,121,244,0.45);
     border-radius: 9px; padding: 7px 11px; font-size: 11px; font-family: var(--mono); white-space: nowrap;
     bottom: 100%; left: 50%; transform: translateX(-50%); pointer-events: none; margin-bottom: 6px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.5);
@@ -518,11 +493,11 @@
   .feed { display: flex; flex-direction: column; gap: 7px; max-height: 400px; overflow-y: auto; padding-right: 4px; }
   .req {
     display: grid; grid-template-columns: 72px 1.1fr 1.3fr 1fr auto; gap: 10px; align-items: center;
-    background: rgba(30, 37, 60, 0.4); border: 1px solid var(--border); border-radius: 11px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-md);
     padding: 8px 13px; font-size: 12.5px; font-family: var(--mono);
     animation: reqin 0.4s cubic-bezier(0.22, 1, 0.36, 1);
   }
-  @keyframes reqin { from { transform: translateY(-10px) scale(0.98); opacity: 0; box-shadow: 0 0 24px rgba(99,102,241,0.4); } to { transform: none; opacity: 1; } }
+  @keyframes reqin { from { transform: translateY(-10px) scale(0.98); opacity: 0; box-shadow: 0 0 24px rgba(110,121,244,0.4); } to { transform: none; opacity: 1; } }
   .req .t { color: var(--dim); font-size: 11px; }
   .req .prov { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .req .mod { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -532,31 +507,33 @@
   .st.s4 { color: var(--red); border: 1px solid rgba(248,113,113,0.4); background: rgba(248,113,113,0.08); }
   .st.s5 { color: var(--amber); border: 1px solid rgba(251,191,36,0.4); background: rgba(251,191,36,0.08); }
 
-  /* ---- provider cards ---- */
-  .card {
-    background: var(--panel); backdrop-filter: blur(12px);
-    border: 1px solid var(--border); border-radius: var(--r);
-    padding: 16px 19px; margin-bottom: 13px;
-    transition: border-color 0.2s, box-shadow 0.2s;
+  /* ---- providers table ---- */
+  #providers .tbl td { vertical-align: middle; }
+  #providers .prio { white-space: nowrap; width: 1%; }
+  #providers .prio .btn { padding: 3px 7px; }
+  #providers .pname { font-family: var(--sans); font-weight: 600; color: var(--text); white-space: nowrap; }
+  #providers .pmodels { max-width: 280px; }
+  #providers .pmod {
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    background: rgba(110,121,244,0.08); border: 1px solid rgba(110,121,244,0.18);
+    border-radius: var(--r-sm); padding: 1px 7px; display: inline-block; margin: 1px 3px 1px 0;
   }
-  .card:hover { border-color: var(--border-hi); box-shadow: 0 8px 30px rgba(99,102,241,0.1); }
-  .card .row1 { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  #providers .pmod em { color: var(--dim); font-style: normal; margin-right: 4px; }
+  #providers .pkey { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+  #providers .pact { white-space: nowrap; text-align: right; }
+  #providers .pact .btn { padding: 4px 9px; font-size: 11.5px; }
+
+  /* add/edit form card */
+  #formcard h2 { font-size: 14.5px; margin: 0 0 10px; letter-spacing: -0.01em; }
+
+  /* ---- shared card bits (discover catalog cards) ---- */
   .avatar {
     width: 36px; height: 36px; border-radius: 11px; flex-shrink: 0;
     display: grid; place-items: center; font-weight: 700; font-size: 15px; color: #fff;
     background: var(--grad3); background-size: 200% 200%;
     box-shadow: 0 4px 14px rgba(99,102,241,0.3);
   }
-  .card .namecol { display: flex; flex-direction: column; min-width: 0; }
-  .card .name { font-weight: 600; font-size: 15px; }
-  .card .baseurl { color: var(--muted); font-family: var(--mono); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 340px; }
   .spacer { flex: 1; }
-  .card .meta { display: flex; gap: 18px; flex-wrap: wrap; color: var(--muted); font-size: 12px; margin-top: 10px; }
-  .card .meta b { color: var(--text); font-weight: 500; }
-  .card .reason { color: var(--red); font-size: 12px; font-family: var(--mono); margin-top: 7px; word-break: break-all; }
-  .models { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 9px; }
-  .modeltag { background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.18); border-radius: 7px; padding: 2px 9px; font-family: var(--mono); font-size: 11px; }
-  .modeltag em { color: var(--dim); font-style: normal; margin-right: 4px; }
 
   /* ---- catalog ---- */
   .catgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
@@ -607,7 +584,6 @@
   button.primary:hover { box-shadow: 0 6px 26px rgba(99,102,241,0.5); }
   button.danger { border-color: rgba(248,113,113,0.3); color: var(--red); background: transparent; }
   button.danger:hover { border-color: var(--red); background: rgba(248,113,113,0.08); box-shadow: none; }
-  button.icon { padding: 4px 9px; }
   button:disabled { opacity: 0.35; cursor: default; box-shadow: none; }
 
   .events { list-style: none; margin: 0; padding: 0; font-family: var(--mono); font-size: 12px; }
@@ -669,13 +645,12 @@
   .stat .sparkfill { fill: url(#sparkFillGrad); opacity: 0.5; }
 
   /* ---- widgets row ---- */
-  .widgets { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 22px; }
+  .widgets { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--sp-3); margin-bottom: var(--sp-4); }
   .widget {
-    background: var(--panel); backdrop-filter: blur(12px);
-    border: 1px solid var(--border); border-radius: var(--r);
-    padding: 16px 18px; transition: transform 0.2s ease, border-color 0.2s, box-shadow 0.2s;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md);
+    padding: var(--sp-4); transition: border-color 0.2s ease;
   }
-  .widget:hover { transform: translateY(-2px); border-color: var(--border-hi); }
+  .widget:hover { border-color: rgba(110,121,244,0.35); }
   .widget .wtitle { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
   .widget .bignum { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
   .ringwrap { display: flex; align-items: center; gap: 14px; }
@@ -708,10 +683,6 @@
   .searchbar .sic svg { width: 14px; height: 14px; }
   .kbd { font-family: var(--mono); font-size: 10px; border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; color: var(--dim); }
 
-  @media (max-width: 980px) {
-    .hero { grid-template-columns: 1fr; }
-    .hero-left { display: none; }
-  }
   @media (max-width: 860px) {
     aside { width: 62px; padding: var(--sp-3) var(--sp-2); }
     .brand .t, .brand .s, nav button .lbl, .navlbl, .sidebottom .sideText { display: none; }
@@ -789,6 +760,8 @@
     background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
     border-radius: var(--r-sm); padding: 7px 10px; font: 13px var(--sans); width: 100%;
   }
+  /* the width:100% above must not hit checkboxes (provider form #f_enabled etc.) */
+  input[type="checkbox"] { width: auto; accent-color: var(--accent); }
   input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
   .toast { position: fixed; right: var(--sp-4); bottom: var(--sp-4); background: var(--surface-2); border: 1px solid var(--border); border-left: 2px solid var(--accent); border-radius: var(--r-sm); padding: 10px 14px; font-size: 13px; z-index: 200; }
   .toast.err { border-left-color: var(--red); }
@@ -805,13 +778,14 @@
      strings — mapped onto the new token set. Per-view component rules keep
      their old class names (.stat, .card, .prow, .formcard, .skel, …) and pick
      up the new look through these aliases; each restyled view drops its rules
-     and the aliases shrink until Task 6 deletes this block entirely. */
+     and the aliases shrink until Task 6 deletes this block entirely.
+     Task 3 (overview + providers) dropped --acc3 — the last consumer was the
+     overview stat glowcorner; --grad3 now inlines the purple. */
   :root {
     --acc1: var(--accent);
     --acc2: var(--accent-2);
-    --acc3: #a855f7;
     --grad: linear-gradient(100deg, var(--accent), var(--accent-2));
-    --grad3: linear-gradient(100deg, var(--acc3), var(--accent), var(--accent-2));
+    --grad3: linear-gradient(100deg, #a855f7, var(--accent), var(--accent-2));
     --panel: var(--surface);
     --panel-solid: var(--surface-2);
     --bg2: var(--surface);
@@ -824,13 +798,13 @@
 <svg width="0" height="0" style="position:absolute">
   <defs>
     <linearGradient id="sparkGrad" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#22d3ee"/>
+      <stop offset="0" stop-color="#6e79f4"/><stop offset="1" stop-color="#22d3ee"/>
     </linearGradient>
     <linearGradient id="sparkFillGrad" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="rgba(99,102,241,0.35)"/><stop offset="1" stop-color="rgba(99,102,241,0)"/>
     </linearGradient>
     <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#22d3ee"/>
+      <stop offset="0" stop-color="#6e79f4"/><stop offset="1" stop-color="#22d3ee"/>
     </linearGradient>
   </defs>
 </svg>
@@ -929,14 +903,14 @@
           </div>
           <div class="uptime" id="heroUptime">uptime —</div>
         </div>
-        <div class="hero-right">
+        <div class="hero-right card">
           <h2>Traffic flow</h2>
           <div class="flowwrap" id="flowwrap">
             <div class="flowarea" id="flowarea">
               <svg class="flowedges" id="flowedges" xmlns="http://www.w3.org/2000/svg">
                 <defs>
                   <linearGradient id="edgeGrad" gradientUnits="userSpaceOnUse" x1="200" y1="0" x2="800" y2="0">
-                    <stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#22d3ee"/>
+                    <stop offset="0" stop-color="#6e79f4"/><stop offset="1" stop-color="#22d3ee"/>
                   </linearGradient>
                 </defs>
               </svg>
@@ -955,37 +929,37 @@
       </div>
 
       <div class="stats">
-        <div class="stat">
-          <div class="glowcorner" style="background:var(--acc1)"></div>
+        <div class="stat stat-big">
+          <div class="glowcorner" style="background:var(--accent)"></div>
           <div class="toprow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#8b9dff" stroke-width="2"><path d="M4 7h16M4 12h10M4 17h13"/></svg></span><span class="statlabel">Tokens total</span></div>
           <div class="statnum" id="stTotal">0</div>
           <div class="statdetail" id="stTotalDetail">in 0 · out 0</div>
           <div class="sparkwrap"><svg id="sparkTokens" viewBox="0 0 100 26" preserveAspectRatio="none"></svg></div>
         </div>
         <div class="stat">
-          <div class="glowcorner" style="background:var(--acc2)"></div>
-          <div class="toprow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#67e8f9" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span><span class="statlabel">Tokens today</span></div>
-          <div class="statnum" id="stToday">0</div>
-          <div class="statdetail" id="stTodayDetail">0 requests today</div>
+          <div class="glowcorner" style="background:var(--amber)"></div>
+          <div class="toprow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M12 2v16M17 7H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span><span class="statlabel">Estimated cost</span></div>
+          <div class="statnum" id="stCost" style="color:var(--amber)">$0</div>
+          <div class="statdetail" id="stCostDetail">all time</div>
         </div>
         <div class="stat">
-          <div class="glowcorner" style="background:var(--acc3)"></div>
+          <div class="glowcorner" style="background:#a855f7"></div>
           <div class="toprow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></svg></span><span class="statlabel">Requests</span></div>
           <div class="statnum" id="stReqs">0</div>
           <div class="statdetail">routed through proxy</div>
           <div class="sparkwrap"><svg id="sparkReqs" viewBox="0 0 100 26" preserveAspectRatio="none"></svg></div>
         </div>
         <div class="stat">
+          <div class="glowcorner" style="background:var(--accent-2)"></div>
+          <div class="toprow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#67e8f9" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span><span class="statlabel">Tokens today</span></div>
+          <div class="statnum" id="stToday">0</div>
+          <div class="statdetail" id="stTodayDetail">0 requests today</div>
+        </div>
+        <div class="stat">
           <div class="glowcorner" style="background:var(--green)"></div>
           <div class="toprow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#6ee7b7" stroke-width="2"><path d="M5 12a7 7 0 0 1 14 0v5a2 2 0 0 1-2 2h-2v-6h4M5 12v5a2 2 0 0 0 2 2h2v-6H5"/></svg></span><span class="statlabel">Providers</span></div>
           <div class="statnum" id="stProv">0/0</div>
           <div class="statdetail">up / configured</div>
-        </div>
-        <div class="stat">
-          <div class="glowcorner" style="background:var(--amber)"></div>
-          <div class="toprow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M12 2v16M17 7H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span><span class="statlabel">Estimated cost</span></div>
-          <div class="statnum" id="stCost" style="color:var(--amber)">$0</div>
-          <div class="statdetail" id="stCostDetail">all time</div>
         </div>
       </div>
 
@@ -1024,8 +998,8 @@
         <div class="hint">input (incl. cache) vs output tokens per day</div>
         <div class="chart" id="chart"><div class="skel" style="height:100%"></div></div>
         <div class="legend">
-          <span><span class="swatch" style="background:var(--acc1)"></span>input</span>
-          <span><span class="swatch" style="background:var(--acc2)"></span>output</span>
+          <span><span class="swatch" style="background:var(--accent)"></span>input</span>
+          <span><span class="swatch" style="background:var(--accent-2)"></span>output</span>
         </div>
       </div>
 
@@ -1052,7 +1026,7 @@
       </div>
       <div id="providers"><div class="skel" style="height:110px;margin-bottom:13px"></div><div class="skel" style="height:110px;margin-bottom:13px"></div></div>
 
-      <div class="panelcard" id="formcard" style="margin-top:26px">
+      <div class="card" id="formcard" style="margin-top:26px">
         <h2 id="formTitle">Add provider</h2>
         <form id="pform" onsubmit="return submitForm(event)">
           <input type="hidden" id="f_id">
@@ -1814,42 +1788,36 @@ window.flowOpen = (id) => {
 
 /* ---- providers view ---- */
 function providerCard(p) {
-  const cd = p.status === 'down'
-    ? ` <span class="pill bad" title="cooldown">back in ~${Math.ceil(p.downForMs / 1000)}s</span>` : '';
+  const cd = p.status === 'down' && p.downForMs
+    ? ` <span class="pill" title="cooldown">back in ~${Math.ceil(p.downForMs / 1000)}s</span>` : '';
   const lat = p.stats.emaLatencyMs != null ? p.stats.emaLatencyMs + 'ms' : '—';
   const sr = p.stats.requests ? Math.round(100 * p.stats.successes / p.stats.requests) + '%' : '—';
   const models = ['opus', 'sonnet', 'haiku']
     .filter((s) => p.models[s])
-    .map((s) => `<span class="modeltag"><em>${s}</em>${escapeHtml(p.models[s])}</span>`)
+    .map((s) => `<span class="pmod"><em>${s}</em>${escapeHtml(p.models[s])}</span>`)
     .join('');
-  const reason = p.statusDetail ? `<div class="reason">${escapeHtml(p.statusDetail)}</div>` : '';
+  const dot = p.status === 'up' ? 'dot-up'
+    : p.status === 'down' ? (p.downForMs ? 'dot-cd' : 'dot-down')
+    : 'dot-off';
+  const reason = p.statusDetail ? ` title="${escapeHtml(p.statusDetail)}"` : '';
   return `
-  <div class="card">
-    <div class="row1">
-      <span class="avatar">${escapeHtml(initials(p.name))}</span>
-      <span class="namecol">
-        <span class="name">${escapeHtml(p.name)} ${p.status === 'up' ? '<span class="pulse ok" style="display:inline-block;vertical-align:2px;margin-left:4px"></span>' : p.status === 'down' ? '<span class="pulse bad" style="display:inline-block;vertical-align:2px;margin-left:4px"></span>' : ''}</span>
-        <span class="baseurl">${escapeHtml(p.baseUrl)} · ${escapeHtml(p.maskedKey)}</span>
-      </span>
-      ${cd}
-      <span class="spacer"></span>
-      <span class="pill">priority ${p.priority}</span>
-      <button class="icon" title="move up" onclick="move('${p.id}','up')" ${p.priority <= 1 ? 'disabled' : ''}>▲</button>
-      <button class="icon" title="move down" onclick="move('${p.id}','down')">▼</button>
-      <button onclick="test('${p.id}')">test</button>
-      ${p.status === 'down' ? `<button onclick="resetP('${p.id}')">reset</button>` : ''}
-      <button onclick="edit('${p.id}')">edit</button>
-      <button class="danger" onclick="remove('${p.id}')">delete</button>
-    </div>
-    <div class="meta">
-      <span>requests <b>${p.stats.requests}</b></span>
-      <span>success <b>${sr}</b></span>
-      <span>latency <b>${lat}</b></span>
-      <span>auth <b>${p.authStyle}</b></span>
-    </div>
-    <div class="models">${models}</div>
-    ${reason}
-  </div>`;
+  <tr>
+    <td class="prio">
+      <button class="btn btn-ghost" title="move up" onclick="move('${p.id}','up')" ${p.priority <= 1 ? 'disabled' : ''}>▲</button>
+      <button class="btn btn-ghost" title="move down" onclick="move('${p.id}','down')">▼</button>
+    </td>
+    <td class="pname"><span class="dot ${dot}"${reason}></span>${escapeHtml(p.name)}${cd}</td>
+    <td class="pmodels">${models || '<span style="color:var(--dim)">—</span>'}</td>
+    <td class="mono pkey" title="${escapeHtml(p.baseUrl)}">${escapeHtml(p.maskedKey)}</td>
+    <td class="num">${lat}</td>
+    <td class="num">${sr}</td>
+    <td class="pact">
+      <button class="btn btn-ghost" onclick="test('${p.id}')">test</button>
+      ${p.status === 'down' ? `<button class="btn btn-ghost" onclick="resetP('${p.id}')">reset</button>` : ''}
+      <button class="btn btn-ghost" onclick="edit('${p.id}')">edit</button>
+      <button class="btn btn-danger" onclick="remove('${p.id}')">delete</button>
+    </td>
+  </tr>`;
 }
 
 function renderProviders() {
@@ -1859,7 +1827,10 @@ function renderProviders() {
     return (p.name + ' ' + p.baseUrl + ' ' + Object.values(p.models || {}).join(' ')).toLowerCase().includes(q);
   });
   $('providers').innerHTML = list.length
-    ? list.map(providerCard).join('')
+    ? `<table class="tbl"><thead><tr>
+        <th></th><th>provider</th><th>models</th><th>key</th>
+        <th class="num">latency</th><th class="num">success</th><th></th>
+      </tr></thead><tbody>${list.map(providerCard).join('')}</tbody></table>`
     : `<div class="card empty">${statusState.providers.length ? 'No providers match your filter.' : `No providers yet — add one below, or prefill from the <a href="#" onclick="gotoView('discover');return false" style="color:var(--acc2)">Discover</a> catalog.<br><br>
        <b style="color:var(--amber)">Important:</b> add at least one provider with an API key and enable it <i>before</i> running
        <span style="font-family:var(--mono)">scripts/install.mjs</span> — once settings.json points here, Claude Code has no API
