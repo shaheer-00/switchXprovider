@@ -4,6 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { newId, statsFor, logEvent, persistSoon, emptyUsage, DIR, PROCESS_START } from './config.mjs';
 import { enabledSorted, isDown, COOLDOWNS } from './proxy.mjs';
@@ -14,6 +15,12 @@ const JSON_HDR = { 'content-type': 'application/json', 'cache-control': 'no-stor
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CATALOG_SEED_PATH = path.join(__dirname, '..', 'catalog.json');
 const CATALOG_CACHE_PATH = path.join(DIR, 'catalog-cache.json');
+// Plugin version (package.json at repo root) — reported via /api/status so the
+// SessionStart hook and the dashboard can detect a stale running proxy.
+const PKG = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'package.json'), 'utf8'));
+// Marker written by ensure.mjs when a newer install exists: {version, path, ts}.
+// Consumed by /api/status (dashboard popup) and /api/update-restart.
+const UPDATE_MARKER_PATH = path.join(DIR, 'update-available.json');
 // Official upstream catalog — the copy shipped in this repo, served raw from GitHub.
 // "Restore official" syncs the local cache to it so users always get the maintained list.
 const OFFICIAL_CATALOG_URL =
@@ -195,6 +202,24 @@ function sanitizeProviderInput(body) {
   };
 }
 
+// Read the update marker. Returns {version} when a newer install is waiting,
+// null otherwise. A marker matching our own version means the update already
+// landed — delete it (self-cleanup after a successful restart).
+function readUpdateMarker() {
+  let marker = null;
+  try {
+    marker = JSON.parse(fs.readFileSync(UPDATE_MARKER_PATH, 'utf8'));
+  } catch {
+    return null;
+  }
+  if (!marker.version || !marker.path) return null;
+  if (marker.version === PKG.version) {
+    try { fs.rmSync(UPDATE_MARKER_PATH, { force: true }); } catch { /* best effort */ }
+    return null;
+  }
+  return { version: marker.version }; // path stays server-side
+}
+
 export async function handleApi(req, res, pathname, cfg) {
   const method = req.method;
   const parts = pathname.split('/').filter(Boolean); // ['api', ...]
@@ -204,6 +229,8 @@ export async function handleApi(req, res, pathname, cfg) {
     // ---- GET endpoints ----
     if (method === 'GET' && resource === 'status') {
       return send(res, 200, {
+        version: PKG.version,
+        update: readUpdateMarker(),
         port: cfg.port,
         uptimeSec: Math.round((Date.now() - PROCESS_START) / 1000),
         activeProvider: activeProviderName(cfg),
@@ -312,6 +339,38 @@ export async function handleApi(req, res, pathname, cfg) {
       logEvent(cfg, 'Usage statistics reset');
       persistSoon(cfg, 0);
       return send(res, 200, { ok: true });
+    }
+
+    // ---- update lifecycle ----
+    // Graceful stop (used by ensure.mjs when a newer install replaces us).
+    if (method === 'POST' && resource === 'shutdown') {
+      send(res, 200, { ok: true });
+      setTimeout(() => process.exit(0), 150); // let the response flush
+      return;
+    }
+
+    // One-click update from the dashboard: hand over to the newer install's
+    // ensure.mjs, which shuts us down and starts the new proxy in our place.
+    if (method === 'POST' && resource === 'update-restart') {
+      let marker = null;
+      try {
+        marker = JSON.parse(fs.readFileSync(UPDATE_MARKER_PATH, 'utf8'));
+      } catch { /* no marker */ }
+      if (!marker?.version || !marker.path || marker.version === PKG.version) {
+        return send(res, 400, { error: 'no pending update' });
+      }
+      const ensurePath = path.join(marker.path, 'server', 'ensure.mjs');
+      if (!fs.existsSync(ensurePath)) {
+        return send(res, 400, { error: `update source not found: ${marker.path}` });
+      }
+      const child = spawn(process.execPath, [ensurePath, '--replace'], {
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true,
+      });
+      child.unref();
+      logEvent(cfg, `Update to ${marker.version} requested — restarting proxy`);
+      return send(res, 200, { ok: true, updatingTo: marker.version });
     }
 
     // ---- routing toggle (subscription users: off until usage warning) ----

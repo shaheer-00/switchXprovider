@@ -328,6 +328,84 @@ async function main() {
   });
   assert(resp.status === 400, 'import rejects invalid baseUrl');
 
+  // --- 11. version reporting + update marker + restart flow ---
+  console.log('\n— version / update marker / restart —');
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+  let st3 = await (await fetch(`${proxyUrl}/api/status`)).json();
+  assert(st3.version === pkg.version, 'status reports own version', `${st3.version} vs ${pkg.version}`);
+
+  const markerPath = path.join(home, 'update-available.json');
+  // pending-update marker (newer version) → exposed on status
+  fs.writeFileSync(markerPath, JSON.stringify({ version: '99.0.0', path: ROOT, ts: Date.now() }));
+  st3 = await (await fetch(`${proxyUrl}/api/status`)).json();
+  assert(st3.update?.version === '99.0.0', 'status exposes pending update', JSON.stringify(st3.update));
+  assert(!st3.update?.path, 'marker install path is not exposed to the client', JSON.stringify(st3.update));
+
+  // same-version marker → cleaned up, no update reported
+  fs.writeFileSync(markerPath, JSON.stringify({ version: pkg.version, path: ROOT, ts: Date.now() }));
+  st3 = await (await fetch(`${proxyUrl}/api/status`)).json();
+  assert(!st3.update, 'same-version marker reports no update');
+  assert(!fs.existsSync(markerPath), 'completed-update marker file deleted');
+
+  // update-restart: spawns ensure --replace from the marker path → old dies, new comes up
+  fs.writeFileSync(markerPath, JSON.stringify({ version: '99.0.0', path: ROOT, ts: Date.now() }));
+  resp = await fetch(`${proxyUrl}/api/update-restart`, { method: 'POST' });
+  assert(resp.ok, 'update-restart accepted', `got ${resp.status}`);
+  // no marker → rejected
+  fs.writeFileSync(markerPath, JSON.stringify({ version: pkg.version, path: ROOT, ts: Date.now() }));
+  await (await fetch(`${proxyUrl}/api/status`)).json(); // consumes same-version marker
+  resp = await fetch(`${proxyUrl}/api/update-restart`, { method: 'POST' });
+  assert(resp.status === 400, 'update-restart rejected without pending update', `got ${resp.status}`);
+  // put a real marker back and run the full cycle
+  fs.writeFileSync(markerPath, JSON.stringify({ version: '99.0.0', path: ROOT, ts: Date.now() }));
+  resp = await fetch(`${proxyUrl}/api/update-restart`, { method: 'POST' });
+  assert(resp.ok, 'update-restart cycle started');
+  // phase 1: old proxy must die
+  let died = false;
+  for (let i = 0; i < 50; i++) {
+    await sleep(200);
+    try {
+      const ac = new AbortController();
+      const t = setTimeout(() => ac.abort(), 500);
+      try { await fetch(`${proxyUrl}/healthz`, { signal: ac.signal }); } finally { clearTimeout(t); }
+    } catch { died = true; break; }
+  }
+  assert(died, 'old proxy shut down after update-restart');
+  // phase 2: replacement proxy must come back up
+  let back = false;
+  for (let i = 0; i < 50; i++) {
+    await sleep(200);
+    try {
+      const ac = new AbortController();
+      const t = setTimeout(() => ac.abort(), 500);
+      try { const r = await fetch(`${proxyUrl}/healthz`, { signal: ac.signal }); if (r.ok) { back = true; break; } } finally { clearTimeout(t); }
+    } catch { /* not up yet */ }
+  }
+  assert(back, 'replacement proxy started by ensure --replace');
+  st3 = await (await fetch(`${proxyUrl}/api/status`)).json();
+  assert(st3.version === pkg.version, 'replacement proxy reports version');
+  // (the fake 99.0.0 marker legitimately stays pending — it matches no real
+  // install; same-version cleanup is covered above. Verify the replacement
+  // server's marker machinery works end to end:)
+  fs.writeFileSync(markerPath, JSON.stringify({ version: pkg.version, path: ROOT, ts: Date.now() }));
+  st3 = await (await fetch(`${proxyUrl}/api/status`)).json();
+  assert(!st3.update && !fs.existsSync(markerPath), 'replacement proxy handles marker lifecycle');
+
+  // --- 12. shutdown endpoint (must stay LAST — kills the proxy) ---
+  console.log('\n— shutdown —');
+  resp = await fetch(`${proxyUrl}/api/shutdown`, { method: 'POST' });
+  assert(resp.ok, 'shutdown endpoint responds ok');
+  let gone = false;
+  for (let i = 0; i < 25; i++) {
+    await sleep(200);
+    try {
+      const ac = new AbortController();
+      const t = setTimeout(() => ac.abort(), 500);
+      try { await fetch(`${proxyUrl}/healthz`, { signal: ac.signal }); } finally { clearTimeout(t); }
+    } catch { gone = true; break; }
+  }
+  assert(gone, 'proxy exits after /api/shutdown');
+
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 }

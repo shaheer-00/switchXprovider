@@ -388,6 +388,29 @@
   .shbtn.primary:hover { box-shadow: 0 6px 24px rgba(99,102,241,0.4); }
   .shbtn svg { width: 14px; height: 14px; }
 
+  /* ---- update-available popup ---- */
+  .upd {
+    position: fixed; inset: 0; z-index: 70; display: grid; place-items: center;
+    background: rgba(5,7,14,0.72); backdrop-filter: blur(6px); padding: 24px;
+  }
+  .updcard {
+    width: min(430px, 100%); background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 18px; box-shadow: 0 30px 80px rgba(0,0,0,0.55); padding: 26px;
+    text-align: center;
+  }
+  .updhead { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 12px; }
+  .updhead .ic {
+    width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center;
+    background: rgba(99,102,241,0.15); flex: none;
+  }
+  .updhead .ic svg { width: 17px; height: 17px; }
+  .updhead h2 { margin: 0; font-size: 19px; letter-spacing: -0.02em; }
+  .updcard p { color: var(--muted); font-size: 13.5px; line-height: 1.6; margin: 0 0 18px; }
+  .updcard p b { color: var(--text); }
+  .updcard .ver { font-family: var(--mono); color: var(--acc2); }
+  .updactions { display: flex; gap: 10px; }
+  .updactions .shbtn { flex: 1; }
+
   /* ---- stat cards ---- */
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 15px; margin-bottom: 22px; }
   .stat {
@@ -1144,6 +1167,25 @@
     </div>
   </div>
 </div>
+<!-- ============ UPDATE-AVAILABLE POPUP ============ -->
+<div class="upd" id="upd" hidden>
+  <div class="updcard">
+    <div class="updhead">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#8b9dff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 9l5-5 5 5"/><path d="M12 4v12"/></svg></span>
+      <h2>Update available</h2>
+    </div>
+    <p>
+      switchXprovider <b class="ver" id="updVersion"></b> is installed, but the
+      proxy is still running <span id="updCurrent">an older version</span>.<br>
+      Update &amp; restart to switch over now — takes a few seconds.
+    </p>
+    <div class="updactions">
+      <button class="shbtn" onclick="dismissUpdate()">Later</button>
+      <button class="shbtn primary" id="updGo" onclick="runUpdate()">Update &amp; restart</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -2480,6 +2522,70 @@ window.shareNative = async () => {
   }
 };
 
+/* ---- update-available popup ---- */
+let updDismissedVersion = null;
+let updBusy = false;
+
+function maybeShowUpdate(status) {
+  const upd = status?.update;
+  if (!upd?.version || upd.version === updDismissedVersion || updBusy) return;
+  $('updVersion').textContent = upd.version;
+  $('updCurrent').textContent = status.version ? `v${status.version}` : 'an older version';
+  $('upd').hidden = false;
+}
+window.dismissUpdate = () => {
+  updDismissedVersion = $('updVersion').textContent;
+  $('upd').hidden = true;
+};
+window.runUpdate = async () => {
+  if (updBusy) return;
+  updBusy = true;
+  const btn = $('updGo');
+  btn.disabled = true;
+  btn.textContent = 'restarting…';
+  try {
+    await api('/api/update-restart', { method: 'POST' });
+  } catch {
+    toast('could not start the update', true);
+    updBusy = false;
+    btn.disabled = false;
+    btn.textContent = 'Update & restart';
+    return;
+  }
+  toast('updating — the dashboard will reload…');
+  const t0 = Date.now();
+  const ping = async () => {
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 800);
+    try {
+      return (await fetch(base + '/healthz', { signal: ac.signal })).ok;
+    } catch {
+      return false;
+    } finally {
+      clearTimeout(t);
+    }
+  };
+  // phase 1: old proxy goes down
+  await new Promise((resolve) => {
+    const iv = setInterval(async () => {
+      if (!(await ping())) { clearInterval(iv); resolve(); }
+      if (Date.now() - t0 > 30000) { clearInterval(iv); resolve(); }
+    }, 400);
+  });
+  // phase 2: replacement comes up → reload into the new dashboard
+  const iv2 = setInterval(async () => {
+    if (await ping()) { clearInterval(iv2); location.reload(); return; }
+    if (Date.now() - t0 > 30000) {
+      clearInterval(iv2);
+      toast('update is taking longer than expected — refresh the page', true);
+    }
+  }, 600);
+};
+$('upd').addEventListener('click', (e) => { if (e.target === $('upd')) dismissUpdate(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !$('upd').hidden) dismissUpdate();
+});
+
 /* ---- polling ---- */
 function renderHero() {
   const ps = statusState.providers || [];
@@ -2511,6 +2617,7 @@ async function refresh() {
     renderHero();
     renderFlow();
     renderWidgets();
+    maybeShowUpdate(s);
     renderSpark('sparkTokens', (usage.daily || []).map((d) => (d.inputTokens || 0) + (d.outputTokens || 0)));
     renderSpark('sparkReqs', (usage.daily || []).map((d) => d.requests || 0));
     maybeShowWizard();
