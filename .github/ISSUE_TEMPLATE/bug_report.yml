@@ -1,0 +1,42 @@
+name: Bug report
+description: Something doesn't work
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you did, what happened, what you expected.
+      placeholder: |
+        I ran /switchx-install, then...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log lines
+      description: From `~/.claude/switchx/server.log` — paste anything that looks related.
+      render: shell
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Run `/switchx` in Claude Code, or check the dashboard footer.
+      placeholder: v0.2.2
+  - type: dropdown
+    id: os
+    attributes:
+      label: OS
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Preflight
+      options:
+        - label: I checked the dashboard Help view (http://127.0.0.1:8787) and my problem isn't covered there
+        - label: This isn't a security issue (those go through SECURITY.md, never an issue)

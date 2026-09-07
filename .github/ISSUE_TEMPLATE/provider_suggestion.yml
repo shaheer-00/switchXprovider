@@ -1,0 +1,51 @@
+name: Provider suggestion
+description: Share a free/freemium gateway for the catalog
+labels: ["catalog", "provider"]
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Provider name
+    validations:
+      required: true
+  - type: input
+    id: baseurl
+    attributes:
+      label: baseUrl
+      description: e.g. https://api.example.com
+    validations:
+      required: true
+  - type: input
+    id: website
+    attributes:
+      label: Website / sign-up page
+  - type: textarea
+    id: freemodels
+    attributes:
+      label: Which free models work?
+      description: Real model IDs if you know them.
+    validations:
+      required: true
+  - type: dropdown
+    id: freetype
+    attributes:
+      label: How does the free tier work?
+      options:
+        - Daily login reward
+        - Sign-up credits
+        - Always-free models
+        - Promo (limited time)
+        - Other / not sure
+    validations:
+      required: true
+  - type: checkboxes
+    id: affiliate
+    attributes:
+      label: Referral/affiliate note
+      options:
+        - label: My link above is a referral/affiliate link (I'll disclose it in the PR)
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Reliability notes, auth quirks, model ID quirks.

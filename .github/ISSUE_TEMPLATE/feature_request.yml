@@ -1,0 +1,19 @@
+name: Feature request
+description: Suggest a feature or improvement
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: The workflow pain, not the solution.
+      placeholder: |
+        When X happens, I have to...
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: What do you imagine instead?
+    validations:
+      required: true

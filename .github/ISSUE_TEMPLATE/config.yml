@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions & setup help
+    url: https://github.com/shaheer-00/switchXprovider/discussions/categories/q-a
+    about: Ask how to set up providers, routing, or anything else — Q&A discussion category.
+  - name: Share a free provider
+    url: https://github.com/shaheer-00/switchXprovider/discussions
+    about: Free/freemium gateway finds can be posted in Discussions too — that counts as contributing.
+  - name: Security issues
+    url: https://github.com/shaheer-00/switchXprovider/security
+    about: Report vulnerabilities privately — never as a public issue.
