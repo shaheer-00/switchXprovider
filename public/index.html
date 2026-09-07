@@ -467,6 +467,21 @@
   .aliasgrp button:hover { border-color: var(--acc1); color: var(--text); }
   .aliasgrp button.warn:hover { border-color: var(--amber); color: var(--amber); }
 
+  /* ---- help view ---- */
+  .helpbody { font-size: 13.5px; line-height: 1.65; color: var(--muted); }
+  .helpbody p { margin: 8px 0; }
+  .helpbody b { color: var(--text); }
+  .helpbody code {
+    font-family: var(--mono); font-size: 12px; color: var(--acc2);
+    background: rgba(34,211,238,0.07); padding: 1px 5px; border-radius: 5px;
+  }
+  .helpbody pre {
+    background: rgba(5,7,14,0.55); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; overflow-x: auto; margin: 10px 0;
+  }
+  .helpbody pre code { background: none; padding: 0; color: var(--text); font-size: 12px; }
+  .helpbody a { color: var(--acc2); }
+
   /* ---- stat cards ---- */
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 15px; margin-bottom: 22px; }
   .stat {
@@ -798,6 +813,10 @@
         <span class="lbl">Events</span>
         <span class="navbadge" id="navEvents"></span>
       </button>
+      <button data-view="help">
+        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg></span>
+        <span class="lbl">Help</span>
+      </button>
     </nav>
     <div class="sidebottom">
       <div class="row"><span class="pulse" id="sideDot" style="background:var(--dim)"></span><span id="sideStatus" class="sideText">connecting…</span></div>
@@ -1109,6 +1128,105 @@
         <h2>All models</h2>
         <div class="hint">every model seen in usage, mapped on a provider, or known built-in</div>
         <table class="tbl" id="priceTbl"></table>
+      </div>
+    </section>
+
+    <!-- ============ HELP ============ -->
+    <section class="view" id="view-help">
+      <div class="viewhead">
+        <h1>Help &amp; Troubleshooting</h1>
+        <span class="sub">common issues and how to fix them</span>
+      </div>
+
+      <div class="panelcard">
+        <h2>🔧 claude-mem stops capturing sessions</h2>
+        <div class="hint">proxy is working fine, but claude-mem shows "no API key configured" or zero batches</div>
+        <div class="helpbody">
+          <p><b>Why it happens:</b> claude-mem's worker reads API credentials from <code>~/.claude-mem/.env</code>, not from <code>settings.json</code>. When the proxy changes the base URL and token in <code>settings.json</code>, claude-mem's own <code>.env</code> goes stale — capture dies silently.</p>
+          <p><b>Fix:</b> Add a SessionStart hook that mirrors your credentials into claude-mem's <code>.env</code> on every session. Open <code>~/.claude/settings.json</code> and add inside <code>"hooks"</code>:</p>
+          <pre><code>"SessionStart": [
+  {
+    "hooks": [
+      {
+        "type": "command",
+        "command": "powershell -ExecutionPolicy Bypass -File \"~/.claude-mem/sync-claude-mem-creds.ps1\""
+      }
+    ]
+  }
+]</code></pre>
+          <p>The sync script (<a href="https://github.com/thedotmack/claude-mem" target="_blank">included with claude-mem</a>) reads the base URL, auth token, and haiku model ID from <code>settings.json</code> and writes them to <code>~/.claude-mem/.env</code> on every session start — credentials stay in sync automatically.</p>
+          <p>If capture still doesn't work after adding the hook, restart the worker:</p>
+          <pre><code>node ~/.claude/plugins/cache/thedotmack/claude-mem/*/scripts/worker-cli.js restart</code></pre>
+        </div>
+      </div>
+
+      <div class="panelcard">
+        <h2>🗣 "CAVEMAN MODE ACTIVE" showing everywhere</h2>
+        <div class="hint">statusline shows caveman prefix on every line, looks messy or throws errors</div>
+        <div class="helpbody">
+          <p><b>What it is:</b> caveman plugin's statusline hook is cosmetic — it prepends a mode label to your status line. If the hook script path is stale (plugin updated but path still points at old version), it may show up garbled or fail silently.</p>
+          <p><b>Impact:</b> Purely visual. Does not affect proxy routing, failover, pricing, or Claude Code functionality.</p>
+          <p><b>Fix if it's noisy:</b> Edit <code>~/.claude/settings.json</code>, find <code>"statusLine"</code>, and update the path to the current installed version. Or remove the statusLine entry entirely to suppress it — caveman works fine without the visual indicator.</p>
+        </div>
+      </div>
+
+      <div class="panelcard">
+        <h2>🔄 Plugin updated but proxy still old</h2>
+        <div class="hint">you ran /plugin update but the dashboard shows old features</div>
+        <div class="helpbody">
+          <p><b>Why it happens:</b> The running proxy is a Node process from the old install path. Plugin files update on disk, but the live process still serves the old code.</p>
+          <p><b>Fix:</b> Kill the old proxy — the SessionStart hook starts a new one automatically on your next Claude Code session. Or run:</p>
+          <pre><code>node ~/.claude/plugins/cache/switchx-marketplace/switchXprovider/&lt;NEW_VERSION&gt;/server/ensure.mjs</code></pre>
+          <p><b>From v0.1.9+:</b> this is automatic. The hook detects a stale proxy and restarts it in place — you'll see a one-click update popup in the dashboard too.</p>
+        </div>
+      </div>
+
+      <div class="panelcard">
+        <h2>⚡ Shell environment variables override settings.json</h2>
+        <div class="hint">ANTHROPIC_BASE_URL or ANTHROPIC_API_KEY set in shell/profile wins over settings.json</div>
+        <div class="helpbody">
+          <p><b>What it is:</b> if <code>ANTHROPIC_BASE_URL</code>, <code>ANTHROPIC_API_KEY</code>, or <code>ANTHROPIC_AUTH_TOKEN</code> are set in your shell environment (via <code>.bashrc</code>, <code>.zshrc</code>, <code>Set-Item Env:</code> in PowerShell, or system-wide env vars), they take priority over <code>settings.json</code> and bypass the proxy entirely.</p>
+          <p><b>Symptoms:</b> proxy shows zero traffic; requests go straight to Anthropic.</p>
+          <p><b>Fix:</b> remove the conflicting env vars. Run <code>echo $env:ANTHROPIC_BASE_URL</code> (PowerShell) or <code>env | grep ANTHROPIC</code> (bash) to check. If they're in <code>~/.bashrc</code> / <code>~/.zshrc</code>, comment them out. The installer warns about this but can't see all places.</p>
+        </div>
+      </div>
+
+      <div class="panelcard">
+        <h2>📉 Provider marked "down" but works fine manually</h2>
+        <div class="hint">proxy won't route to a provider you know is up</div>
+        <div class="helpbody">
+          <p><b>Why it happens:</b> the proxy received a 500, 429, or network error and set a cooldown (1 min to 60 min). The provider stays "down" until the cooldown expires — even if the provider recovered instantly.</p>
+          <p><b>Fix:</b> reset the provider manually in the Providers view (click the provider → reset), or just wait for the cooldown to expire (shown in the provider row). For 429 errors the proxy respects <code>retry-after</code> headers and won't retry until that window passes.</p>
+        </div>
+      </div>
+
+      <div class="panelcard">
+        <h2>🎛 Model names don't match between providers</h2>
+        <div class="hint">Provider A uses "glm-5.3", Provider B uses "GLM-5.2-Free" for the same model</div>
+        <div class="helpbody">
+          <p><b>Why it happens:</b> different providers use different naming for the same model. switchXprovider maps <code>switchx:opus</code> / <code>switchx:sonnet</code> / <code>switchx:haiku</code> to whatever model name you set per-provider, so every provider can use completely different names.</p>
+          <p><b>For pricing:</b> use the Pricing view — it auto-detects same-base model variants and lets you alias them to share one price. Stats stay separate per name, but pricing is unified.</p>
+        </div>
+      </div>
+
+      <div class="panelcard">
+        <h2>💰 Cost shows $0 for models I use</h2>
+        <div class="hint">Estimated cost widget shows near-zero even though I use Claude Opus / GLM / etc.</div>
+        <div class="helpbody">
+          <p><b>Why it happens:</b> cost is calculated from the built-in price table at request time. Models not in the table silently get $0. After setting up the proxy, history recorded before prices were set stays at $0.</p>
+          <p><b>Fix:</b> go to Pricing → check for unpriced models (amber badges) → set prices. Then click "Recalculate costs" in the Pricing view header to reprice all history. From v0.2.0+ the built-in table includes real market rates for all common models.</p>
+        </div>
+      </div>
+
+      <div class="panelcard">
+        <h2>📍 Dashboard unreachable at 127.0.0.1:8787</h2>
+        <div class="hint">browser shows "this site can't be reached" or connection refused</div>
+        <div class="helpbody">
+          <p><b>Possible causes:</b></p>
+          <p>• proxy not started — run <code>node server/ensure.mjs</code> or let the SessionStart hook do it<br>
+          • proxy started on a different port — check <code>~/.claude/switchx/config.json</code> for <code>"port"</code><br>
+          • another process on port 8787 — stop it first</p>
+        </div>
       </div>
     </section>
 
