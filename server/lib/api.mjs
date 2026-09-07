@@ -7,6 +7,7 @@ import os from 'node:os';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { newId, statsFor, logEvent, persistSoon, emptyUsage, DIR, PROCESS_START } from './config.mjs';
+import { PRICING, effectivePrice, aliasSuggestions, recalcCosts } from './pricing.mjs';
 import { enabledSorted, isDown, COOLDOWNS } from './proxy.mjs';
 import { probe, deepCheck } from './health.mjs';
 import { enableRouting, disableRouting } from './routing.mjs';
@@ -322,9 +323,15 @@ export async function handleApi(req, res, pathname, cfg) {
           costUsd: u.costUsd || 0,
         }))
         .sort((a, b) => (b.inputTokens + b.outputTokens) - (a.inputTokens + a.outputTokens));
+      // models with no price anywhere (no model-level, no per-provider override)
+      const unpricedModels = Object.keys(usage.byModel || {}).filter((m) => {
+        if (effectivePrice(m, undefined, cfg.pricing).price) return false;
+        return !Object.keys(cfg.pricing?.providerOverrides || {}).some((k) => k.endsWith(' ' + m));
+      });
       return send(res, 200, {
         totals: { ...emptyUsage(), ...(usage.totals || {}) },
         periods,
+        unpricedModels,
         counters: cfg.counters || { failovers: 0 },
         byProvider,
         byModel,
@@ -339,6 +346,110 @@ export async function handleApi(req, res, pathname, cfg) {
       logEvent(cfg, 'Usage statistics reset');
       persistSoon(cfg, 0);
       return send(res, 200, { ok: true });
+    }
+
+    // ---- pricing ----
+    if (method === 'GET' && resource === 'pricing') {
+      cfg.pricing ??= {};
+      const providerOverrides = cfg.pricing.providerOverrides || {};
+      const aliases = cfg.pricing.aliases || {};
+      // every model we could ever price: seen in usage, mapped in a provider, or built-in
+      const seen = new Map(); // model → byModel usage bucket (or null)
+      for (const [model, u] of Object.entries(cfg.usage?.byModel || {})) seen.set(model, u);
+      for (const p of cfg.providers) {
+        for (const m of Object.values(p.models || {})) if (m && !seen.has(m)) seen.set(m, null);
+      }
+      for (const m of Object.keys(PRICING)) if (!seen.has(m)) seen.set(m, null);
+      const models = [...seen.entries()].map(([model, u]) => {
+        const { price, source } = effectivePrice(model, undefined, cfg.pricing);
+        const provs = Object.entries(providerOverrides)
+          .filter(([k]) => k.endsWith(' ' + model))
+          .map(([k, p]) => {
+            const providerId = k.slice(0, -(model.length + 1));
+            return { providerId, name: cfg.providers.find((x) => x.id === providerId)?.name || providerId, price: p };
+          });
+        return {
+          model,
+          tokens: u ? (u.inputTokens || 0) + (u.outputTokens || 0) : 0,
+          requests: u?.requests || 0,
+          costUsd: u?.costUsd || 0,
+          price,
+          source: price ? source : provs.length ? 'provider' : 'none',
+          unpriced: !price && !provs.length,
+          providers: provs,
+        };
+      }).sort((a, b) => b.tokens - a.tokens);
+      const suggestions = aliasSuggestions([...seen.keys()].filter((m) => !aliases[m]));
+      return send(res, 200, { models, aliases, suggestions });
+    }
+
+    if (method === 'PUT' && resource === 'pricing') {
+      const body = await readJson(req);
+      const model = String(body.model || '').trim();
+      const price = body.price;
+      const NUMS = ['input', 'output', 'cacheRead', 'cacheCreate'];
+      if (!model || model.length > 200) return send(res, 400, { error: 'model is required' });
+      if (!price || !NUMS.every((k) => Number.isFinite(Number(price[k])) && Number(price[k]) >= 0)) {
+        return send(res, 400, { error: 'price needs non-negative numbers for input, output, cacheRead, cacheCreate (per 1M tokens)' });
+      }
+      const p = Object.fromEntries(NUMS.map((k) => [k, Number(price[k])]));
+      if (body.providerId && !cfg.providers.some((x) => x.id === body.providerId)) {
+        return send(res, 400, { error: 'unknown provider' });
+      }
+      cfg.pricing ??= {};
+      const before = effectivePrice(model, body.providerId, cfg.pricing);
+      if (body.providerId) {
+        cfg.pricing.providerOverrides ??= {};
+        cfg.pricing.providerOverrides[`${body.providerId} ${model}`] = p;
+      } else {
+        cfg.pricing.overrides ??= {};
+        cfg.pricing.overrides[model] = p;
+      }
+      logEvent(cfg, `Price set for ${model}${body.providerId ? ' (per-provider)' : ''}`);
+      persistSoon(cfg, 0);
+      return send(res, 200, { ok: true, changed: !before.price || JSON.stringify(before.price) !== JSON.stringify(p) });
+    }
+
+    if (method === 'POST' && resource === 'pricing' && id === 'remove') {
+      const body = await readJson(req);
+      const model = String(body.model || '').trim();
+      if (!model) return send(res, 400, { error: 'model is required' });
+      cfg.pricing ??= {};
+      if (body.providerId) {
+        delete cfg.pricing.providerOverrides?.[`${body.providerId} ${model}`];
+      } else {
+        delete cfg.pricing.overrides?.[model];
+      }
+      logEvent(cfg, `Price removed for ${model}${body.providerId ? ' (per-provider)' : ''}`);
+      persistSoon(cfg, 0);
+      return send(res, 200, { ok: true });
+    }
+
+    if (method === 'POST' && resource === 'pricing' && id === 'alias') {
+      const body = await readJson(req);
+      const alias = String(body.alias || '').trim();
+      if (!alias) return send(res, 400, { error: 'alias is required' });
+      cfg.pricing ??= {};
+      cfg.pricing.aliases ??= {};
+      if (!body.canonical) {
+        delete cfg.pricing.aliases[alias];
+        logEvent(cfg, `Model alias removed: ${alias}`);
+      } else {
+        const canonical = String(body.canonical).trim();
+        if (canonical === alias) return send(res, 400, { error: 'alias and canonical must differ' });
+        if (cfg.pricing.aliases[canonical]) return send(res, 400, { error: 'canonical is itself an alias' });
+        cfg.pricing.aliases[alias] = canonical;
+        logEvent(cfg, `Model alias set: ${alias} → ${canonical}`);
+      }
+      persistSoon(cfg, 0);
+      return send(res, 200, { ok: true });
+    }
+
+    if (method === 'POST' && resource === 'pricing' && id === 'recalc') {
+      const result = recalcCosts(cfg);
+      logEvent(cfg, 'Usage costs recalculated with current prices');
+      persistSoon(cfg, 0);
+      return send(res, 200, { ok: true, ...result });
     }
 
     // ---- update lifecycle ----

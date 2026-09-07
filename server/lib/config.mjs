@@ -136,7 +136,7 @@ export function recordUsage(cfg, providerId, providerName, u, model) {
   if (!u || (!u.input && !u.output && !u.cacheRead && !u.cacheCreation)) return;
   if (!cfg.usage) cfg.usage = { totals: emptyUsage(), byProvider: {}, byModel: {}, daily: {} };
   const day = new Date().toISOString().slice(0, 10);
-  const cost = estimateCost(u, model);
+  const cost = estimateCost(u, model, providerId, cfg.pricing);
   cfg.usage.byProvider[providerId] ??= { name: providerName, ...emptyUsage() };
   cfg.usage.daily[day] ??= emptyUsage();
   bump(cfg.usage.totals, u, cost);
@@ -145,6 +145,13 @@ export function recordUsage(cfg, providerId, providerName, u, model) {
   if (model) {
     cfg.usage.byModel[model] ??= { ...emptyUsage() };
     bump(cfg.usage.byModel[model], u, cost);
+    // per-provider-per-model-per-day tokens — enables exact cost recalculation
+    // when prices change (see recalcCosts in pricing.mjs)
+    cfg.usage.pmDaily ??= {};
+    cfg.usage.pmDaily[providerId] ??= {};
+    cfg.usage.pmDaily[providerId][model] ??= {};
+    cfg.usage.pmDaily[providerId][model][day] ??= emptyUsage();
+    bump(cfg.usage.pmDaily[providerId][model][day], u, cost);
   }
   persistSoon(cfg);
 }

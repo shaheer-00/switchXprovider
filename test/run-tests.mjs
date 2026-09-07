@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { normalizeModelName, aliasSuggestions, recalcCosts } from '../server/lib/pricing.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -328,7 +329,127 @@ async function main() {
   });
   assert(resp.status === 400, 'import rejects invalid baseUrl');
 
-  // --- 11. version reporting + update marker + restart flow ---
+  // --- 11. pricing: overrides, aliases, per-provider prices, recalc ---
+  console.log('\n— pricing —');
+  assert(normalizeModelName('GLM-5.2-Free') === 'glm-5.2', 'normalize strips -free suffix');
+  assert(normalizeModelName('Claude Opus 5 Latest') === 'claude-opus-5', 'normalize handles spaces + -latest');
+  let sugg = aliasSuggestions(['glm-5.2', 'GLM-5.2-free', 'kimi-k2']);
+  assert(sugg.length === 1 && sugg[0].includes('glm-5.2') && sugg[0].includes('GLM-5.2-free'), 'alias suggestions cluster same-base models');
+  assert(aliasSuggestions(['glm-5.2', 'kimi-k2']).length === 0, 'different models not clustered');
+
+  // recalc on legacy-only data (no pmDaily): byModel reprices exactly from
+  // token totals; daily/byProvider scale by the legacy price factor
+  const fakeCfg = {
+    pricing: { overrides: { 'legacy-model': { input: 10, output: 20, cacheRead: 0, cacheCreate: 0 } } },
+    usage: {
+      totals: { costUsd: 5 },
+      byModel: { 'legacy-model': { inputTokens: 1_000_000, outputTokens: 1_000_000, cacheReadTokens: 0, cacheCreationTokens: 0, requests: 1, costUsd: 5 } },
+      byProvider: { p1: { name: 'P1', inputTokens: 1_000_000, outputTokens: 1_000_000, cacheReadTokens: 0, cacheCreationTokens: 0, requests: 1, costUsd: 5 } },
+      daily: { '2026-09-07': { inputTokens: 1_000_000, outputTokens: 1_000_000, cacheReadTokens: 0, cacheCreationTokens: 0, requests: 1, costUsd: 5 } },
+      pmDaily: {},
+    },
+  };
+  recalcCosts(fakeCfg);
+  assert(Math.abs(fakeCfg.usage.byModel['legacy-model'].costUsd - 30) < 1e-9, 'recalc reprices legacy byModel from token totals', `${fakeCfg.usage.byModel['legacy-model'].costUsd}`);
+  assert(Math.abs(fakeCfg.usage.totals.costUsd - 30) < 1e-9, 'recalc totals reflect legacy reprice');
+  assert(Math.abs(fakeCfg.usage.daily['2026-09-07'].costUsd - 30) < 1e-9, 'recalc scales legacy daily by price factor');
+  assert(Math.abs(fakeCfg.usage.byProvider.p1.costUsd - 30) < 1e-9, 'recalc scales legacy byProvider by price factor');
+
+  // unpriced model visible before any override
+  let pr = await (await fetch(`${proxyUrl}/api/pricing`)).json();
+  const impEntry = pr.models.find((m) => m.model === 'imp-sonnet');
+  assert(impEntry && impEntry.source === 'none' && impEntry.price === null, 'unpriced model listed with null price', JSON.stringify(impEntry));
+
+  // universal price → next request priced with it
+  resp = await fetch(`${proxyUrl}/api/pricing`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ model: 'imp-sonnet', price: { input: 100, output: 200, cacheRead: 10, cacheCreate: 100 } }),
+  });
+  assert(resp.ok, 'set universal price');
+  let usageBefore = await (await fetch(`${proxyUrl}/api/usage`)).json();
+  const impCost0 = usageBefore.byModel.find((m) => m.model === 'imp-sonnet')?.costUsd || 0;
+  await fetch(`${proxyUrl}/v1/messages`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-api-key': 'switchx-local' },
+    body: JSON.stringify({ model: 'switchx:sonnet', max_tokens: 32, messages: [{ role: 'user', content: 'hi' }] }),
+  });
+  await sleep(400);
+  let usageNow = await (await fetch(`${proxyUrl}/api/usage`)).json();
+  let impU = usageNow.byModel.find((m) => m.model === 'imp-sonnet');
+  // mock json usage: in 10 / out 5 → 10*100/1M + 5*200/1M
+  assert(Math.abs(impU.costUsd - impCost0 - (10 * 100 + 5 * 200) / 1e6) < 1e-9, 'cost recorded at universal price', `${impU.costUsd} vs ${impCost0}`);
+
+  // per-provider override (2×) wins over universal
+  const importedId = st2.providers[0].id;
+  resp = await fetch(`${proxyUrl}/api/pricing`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ providerId: importedId, model: 'imp-sonnet', price: { input: 200, output: 400, cacheRead: 20, cacheCreate: 200 } }),
+  });
+  assert(resp.ok, 'set per-provider price');
+  await fetch(`${proxyUrl}/v1/messages`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-api-key': 'switchx-local' },
+    body: JSON.stringify({ model: 'switchx:sonnet', max_tokens: 32, messages: [{ role: 'user', content: 'hi' }] }),
+  });
+  await sleep(400);
+  usageNow = await (await fetch(`${proxyUrl}/api/usage`)).json();
+  const impU2 = usageNow.byModel.find((m) => m.model === 'imp-sonnet');
+  assert(Math.abs(impU2.costUsd - impU.costUsd - (10 * 200 + 5 * 400) / 1e6) < 1e-9, 'per-provider price wins over universal');
+
+  // alias set + listed
+  resp = await fetch(`${proxyUrl}/api/pricing/alias`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ alias: 'imp-sonnet-free', canonical: 'imp-sonnet' }),
+  });
+  assert(resp.ok, 'alias set');
+  pr = await (await fetch(`${proxyUrl}/api/pricing`)).json();
+  assert(pr.aliases['imp-sonnet-free'] === 'imp-sonnet', 'alias exposed on GET pricing');
+  const prImp = pr.models.find((m) => m.model === 'imp-sonnet');
+  assert(prImp.source === 'user' && prImp.providers?.length === 1 && prImp.providers[0].price.input === 200, 'model row shows universal + per-provider prices', JSON.stringify(prImp));
+
+  // recalc: bump universal price, recalc → byModel cost recomputed exactly from pmDaily
+  await fetch(`${proxyUrl}/api/pricing`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ model: 'imp-sonnet', price: { input: 1000, output: 2000, cacheRead: 100, cacheCreate: 1000 } }),
+  });
+  resp = await fetch(`${proxyUrl}/api/pricing/recalc`, { method: 'POST' });
+  assert(resp.ok, 'recalc runs');
+  usageNow = await (await fetch(`${proxyUrl}/api/usage`)).json();
+  const impU3 = usageNow.byModel.find((m) => m.model === 'imp-sonnet');
+  // 3 requests post-reset (1 import + 2 above), all via the imported provider → all at the per-provider price
+  assert(Math.abs(impU3.costUsd - (30 * 200 + 15 * 400) / 1e6) < 1e-9, 'recalc recomputes byModel cost from pmDaily with per-provider price', `${impU3.costUsd}`);
+  assert(Math.abs(usageNow.totals.costUsd - impU3.costUsd) < 1e-9, 'recalc totals match byModel sum');
+  assert(Array.isArray(usageNow.unpricedModels) && !usageNow.unpricedModels.includes('imp-sonnet'), 'priced model not in unpricedModels');
+
+  // remove overrides → back to unpriced
+  resp = await fetch(`${proxyUrl}/api/pricing/remove`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ model: 'imp-sonnet' }),
+  });
+  assert(resp.ok, 'remove universal override');
+  resp = await fetch(`${proxyUrl}/api/pricing/remove`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ providerId: importedId, model: 'imp-sonnet' }),
+  });
+  assert(resp.ok, 'remove per-provider override');
+  pr = await (await fetch(`${proxyUrl}/api/pricing`)).json();
+  assert(pr.models.find((m) => m.model === 'imp-sonnet')?.source === 'none', 'model back to unpriced after removals');
+  resp = await fetch(`${proxyUrl}/api/pricing/alias`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ alias: 'imp-sonnet-free' }),
+  });
+  assert(resp.ok, 'alias removed');
+  pr = await (await fetch(`${proxyUrl}/api/pricing`)).json();
+  assert(!pr.aliases['imp-sonnet-free'], 'alias gone');
+
+  // --- 12. version reporting + update marker + restart flow ---
   console.log('\n— version / update marker / restart —');
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
   let st3 = await (await fetch(`${proxyUrl}/api/status`)).json();
@@ -391,7 +512,7 @@ async function main() {
   st3 = await (await fetch(`${proxyUrl}/api/status`)).json();
   assert(!st3.update && !fs.existsSync(markerPath), 'replacement proxy handles marker lifecycle');
 
-  // --- 12. shutdown endpoint (must stay LAST — kills the proxy) ---
+  // --- 13. shutdown endpoint (must stay LAST — kills the proxy) ---
   console.log('\n— shutdown —');
   resp = await fetch(`${proxyUrl}/api/shutdown`, { method: 'POST' });
   assert(resp.ok, 'shutdown endpoint responds ok');

@@ -411,6 +411,62 @@
   .updactions { display: flex; gap: 10px; }
   .updactions .shbtn { flex: 1; }
 
+  /* ---- pricing view ---- */
+  .peleft { text-align: left; width: min(560px, 100%); }
+  .pegrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pegrid label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .pegrid input {
+    display: block; width: 100%; margin-top: 4px; padding: 8px 10px; font-size: 14px;
+    font-family: var(--mono); color: var(--text); background: var(--panel);
+    border: 1px solid var(--border); border-radius: 8px;
+  }
+  .pegrid input:focus { outline: none; border-color: var(--acc1); box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+  .pescope {
+    width: 100%; padding: 8px 10px; font-size: 13px; color: var(--text);
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+  }
+  .pprow {
+    display: flex; align-items: center; gap: 10px; padding: 8px 10px; margin-top: 8px;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--panel);
+  }
+  .pprow .nm { font-size: 13px; font-weight: 700; }
+  .pprow .pv { font-family: var(--mono); font-size: 12px; color: var(--muted); flex: 1; }
+  .pprow button {
+    background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 7px;
+    padding: 3px 9px; font-size: 11px; cursor: pointer;
+  }
+  .pprow button:hover { border-color: var(--amber); color: var(--amber); }
+  .srcpill {
+    display: inline-block; font-size: 10.5px; font-weight: 700; padding: 2px 9px;
+    border-radius: 999px; border: 1px solid var(--border); color: var(--muted);
+  }
+  .srcpill.user { color: var(--acc2); border-color: rgba(34,211,238,0.4); background: rgba(34,211,238,0.07); }
+  .srcpill.builtin { color: var(--dim); }
+  .srcpill.provider { color: #c084fc; border-color: rgba(192,132,252,0.4); background: rgba(192,132,252,0.07); }
+  .srcpill.none { color: var(--amber); border-color: rgba(251,191,36,0.45); background: rgba(251,191,36,0.08); }
+  .unpricedbadge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; cursor: pointer;
+    color: var(--amber); border: 1px solid rgba(251,191,36,0.45); background: rgba(251,191,36,0.08);
+  }
+  .unpricedbadge:hover { border-color: var(--amber); }
+  .aliasgrp {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 10px 12px; margin-top: 8px; border: 1px solid var(--border);
+    border-radius: 10px; background: var(--panel);
+  }
+  .aliasgrp .models { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+  .aliasgrp .m {
+    font-family: var(--mono); font-size: 12px; padding: 3px 9px;
+    border-radius: 7px; background: rgba(99,102,241,0.1); color: var(--text);
+  }
+  .aliasgrp button {
+    background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 7px;
+    padding: 4px 10px; font-size: 11.5px; font-weight: 600; cursor: pointer;
+  }
+  .aliasgrp button:hover { border-color: var(--acc1); color: var(--text); }
+  .aliasgrp button.warn:hover { border-color: var(--amber); color: var(--amber); }
+
   /* ---- stat cards ---- */
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 15px; margin-bottom: 22px; }
   .stat {
@@ -728,6 +784,11 @@
         <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
         <span class="lbl">Usage</span>
       </button>
+      <button data-view="pricing">
+        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v20M17 6.5c0-1.9-2.2-3-5-3s-5 1.1-5 3 1.6 2.6 5 3.3 5 1.6 5 3.7-2.2 3-5 3-5-1.1-5-3"/></svg></span>
+        <span class="lbl">Pricing</span>
+        <span class="navbadge" id="navPricing"></span>
+      </button>
       <button data-view="settings">
         <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z"/></svg></span>
         <span class="lbl">Settings</span>
@@ -1001,6 +1062,7 @@
       <div class="viewhead">
         <h1>Usage</h1>
         <span class="sub">tokens per provider and per model</span>
+        <button class="unpricedbadge" id="usageUnpricedBadge" onclick="gotoView('pricing')" hidden></button>
         <span class="spacer"></span>
         <button class="danger" onclick="resetUsage()">reset statistics</button>
       </div>
@@ -1015,6 +1077,33 @@
         <h2>Tokens by model</h2>
         <div class="hint">which model IDs your traffic actually lands on</div>
         <table class="tbl" id="modelTbl"></table>
+      </div>
+    </section>
+
+    <!-- ============ PRICING ============ -->
+    <section class="view" id="view-pricing">
+      <div class="viewhead">
+        <h1>Pricing</h1>
+        <span class="sub">per-model rates per 1M tokens · drives the estimated cost everywhere</span>
+      </div>
+
+      <div class="panelcard" id="unpricedCard" hidden>
+        <h2>⚠ Unpriced models</h2>
+        <div class="hint">these count as $0 in every cost total until you set a price</div>
+        <div id="unpricedList"></div>
+      </div>
+
+      <div class="panelcard" id="aliasCard" hidden>
+        <h2>Aliases &amp; same-model detection</h2>
+        <div class="hint">different names for the same model share one price — stats stay separate</div>
+        <div id="aliasSuggest"></div>
+        <div id="aliasList"></div>
+      </div>
+
+      <div class="panelcard">
+        <h2>All models</h2>
+        <div class="hint">every model seen in usage, mapped on a provider, or known built-in</div>
+        <table class="tbl" id="priceTbl"></table>
       </div>
     </section>
 
@@ -1182,6 +1271,51 @@
     <div class="updactions">
       <button class="shbtn" onclick="dismissUpdate()">Later</button>
       <button class="shbtn primary" id="updGo" onclick="runUpdate()">Update &amp; restart</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PRICE EDITOR ============ -->
+<div class="upd" id="priceEdit" hidden>
+  <div class="updcard peleft">
+    <div class="sharehead">
+      <h2 id="peTitle">Set price</h2>
+      <button class="shbtn x" style="flex:none;width:34px;height:34px;padding:0" onclick="closePriceEdit()" title="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="hint" id="peModel" style="margin-bottom:12px"></div>
+    <div class="pegrid">
+      <label>Input $/1M<input type="number" id="peIn" min="0" step="any" placeholder="0"></label>
+      <label>Output $/1M<input type="number" id="peOut" min="0" step="any" placeholder="0"></label>
+      <label>Cache read $/1M<input type="number" id="peCr" min="0" step="any" placeholder="0"></label>
+      <label>Cache write $/1M<input type="number" id="peCc" min="0" step="any" placeholder="0"></label>
+    </div>
+    <div class="shlabel" style="margin-top:16px">Apply to</div>
+    <select id="peScope" class="pescope"></select>
+    <div id="peProviders"></div>
+    <div class="updactions">
+      <button class="shbtn" onclick="closePriceEdit()">Cancel</button>
+      <button class="shbtn primary" id="peSave" onclick="savePrice()">Save price</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ RECALC PROMPT ============ -->
+<div class="upd" id="recalcAsk" hidden>
+  <div class="updcard">
+    <div class="updhead">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg></span>
+      <h2>Price updated</h2>
+    </div>
+    <p>
+      Apply the new price to <b>already-recorded usage</b> too, or only to requests
+      from now on?<br>
+      <span style="font-size:12px;color:var(--dim)">recalculating rewrites stored costs — exact for tracked history, proportionally estimated for older</span>
+    </p>
+    <div class="updactions">
+      <button class="shbtn" onclick="closeRecalcAsk()">From now on</button>
+      <button class="shbtn primary" onclick="doRecalc()">Recalculate past usage</button>
     </div>
   </div>
 </div>
@@ -1619,9 +1753,10 @@ function renderUsage() {
     ? `<tr><th>model</th><th>requests</th><th>input</th><th>output</th><th>total</th><th>est. cost</th></tr>` +
       byModel.map((m) => {
         const cost = m.costUsd || 0;
+        const unpriced = (usage.unpricedModels || []).includes(m.model);
         return `
         <tr>
-          <td>${escapeHtml(m.model)}</td>
+          <td>${escapeHtml(m.model)}${unpriced ? ' <span class="srcpill none" title="no price set — costs $0" style="cursor:pointer" onclick="gotoView(\'pricing\')">unpriced</span>' : ''}</td>
           <td>${m.requests}</td>
           <td>${fmtTok(m.inputTokens)}</td>
           <td>${fmtTok(m.outputTokens)}</td>
@@ -2522,6 +2657,182 @@ window.shareNative = async () => {
   }
 };
 
+/* ---- pricing ---- */
+let pricingState = null;
+let pricingEditModel = null;
+const aliasDismissed = new Set();
+
+function renderPricing() {
+  if (!pricingState) return;
+  const { models, aliases, suggestions } = pricingState;
+  const unpriced = models.filter((m) => m.unpriced);
+  $('navPricing').textContent = unpriced.length ? String(unpriced.length) : '';
+  $('navPricing').style.display = unpriced.length ? '' : 'none';
+
+  // usage-view badge
+  const ub = $('usageUnpricedBadge');
+  if (unpriced.length) {
+    ub.hidden = false;
+    ub.textContent = `⚠ ${unpriced.length} model${unpriced.length > 1 ? 's' : ''} unpriced — costs $0 · set price`;
+  } else ub.hidden = true;
+
+  // unpriced card
+  $('unpricedCard').hidden = !unpriced.length;
+  $('unpricedList').innerHTML = unpriced.map((m) => `
+    <div class="aliasgrp">
+      <div class="models"><span class="m">${escapeHtml(m.model)}</span></div>
+      <span class="tok" style="font-size:12px;color:var(--dim)">${fmtTok(m.tokens)} tokens</span>
+      <button onclick="openPriceEdit('${escapeHtml(m.model)}')">set price</button>
+    </div>`).join('');
+
+  // alias suggestions (not yet aliased, not dismissed this session)
+  const sugg = (suggestions || []).filter((g) => g.some((m) => !aliases[m]) && !g.every((m) => aliasDismissed.has(m)));
+  const aliasEntries = Object.entries(aliases || {});
+  $('aliasCard').hidden = !sugg.length && !aliasEntries.length;
+  $('aliasSuggest').innerHTML = sugg.map((g) => `
+    <div class="aliasgrp">
+      <div class="models">${g.map((m) => `<span class="m">${escapeHtml(m)}</span>`).join('')}</div>
+      <button onclick="mergeAlias(${JSON.stringify(g)})">same model — share price</button>
+      <button class="warn" onclick="dismissSuggestion(${JSON.stringify(g)})">different</button>
+    </div>`).join('');
+  $('aliasList').innerHTML = aliasEntries.length
+    ? '<div class="shlabel" style="margin-top:14px">Active aliases</div>' + aliasEntries.map(([alias, canonical]) => `
+      <div class="aliasgrp">
+        <div class="models"><span class="m">${escapeHtml(alias)}</span><span style="color:var(--dim)">→</span><span class="m" style="background:rgba(34,211,238,0.1)">${escapeHtml(canonical)}</span></div>
+        <button class="warn" onclick="unlinkAlias('${escapeHtml(alias)}')">unlink</button>
+      </div>`).join('')
+    : '';
+
+  // full table
+  $('priceTbl').innerHTML = `<tr><th>model</th><th>tokens</th><th>in $/1M</th><th>out $/1M</th><th>cache r/w</th><th>price source</th><th></th></tr>` +
+    models.map((m) => {
+      const p = m.price;
+      return `
+      <tr>
+        <td>${escapeHtml(m.model)}</td>
+        <td>${m.tokens ? fmtTok(m.tokens) : '—'}</td>
+        <td>${p ? '$' + p.input : '—'}</td>
+        <td>${p ? '$' + p.output : '—'}</td>
+        <td>${p ? '$' + p.cacheRead + ' / $' + p.cacheCreate : '—'}</td>
+        <td><span class="srcpill ${m.source}">${m.source === 'none' ? 'unpriced' : m.source}${m.providers?.length ? ' · ' + m.providers.length + ' provider' + (m.providers.length > 1 ? 's' : '') : ''}</span></td>
+        <td><button style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:3px 10px;font-size:11px;cursor:pointer" onclick="openPriceEdit('${escapeHtml(m.model)}')">edit</button></td>
+      </tr>`;
+    }).join('');
+}
+
+window.openPriceEdit = (model) => {
+  pricingEditModel = model;
+  const m = pricingState?.models.find((x) => x.model === model);
+  $('peTitle').textContent = (m?.price ? 'Edit' : 'Set') + ' price';
+  $('peModel').textContent = model + (m?.tokens ? ` · ${fmtTok(m.tokens)} tokens recorded` : '');
+  const p = m?.price || { input: 0, output: 0, cacheRead: 0, cacheCreate: 0 };
+  $('peIn').value = p.input; $('peOut').value = p.output;
+  $('peCr').value = p.cacheRead; $('peCc').value = p.cacheCreate;
+  // universal by default — most providers charge similarly; per-provider rows for exceptions
+  const providers = statusState.providers || [];
+  $('peScope').innerHTML = `<option value="">Universal — all providers (recommended)</option>` +
+    providers.map((pr) => `<option value="${pr.id}">Only: ${escapeHtml(pr.name)}</option>`).join('');
+  $('peScope').value = '';
+  $('peProviders').innerHTML = (m?.providers?.length)
+    ? '<div class="shlabel" style="margin-top:14px">Per-provider prices</div>' + m.providers.map((pp) => `
+      <div class="pprow">
+        <span class="nm">${escapeHtml(pp.name)}</span>
+        <span class="pv">$${pp.price.input} in / $${pp.price.output} out per 1M</span>
+        <button onclick="removePrice('${escapeHtml(model)}', '${pp.providerId}')">remove</button>
+      </div>`).join('')
+    : '';
+  $('priceEdit').hidden = false;
+};
+window.closePriceEdit = () => { $('priceEdit').hidden = true; };
+$('priceEdit').addEventListener('click', (e) => { if (e.target === $('priceEdit')) closePriceEdit(); });
+
+window.savePrice = async () => {
+  const btn = $('peSave');
+  const body = {
+    model: pricingEditModel,
+    price: {
+      input: Number($('peIn').value) || 0,
+      output: Number($('peOut').value) || 0,
+      cacheRead: Number($('peCr').value) || 0,
+      cacheCreate: Number($('peCc').value) || 0,
+    },
+  };
+  if ($('peScope').value) body.providerId = $('peScope').value;
+  btn.disabled = true;
+  try {
+    const r = await api('/api/pricing', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    closePriceEdit();
+    await refresh();
+    if (r.changed) $('recalcAsk').hidden = false;
+    else toast('price saved');
+  } catch (e) {
+    toast(e.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+window.removePrice = async (model, providerId) => {
+  try {
+    await api('/api/pricing/remove', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(providerId ? { model, providerId } : { model }),
+    });
+    toast('price removed');
+    closePriceEdit();
+    await refresh();
+  } catch (e) {
+    toast(e.message, true);
+  }
+};
+
+window.mergeAlias = async (group) => {
+  const canonical = group[0];
+  for (const variant of group.slice(1)) {
+    if (variant === canonical) continue;
+    try {
+      await api('/api/pricing/alias', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ alias: variant, canonical }),
+      });
+    } catch (e) {
+      toast(e.message, true);
+    }
+  }
+  toast('models share one price now');
+  await refresh();
+};
+window.dismissSuggestion = (group) => {
+  group.forEach((m) => aliasDismissed.add(m));
+  renderPricing();
+};
+window.unlinkAlias = async (alias) => {
+  try {
+    await api('/api/pricing/alias', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ alias }),
+    });
+    await refresh();
+  } catch (e) {
+    toast(e.message, true);
+  }
+};
+
+window.closeRecalcAsk = () => { $('recalcAsk').hidden = true; };
+window.doRecalc = async () => {
+  $('recalcAsk').hidden = true;
+  try {
+    await api('/api/pricing/recalc', { method: 'POST' });
+    toast('usage costs recalculated');
+    await refresh();
+  } catch (e) {
+    toast(e.message, true);
+  }
+};
+
 /* ---- update-available popup ---- */
 let updDismissedVersion = null;
 let updBusy = false;
@@ -2600,10 +2911,11 @@ function renderHero() {
 
 async function refresh() {
   try {
-    const [s, u, c] = await Promise.all([api('/api/status'), api('/api/usage'), api('/api/catalog')]);
+    const [s, u, c, pr] = await Promise.all([api('/api/status'), api('/api/usage'), api('/api/catalog'), api('/api/pricing')]);
     statusState = s;
     usage = u;
     catalog = c;
+    pricingState = pr;
     port = s.port;
     $('ovConn').textContent = `proxy running on http://127.0.0.1:${s.port}`;
     $('sideStatus').textContent = 'running';
@@ -2612,6 +2924,7 @@ async function refresh() {
     renderProviders();
     renderEvents();
     renderUsage();
+    renderPricing();
     renderCatalog();
     renderSettings();
     renderHero();
