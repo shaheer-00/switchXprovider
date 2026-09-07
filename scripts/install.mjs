@@ -73,11 +73,12 @@ function detectExternalEnvConflicts() {
     const userEnv = read('HKCU\\Environment');
     const machineEnv = read('HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment');
     for (const k of keys) {
+      // Windows env names are case-insensitive — match any casing.
       const re = new RegExp(`^\\s+${k}\\s+REG_[A-Z_]+\\s+(.+)$`, 'im');
-      const inUser = userEnv.match(re);
-      const inMachine = machineEnv.match(re);
-      const m = inUser || inMachine;
-      if (m) conflicts.push(`${k} = ${m[1].trim()}  (Windows ${inUser ? 'user' : 'machine'} scope)`);
+      const userHit = userEnv.match(re);
+      const machineHit = machineEnv.match(re);
+      const m = userHit || machineHit;
+      if (m) conflicts.push(`${k} = ${m[1].trim()}  (Windows ${userHit ? 'user' : 'machine'} scope)`);
     }
   } else {
     const profiles = ['.bashrc', '.zshrc', '.zshenv', '.zprofile', '.profile', '.bash_profile'];
@@ -173,8 +174,15 @@ To skip these safety checks anyway:  node scripts/install.mjs --force
 
   fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
   if (fs.existsSync(settingsPath)) {
-    fs.copyFileSync(settingsPath, backupPath);
-    console.log(`\nBackup written: ${backupPath}`);
+    // Keep the FIRST backup — it holds the user's original direct-Anthropic
+    // settings. Overwriting it with a proxy-patched file would break the
+    // documented "restore the backup to get un-stuck" recovery path.
+    if (fs.existsSync(backupPath)) {
+      console.log(`\nBackup already exists (kept): ${backupPath}`);
+    } else {
+      fs.copyFileSync(settingsPath, backupPath);
+      console.log(`\nBackup written: ${backupPath}`);
+    }
   }
 
   settings.env = { ...(settings.env || {}) };

@@ -41,6 +41,23 @@ function writeSettings(settings) {
   fs.writeFileSync(settingsPath(), JSON.stringify(settings, null, 2) + '\n');
 }
 
+// A settings.json is "already switchX-routed" if it points at a local proxy
+// AND carries a switchX signature (our token or sentinel models) — not just
+// any localhost URL, which could be the user's own gateway. If the port
+// changed since routing was enabled, comparing against the current port alone
+// would treat a still-proxied settings.json as "original" and back the proxy
+// config over the pristine backup.
+function isSwitchxRouted(env) {
+  if (!env) return false;
+  const local = typeof env.ANTHROPIC_BASE_URL === 'string'
+    && /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?\/?$/.test(env.ANTHROPIC_BASE_URL);
+  const signed = env.ANTHROPIC_AUTH_TOKEN === 'switchx-local'
+    || Object.values(env).includes('switchx:opus')
+    || Object.values(env).includes('switchx:sonnet')
+    || Object.values(env).includes('switchx:haiku');
+  return local && signed;
+}
+
 export function routingState(port) {
   const settings = readSettings();
   const env = settings.env || {};
@@ -54,9 +71,9 @@ export function routingState(port) {
 export function enableRouting(port, log) {
   const sp = settingsPath();
   const settings = readSettings();
-  // Backup only if the current file isn't already proxy-routed, so we never
-  // back up the proxy config over the user's original.
-  if (fs.existsSync(sp) && settings.env?.ANTHROPIC_BASE_URL !== `http://127.0.0.1:${port}`) {
+  // Backup only if the current file isn't already switchX-routed (any port),
+  // so we never back up the proxy config over the user's original.
+  if (fs.existsSync(sp) && !isSwitchxRouted(settings.env)) {
     fs.copyFileSync(sp, backupPath());
   }
   settings.env = { ...(settings.env || {}) };
@@ -91,7 +108,8 @@ export function disableRouting(port, log) {
   }
   // A re-run of the installer can have backed up an already-proxied
   // settings.json; restoring those values would silently keep routing on.
-  if (settings.env.ANTHROPIC_BASE_URL === `http://127.0.0.1:${port}`) {
+  // Guard against ANY switchX-shaped proxy config — the port may have changed.
+  if (isSwitchxRouted(settings.env)) {
     restored = 0;
     for (const k of ENV_KEYS) delete settings.env[k];
   }

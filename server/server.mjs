@@ -35,7 +35,10 @@ function originAllowed(origin, port) {
   if (!origin || origin === 'null') return false;
   try {
     const u = new URL(origin);
-    return u.port === String(port) && LOCAL_HOSTNAMES.has(u.hostname.replace(/^\[|\]$/g, '') || u.hostname);
+    // Browsers omit the port for the scheme default (http→80, https→443);
+    // u.port would be '' — compare the effective port, not the raw string.
+    const effective = u.port === '' ? (u.protocol === 'https:' ? '443' : '80') : u.port;
+    return effective === String(port) && LOCAL_HOSTNAMES.has(u.hostname.replace(/^\[|\]$/g, '') || u.hostname);
   } catch {
     return false;
   }

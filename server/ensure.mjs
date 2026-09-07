@@ -94,15 +94,29 @@ function spawnServer() {
   }
 }
 
+// Spawn alone isn't success — the new server can die instantly (EADDRINUSE if
+// the old one never released the port, bad config, etc.). Verify it actually
+// came up before reporting success; a silent failure leaves version skew and
+// every future SessionStart believing everything is fine.
+async function spawnAndVerify() {
+  spawnServer();
+  for (let i = 0; i < 25; i++) {
+    await sleep(200);
+    if (await isUp()) return true;
+  }
+  return false;
+}
+
 async function replaceRunning() {
   await shutdownRunning();
   await waitGone();
-  spawnServer();
+  return spawnAndVerify();
 }
 
 if (process.argv.includes('--replace')) {
-  await replaceRunning();
-  process.exit(0);
+  process.exitCode = (await replaceRunning()) ? 0 : 1;
+  if (process.exitCode) console.error('switchXprovider: replacement proxy did not come up — check the server log');
+  process.exit(process.exitCode);
 }
 
 if (await isUp()) {
@@ -115,10 +129,14 @@ if (await isUp()) {
       fs.writeFileSync(UPDATE_MARKER_PATH, JSON.stringify({ version: PKG.version, path: PLUGIN_ROOT, ts: Date.now() }, null, 2));
     } catch { /* marker is best-effort — the restart below is what matters */ }
     console.log(`switchXprovider updated ${running || 'unknown'} → ${PKG.version} — restarting proxy`);
-    await replaceRunning();
+    const replaced = await replaceRunning();
+    if (!replaced) console.error('switchXprovider: proxy did not come back up after the update — check the server log');
   }
   process.exit(0);
 }
 
-spawnServer();
+if (!(await spawnAndVerify())) {
+  console.error('switchXprovider: proxy did not come up — check the server log');
+  process.exit(1);
+}
 process.exit(0);

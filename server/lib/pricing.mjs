@@ -197,12 +197,13 @@ export function recalcCosts(cfg) {
     legacyOld += legacyOldCost;
     legacyNew += cost;
   }
-  const legacyFactor = legacyOld > 0 ? legacyNew / legacyOld : 1;
   // Daily/per-provider buckets have no model split, so legacy cost is
   // distributed across them by each bucket's un-tracked token share. (Scaling
   // the old cost fails when history was recorded entirely at $0 — the share
-  // of zero is zero.) Falls back to cost-scaling when there are no tokens.
-  const tokOf = (b) => (b.inputTokens || 0) + (b.outputTokens || 0);
+  // of zero is zero.) Buckets with NO un-tracked tokens at all (e.g. fully-
+  // cached legacy history) get an equal split of the legacy cost — the sums
+  // stay consistent with usage.totals instead of inventing or dropping money.
+  const tokOf = (b) => (b.inputTokens || 0) + (b.outputTokens || 0) + (b.cacheReadTokens || 0) + (b.cacheCreationTokens || 0);
   let legacyTokDaily = 0;
   let legacyTokByProvider = 0;
   for (const [day, b] of Object.entries(usage.daily || {})) {
@@ -211,19 +212,24 @@ export function recalcCosts(cfg) {
   for (const [providerId, b] of Object.entries(usage.byProvider || {})) {
     legacyTokByProvider += Math.max(0, tokOf(b) - (trackedTokByProvider.get(providerId) || 0));
   }
-  const allocByTokens = (legacyTokens, legacyTokTotal) =>
-    legacyTokTotal > 0 ? (legacyNew * legacyTokens) / legacyTokTotal : legacyOld > 0 ? legacyFactor : 0;
+  const allocByTokens = (legacyTokens, legacyTokTotal, bucketCount) => {
+    if (legacyTokTotal > 0) return (legacyNew * legacyTokens) / legacyTokTotal;
+    if (legacyNew > 0 && bucketCount > 0) return legacyNew / bucketCount; // no token signal — equal split keeps the sums right
+    return 0;
+  };
+  const legacyDayCount = Object.keys(usage.daily || {}).length;
+  const legacyProvCount = Object.keys(usage.byProvider || {}).length;
 
   for (const [model, b] of Object.entries(usage.byModel || {})) {
     b.costUsd = (newByModel.get(model) || 0) + (legacyModelCost.get(model) || 0);
   }
   for (const [day, b] of Object.entries(usage.daily || {})) {
     const legacyTokens = Math.max(0, tokOf(b) - (trackedTokDaily.get(day) || 0));
-    b.costUsd = (newDaily.get(day) || 0) + allocByTokens(legacyTokens, legacyTokDaily);
+    b.costUsd = (newDaily.get(day) || 0) + allocByTokens(legacyTokens, legacyTokDaily, legacyDayCount);
   }
   for (const [providerId, b] of Object.entries(usage.byProvider || {})) {
     const legacyTokens = Math.max(0, tokOf(b) - (trackedTokByProvider.get(providerId) || 0));
-    b.costUsd = (newByProvider.get(providerId) || 0) + allocByTokens(legacyTokens, legacyTokByProvider);
+    b.costUsd = (newByProvider.get(providerId) || 0) + allocByTokens(legacyTokens, legacyTokByProvider, legacyProvCount);
   }
   usage.totals.costUsd = [...newByModel.values()].reduce((s, c) => s + c, 0) + legacyNew;
 

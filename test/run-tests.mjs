@@ -76,11 +76,25 @@ async function main() {
 
   // --- isolated proxy config ---
   fs.mkdirSync(home, { recursive: true });
+  process.env.SWITCHX_HOME = home; // for the direct config.mjs import below
   const dkey = (offset) => {
     const n = new Date();
     const d = new Date(n.getFullYear(), n.getMonth(), n.getDate() - offset);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   };
+
+  // unit: corrupt config.json is backed up, not silently destroyed
+  console.log('\n— config load safety —');
+  fs.writeFileSync(path.join(home, 'config.json'), '{ "providers": [ OOPS NOT JSON');
+  const cfgMod = await import('../server/lib/config.mjs');
+  const recovered = cfgMod.load();
+  assert(Array.isArray(recovered.providers), 'corrupt config replaced with template');
+  const backups = fs.readdirSync(home).filter((f) => f.startsWith('config.json.corrupt-'));
+  assert(backups.length === 1, 'corrupt config backed up before overwrite', JSON.stringify(fs.readdirSync(home)));
+  assert(fs.readFileSync(path.join(home, backups[0]), 'utf8').includes('OOPS NOT JSON'), 'backup contains original corrupt content');
+
+  // unit: day key is LOCAL, matching what api.mjs reads (same machine)
+  assert(cfgMod.localDayKey() === dkey(0), 'localDayKey matches api.mjs local date scheme', `${cfgMod.localDayKey()} vs ${dkey(0)}`);
   // Multi-day usage history for period-aggregation tests (keys match the API's
   // local-date format exactly — see the dense-series loop in api.mjs).
   const dayBucket = (inputTokens, outputTokens, requests, costUsd, cacheReadTokens = 0, cacheCreationTokens = 0) =>
@@ -283,7 +297,7 @@ async function main() {
   assert(usage.totals.outputTokens - prev('outputTokens') === 14, 'output tokens: 5 (json) + 9 (sse)', `got ${usage.totals.outputTokens}`);
   assert(usage.recent.length >= 2, 'recent request feed populated', `got ${usage.recent.length}`);
   assert(usage.recent[0].model && !usage.recent[0].model.startsWith('switchx:'), 'recent feed shows mapped model', `got ${usage.recent[0].model}`);
-  const todayEntry = usage.daily.find((d) => d.date === new Date().toISOString().slice(0, 10));
+  const todayEntry = usage.daily.find((d) => d.date === dkey(0));
   assert(todayEntry && todayEntry.requests >= 2, 'daily series has today entry', JSON.stringify(todayEntry));
   const goodUsage = usage.byProvider.find((p) => p.id === 'pok');
   assert(goodUsage && goodUsage.requests >= 2, 'by-provider usage aggregated', JSON.stringify(goodUsage));
@@ -471,6 +485,71 @@ async function main() {
   assert(resp.ok, 'alias removed');
   pr = await (await fetch(`${proxyUrl}/api/pricing`)).json();
   assert(!pr.aliases['imp-sonnet-free'], 'alias gone');
+
+  // --- 11b. import honors exported priority; PUT keeps the stored API key ---
+  console.log('\n— import priority + provider edit keeps key —');
+  resp = await fetch(`${proxyUrl}/api/import`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ providers: [
+      { name: 'A', baseUrl: `http://127.0.0.1:${MOCK_OK}`, apiKey: 'a', priority: 2, models: { sonnet: 'imp-sonnet' } },
+      { name: 'B', baseUrl: `http://127.0.0.1:${MOCK_OK}`, apiKey: 'b', priority: 1, models: { sonnet: 'imp-sonnet' } },
+    ] }),
+  });
+  const stPrio = await (await fetch(`${proxyUrl}/api/status`)).json();
+  assert(stPrio.providers.length === 2 && stPrio.providers[0].name === 'B' && stPrio.providers[0].priority === 1,
+    'import honors exported priority (B first despite being second in array)', JSON.stringify(stPrio.providers.map((p) => [p.name, p.priority])));
+
+  resp = await fetch(`${proxyUrl}/api/import`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ providers: [{ name: 'KeyKeep', baseUrl: `http://127.0.0.1:${MOCK_OK}`, apiKey: 'the-secret', models: { sonnet: 'imp-sonnet' } }] }),
+  });
+  const kkId = (await (await fetch(`${proxyUrl}/api/status`)).json()).providers[0].id;
+  resp = await fetch(`${proxyUrl}/api/providers/${kkId}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'KeyKeep2', baseUrl: `http://127.0.0.1:${MOCK_OK}`, apiKey: '', authStyle: 'auto', enabled: true, models: { sonnet: 'imp-sonnet' } }),
+  });
+  assert(resp.ok, 'edit without key accepted');
+  // the mock echoes the auth it received — traffic must still carry the ORIGINAL key
+  resp = await fetch(`${proxyUrl}/v1/messages`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-api-key': 'switchx-local' },
+    body: JSON.stringify({ model: 'switchx:sonnet', max_tokens: 32, messages: [{ role: 'user', content: 'hi' }] }),
+  });
+  body = await resp.json();
+  assert(resp.status === 200 && body.receivedAuth === 'the-secret', 'PUT without apiKey preserves stored key (auth still original)', `got ${resp.status} ${JSON.stringify(body.receivedAuth)}`);
+
+  // --- 11c. all-down cooldown reset is throttled, not per-request ---
+  console.log('\n— all-down reset throttle —');
+  resp = await fetch(`${proxyUrl}/api/import`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ providers: [
+      { name: 'D1', baseUrl: `http://127.0.0.1:${MOCK_500}`, apiKey: 'k', models: { sonnet: 'broken-sonnet' } },
+      { name: 'D2', baseUrl: `http://127.0.0.1:${MOCK_500}`, apiKey: 'k', models: { sonnet: 'broken-sonnet' } },
+    ] }),
+  });
+  assert(resp.ok, 'imported all-down providers');
+  const evBefore = (await (await fetch(`${proxyUrl}/api/events`)).json()).events.filter((e) => /All providers down/.test(e.msg)).length;
+  const sendMsg = () => fetch(`${proxyUrl}/v1/messages`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-api-key': 'switchx-local' },
+    body: JSON.stringify({ model: 'switchx:sonnet', max_tokens: 32, messages: [{ role: 'user', content: 'hi' }] }),
+  });
+  resp = await sendMsg();
+  assert(!resp.ok, 'all-down request fails');
+  let evs = (await (await fetch(`${proxyUrl}/api/events`)).json()).events.filter((e) => /All providers down/.test(e.msg));
+  assert(evs.length === evBefore, 'request 1 (both providers up) fails via normal failover — no reset yet', `${evs.length} vs ${evBefore}`);
+  resp = await sendMsg();
+  assert(!resp.ok, 'request 2 (all down) fails');
+  evs = (await (await fetch(`${proxyUrl}/api/events`)).json()).events.filter((e) => /All providers down/.test(e.msg));
+  assert(evs.length === evBefore + 1, 'request 2 with all providers down resets cooldowns once', `${evs.length} vs ${evBefore}`);
+  resp = await sendMsg();
+  assert(!resp.ok, 'request 3 (all down, cooldowns fresh) fails');
+  evs = (await (await fetch(`${proxyUrl}/api/events`)).json()).events.filter((e) => /All providers down/.test(e.msg));
+  assert(evs.length === evBefore + 1, 'request 3 within the window does NOT reset again', `${evs.length} vs ${evBefore + 1}`);
 
   // --- 12. version reporting + update marker + restart flow ---
   console.log('\n— version / update marker / restart —');

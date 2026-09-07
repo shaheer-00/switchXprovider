@@ -56,7 +56,17 @@ export function load() {
     if (!cfg.stats || typeof cfg.stats !== 'object') cfg.stats = {};
     if (!Array.isArray(cfg.events)) cfg.events = [];
     return cfg;
-  } catch {
+  } catch (err) {
+    // Read or parse failure. If the file EXISTS, it may hold the user's real
+    // providers and keys — back it up before replacing it with the template,
+    // never destroy it silently.
+    let fileExisted = false;
+    try { fileExisted = fs.statSync(CONFIG_PATH).size > 0; } catch { /* absent — true first run */ }
+    if (fileExisted) {
+      const backupPath = `${CONFIG_PATH}.corrupt-${Date.now()}`;
+      try { fs.copyFileSync(CONFIG_PATH, backupPath); } catch {}
+      console.error(`switchx: config.json unreadable (${err.message}) — backed up to ${backupPath}`);
+    }
     const cfg = structuredClone(DEFAULTS);
     cfg.providers = structuredClone(TEMPLATES);
     save(cfg);
@@ -132,10 +142,18 @@ function bump(bucket, u, cost) {
   if (cost) bucket.costUsd = (bucket.costUsd || 0) + cost;
 }
 
+// Local-date day key (YYYY-MM-DD). Everything — write side (recordUsage) and
+// read side (api.mjs period aggregates) — must use the SAME local-time key or
+// daily buckets shift by the UTC offset (a 00:30 request on GMT+7 landing in
+// "yesterday"). Keep in sync with the dayKey in api.mjs.
+export function localDayKey(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export function recordUsage(cfg, providerId, providerName, u, model) {
   if (!u || (!u.input && !u.output && !u.cacheRead && !u.cacheCreation)) return;
   if (!cfg.usage) cfg.usage = { totals: emptyUsage(), byProvider: {}, byModel: {}, daily: {} };
-  const day = new Date().toISOString().slice(0, 10);
+  const day = localDayKey();
   const cost = estimateCost(u, model, providerId, cfg.pricing);
   cfg.usage.byProvider[providerId] ??= { name: providerName, ...emptyUsage() };
   cfg.usage.daily[day] ??= emptyUsage();

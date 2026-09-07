@@ -136,6 +136,7 @@ export function usageTap(onDone) {
   let buf = '';
   let sawSse = false;
   let input = 0, output = 0, cacheRead = 0, cacheCreation = 0;
+  let done = false;
 
   const take = (j) => {
     const u = j?.usage || j?.message?.usage;
@@ -146,7 +147,16 @@ export function usageTap(onDone) {
     if (u.output_tokens) output = Math.max(output, u.output_tokens); // message_delta is cumulative
   };
 
-  return new Transform({
+  // Idempotent final report — called from flush() on normal completion AND
+  // from the stream's 'close' so a client cancel / upstream drop still
+  // records the usage parsed so far.
+  const finalize = () => {
+    if (done) return;
+    done = true;
+    onDone({ input, output, cacheRead, cacheCreation });
+  };
+
+  const t = new Transform({
     transform(chunk, _enc, cb) {
       buf += dec.write(chunk);
       let i;
@@ -168,10 +178,12 @@ export function usageTap(onDone) {
       if (!sawSse && buf.trim()) {
         try { take(JSON.parse(buf)); } catch { /* not JSON */ }
       }
-      onDone({ input, output, cacheRead, cacheCreation });
+      finalize();
       cb();
     },
   });
+  t.finalize = finalize;
+  return t;
 }
 
 function sanitizeRespHeaders(headers) {
@@ -233,17 +245,27 @@ async function attempt(p, req, rawBody) {
   }
 }
 
+// All-down stale-cooldown safety net: reset at most once per window. Without
+// the throttle every incoming request re-zeroed every deadUntil, defeating
+// retry-after and the exponential cooldowns completely.
+let lastAllDownReset = 0;
+const ALL_DOWN_RESET_MS = 60_000;
+
 export async function handleProxy(req, res, cfg, rawBody) {
   let candidates = enabledSorted(cfg).filter((p) => !isDown(statsFor(cfg, p.id)));
 
-  // All providers down: reset cooldowns once and try again rather than
-  // hard-failing — a stale cooldown is worse than one retry round-trip.
+  // All providers down: reset cooldowns once per window and try again rather
+  // than hard-failing — a stale cooldown is worse than one retry round-trip.
+  let allDownCooling = false;
   if (!candidates.length) {
     const all = enabledSorted(cfg);
-    if (all.length) {
+    if (all.length && Date.now() - lastAllDownReset > ALL_DOWN_RESET_MS) {
+      lastAllDownReset = Date.now();
       logEvent(cfg, 'All providers down — resetting cooldowns and retrying');
       for (const p of all) statsFor(cfg, p.id).deadUntil = 0;
       candidates = all;
+    } else if (all.length) {
+      allDownCooling = true; // providers exist, all in cooldown, reset throttled
     }
   }
 
@@ -253,7 +275,9 @@ export async function handleProxy(req, res, cfg, rawBody) {
       type: 'error',
       error: {
         type: 'overloaded_error',
-        message: `switchXprovider: no enabled providers configured. Open http://127.0.0.1:${cfg.port} to add one.`,
+        message: allDownCooling
+          ? `switchXprovider: all providers are down — retrying them at most once per minute (auto-recovery re-probes every 30s). Open http://127.0.0.1:${cfg.port} to check status.`
+          : `switchXprovider: no enabled providers configured. Open http://127.0.0.1:${cfg.port} to add one.`,
       },
     }));
     return;
@@ -276,16 +300,31 @@ export async function handleProxy(req, res, cfg, rawBody) {
           outTok: 0,
         };
         res.writeHead(r.resp.status, sanitizeRespHeaders(r.resp.headers));
-        // If the client hangs up, stop pulling from upstream.
-        res.on('close', () => r.ac.abort());
-        Readable.fromWeb(r.resp.body)
-          .pipe(usageTap((u) => {
-            rec.inTok = u.input + u.cacheRead + u.cacheCreation;
-            rec.outTok = u.output;
-            recordUsage(cfg, p.id, p.name, u, r.mappedModel);
-            pushRequest(cfg, rec);
-          }))
-          .pipe(res);
+        const stream = Readable.fromWeb(r.resp.body);
+        const tap = usageTap((u) => {
+          rec.inTok = u.input + u.cacheRead + u.cacheCreation;
+          rec.outTok = u.output;
+          recordUsage(cfg, p.id, p.name, u, r.mappedModel);
+          pushRequest(cfg, rec);
+        });
+        // If the client hangs up, stop pulling from upstream — and still
+        // record the usage parsed so far (finalize is idempotent).
+        res.on('close', () => {
+          r.ac.abort();
+          tap.finalize();
+        });
+        // A dead pipe must never go unhandled: an AbortError from the cancel
+        // above or an upstream mid-body drop would otherwise crash the
+        // process / leave the client hanging with no failover signal.
+        stream.on('error', (err) => {
+          if (err?.name !== 'AbortError') {
+            logEvent(cfg, `Stream from "${p.name}" broke mid-body (${err?.message || err}) — closing client connection`);
+          }
+          try { if (!res.writableEnded) res.end(); } catch { /* already gone */ }
+          tap.finalize();
+        });
+        tap.on('error', () => { try { stream.destroy(); } catch { /* already gone */ } });
+        stream.pipe(tap).pipe(res);
         return;
       }
 

@@ -148,7 +148,7 @@ node switchXprovider/server/ensure.mjs
 - **Config backup** — export/import the full provider list (including keys) as JSON from the dashboard.
 - **Install status detection** — the dashboard reads `~/.claude/settings.json` and shows whether Claude Code is actually routed through the proxy.
 - **Help & troubleshooting** — a built-in Help view with the common problems and their fixes: claude-mem capture dying after proxy setup (with the credentials-sync hook fix), statusline plugins showing stale mode labels, the proxy serving old code after a plugin update, shell `ANTHROPIC_*` env vars overriding `settings.json`, providers stuck in cooldown, model-name mismatches across providers, $0 cost estimates, and a dead dashboard.
-- **Deadlock protection** — if *every* provider is down, cooldowns reset once and the request is retried rather than hard-failing.
+- **Deadlock protection** — if *every* provider is down, cooldowns reset (at most once a minute) and the request is retried rather than hard-failing; a full outage returns a clear error instead of hammering dead providers on every request.
 
 ## Setup
 

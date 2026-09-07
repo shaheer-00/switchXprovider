@@ -1818,7 +1818,9 @@ function renderUsage() {
   $('heroTotalTok').textContent = `${fmtTok(inTok + outTok)} tokens`;
   $('heroCost').textContent = fmtCost(totalCost);
 
-  const todayKey = new Date().toISOString().slice(0, 10);
+  // local-date key — must match the server's dayKey scheme (api.mjs / config.mjs)
+  const nowD = new Date();
+  const todayKey = `${nowD.getFullYear()}-${String(nowD.getMonth() + 1).padStart(2, '0')}-${String(nowD.getDate()).padStart(2, '0')}`;
   const today = (usage.daily || []).find((d) => d.date === todayKey) || {};
   const todayCost = today.costUsd || 0;
   countUp('stToday', (today.inputTokens || 0) + (today.cacheReadTokens || 0) + (today.cacheCreationTokens || 0) + (today.outputTokens || 0));
@@ -1828,15 +1830,16 @@ function renderUsage() {
 
   // 14-day chart
   const days = usage.daily || [];
-  const maxDay = Math.max(1, ...days.map((d) => (d.inputTokens || 0) + (d.outputTokens || 0)));
+  const dayIn = (d) => (d.inputTokens || 0) + (d.cacheReadTokens || 0) + (d.cacheCreationTokens || 0);
+  const maxDay = Math.max(1, ...days.map((d) => dayIn(d) + (d.outputTokens || 0)));
   $('chart').innerHTML = days.map((d) => {
-    const inH = Math.round((d.inputTokens || 0) / maxDay * 100);
+    const inH = Math.round(dayIn(d) / maxDay * 100);
     const outH = Math.round((d.outputTokens || 0) / maxDay * 100);
     const lbl = d.date.slice(5).replace('-', '/');
     const cost = d.costUsd || 0;
     return `
     <div class="barday">
-      <div class="tip">${d.date}<br>in ${fmtTok(d.inputTokens)} · out ${fmtTok(d.outputTokens)}<br>${d.requests} req · ${fmtCost(cost)}</div>
+      <div class="tip">${d.date}<br>in ${fmtTok(dayIn(d))} (incl. cache) · out ${fmtTok(d.outputTokens)}<br>${d.requests} req · ${fmtCost(cost)}</div>
       <div class="barstack" data-in="${inH}" data-out="${outH}"><div class="bar-out" style="height:0"></div><div class="bar-in" style="height:0"></div></div>
       <span class="lbl">${lbl}</span>
     </div>`;
@@ -1850,10 +1853,11 @@ function renderUsage() {
 
   // per-provider bars (usage view)
   const byProv = usage.byProvider || [];
-  const maxProv = Math.max(1, ...byProv.map((p) => (p.inputTokens || 0) + (p.outputTokens || 0)));
+  const provTok = (p) => (p.inputTokens || 0) + (p.cacheReadTokens || 0) + (p.cacheCreationTokens || 0) + (p.outputTokens || 0);
+  const maxProv = Math.max(1, ...byProv.map(provTok));
   $('provUsage').innerHTML = byProv.length
     ? byProv.map((p) => {
-      const tok = (p.inputTokens || 0) + (p.outputTokens || 0);
+      const tok = provTok(p);
       const pct = Math.round(tok / maxProv * 100);
       const cost = p.costUsd || 0;
       return `
@@ -1944,6 +1948,7 @@ let wizStep = 0;
 let wizPick = null;      // catalog entry or {manual:true}
 let wizAdded = null;     // provider added in step 3
 let wizTesting = false;
+let wizTimer = null;     // auto-advance after a successful test — cancelled on manual nav
 let wizManual = false;   // wizard opened via the corner button — stays open across refreshes
 let wizRouted = false;
 
@@ -2002,7 +2007,10 @@ function wizNav(back, next, nextLabel = 'Next', nextClass = 'primary') {
     ${next ? `<button class="${nextClass}" onclick="${next}">${nextLabel}</button>` : ''}`;
 }
 
-window.wizGo = (d) => { wizStep = Math.max(0, Math.min(WIZ_STEPS.length - 1, wizStep + d)); renderWizard(); };
+window.wizGo = (d) => {
+  if (wizTimer) { clearTimeout(wizTimer); wizTimer = null; } // user navigated — cancel auto-advance
+  wizStep = Math.max(0, Math.min(WIZ_STEPS.length - 1, wizStep + d)); renderWizard();
+};
 
 function wizWelcome() {
   $('wizBody').innerHTML = `
@@ -2041,10 +2049,11 @@ window.wizChoose = (sel) => {
   const id = typeof sel === 'string' ? sel : sel?.id;
   wizPick = (catalog?.providers || []).find((c) => c.id === id) || null;
   if (!wizPick) return;
+  wizAdded = null; // different provider — a retry must create, not update the previous one
   wizStep = 2; // straight to the API-key step
   renderWizard();
 };
-window.wizChooseManual = () => { wizPick = { manual: true }; renderWizard(); };
+window.wizChooseManual = () => { wizPick = { manual: true }; wizAdded = null; renderWizard(); };
 
 function wizKey() {
   const c = wizPick?.manual ? null : wizPick;
@@ -2088,9 +2097,13 @@ window.wizTest = async () => {
   wizTesting = true;
   $('wz_test').innerHTML = '<span style="color:var(--muted)">Adding provider and testing… (up to 10s)</span>';
   try {
-    const added = await api('/api/providers', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-    const t = await api(`/api/providers/${added.id}/test`, { method: 'POST' });
-    wizAdded = added;
+    // First attempt creates the provider; a retry after a partial failure
+    // (e.g. the test call died) must UPDATE it, not POST a duplicate.
+    const saved = wizAdded
+      ? await api('/api/providers/' + wizAdded.id, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...body, apiKey: body.apiKey || '' }) })
+      : await api('/api/providers', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    wizAdded = saved;
+    const t = await api(`/api/providers/${saved.id}/test`, { method: 'POST' });
     if (t.ok && !(t.missing || []).length) {
       $('wz_test').innerHTML = `<span style="color:var(--green)">✓ Provider reachable${(t.missing || []).length ? '' : ' and model IDs check out'}</span>`;
     } else if (t.ok) {
@@ -2098,7 +2111,7 @@ window.wizTest = async () => {
     } else {
       $('wz_test').innerHTML = `<span style="color:var(--amber)">Saved, but the test failed${t.missing?.length ? ' — missing models: ' + escapeHtml(t.missing.join(', ')) : ''}. You can retry from the Providers view.</span>`;
     }
-    setTimeout(() => { wizTesting = false; wizStep = 3; renderWizard(); }, 900);
+    wizTimer = setTimeout(() => { wizTimer = null; wizTesting = false; wizStep = 3; renderWizard(); }, 900);
   } catch (e) {
     wizTesting = false;
     $('wz_test').innerHTML = `<span style="color:var(--red)">${escapeHtml(e.message)}</span>`;
@@ -2807,7 +2820,7 @@ function renderPricing() {
     <div class="aliasgrp">
       <div class="models"><span class="m">${escapeHtml(m.model)}</span></div>
       <span class="tok" style="font-size:12px;color:var(--dim)">${fmtTok(m.tokens)} tokens</span>
-      <button onclick="openPriceEdit('${escapeHtml(m.model)}')">set price</button>
+      <button data-act="price" data-model="${escapeHtml(m.model)}">set price</button>
     </div>`).join('');
 
   // alias suggestions (not yet aliased, not dismissed this session)
@@ -2817,14 +2830,14 @@ function renderPricing() {
   $('aliasSuggest').innerHTML = sugg.map((g) => `
     <div class="aliasgrp">
       <div class="models">${g.map((m) => `<span class="m">${escapeHtml(m)}</span>`).join('')}</div>
-      <button onclick="mergeAlias(${JSON.stringify(g)})">same model — share price</button>
-      <button class="warn" onclick="dismissSuggestion(${JSON.stringify(g)})">different</button>
+      <button data-act="merge" data-group="${escapeHtml(JSON.stringify(g))}">same model — share price</button>
+      <button class="warn" data-act="dismiss" data-group="${escapeHtml(JSON.stringify(g))}">different</button>
     </div>`).join('');
   $('aliasList').innerHTML = aliasEntries.length
     ? '<div class="shlabel" style="margin-top:14px">Active aliases</div>' + aliasEntries.map(([alias, canonical]) => `
       <div class="aliasgrp">
         <div class="models"><span class="m">${escapeHtml(alias)}</span><span style="color:var(--dim)">→</span><span class="m" style="background:rgba(34,211,238,0.1)">${escapeHtml(canonical)}</span></div>
-        <button class="warn" onclick="unlinkAlias('${escapeHtml(alias)}')">unlink</button>
+        <button class="warn" data-act="unlink" data-alias="${escapeHtml(alias)}">unlink</button>
       </div>`).join('')
     : '';
 
@@ -2840,9 +2853,28 @@ function renderPricing() {
         <td>${p ? '$' + p.output : '—'}</td>
         <td>${p ? '$' + p.cacheRead + ' / $' + p.cacheCreate : '—'}</td>
         <td><span class="srcpill ${m.source}">${m.source === 'none' ? 'unpriced' : m.source}${m.providers?.length ? ' · ' + m.providers.length + ' provider' + (m.providers.length > 1 ? 's' : '') : ''}</span></td>
-        <td><button style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:3px 10px;font-size:11px;cursor:pointer" onclick="openPriceEdit('${escapeHtml(m.model)}')">edit</button></td>
+        <td><button style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:3px 10px;font-size:11px;cursor:pointer" data-act="price" data-model="${escapeHtml(m.model)}">edit</button></td>
       </tr>`;
     }).join('');
+}
+
+// Pricing-view buttons use data-act delegation instead of inline onclick —
+// model ids are arbitrary strings (user input, remote catalogs) and inline
+// handlers re-decode &amp;#39; into a raw quote before JS compilation.
+for (const [containerId, handler] of [
+  ['unpricedList', (b) => openPriceEdit(b.dataset.model)],
+  ['priceTbl', (b) => openPriceEdit(b.dataset.model)],
+  ['aliasSuggest', (b) => {
+    const g = JSON.parse(b.dataset.group);
+    if (b.dataset.act === 'merge') mergeAlias(g); else dismissSuggestion(g);
+  }],
+  ['aliasList', (b) => unlinkAlias(b.dataset.alias)],
+]) {
+  const el = $(containerId);
+  if (el) el.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-act]');
+    if (b && el.contains(b)) handler(b);
+  });
 }
 
 window.openPriceEdit = (model) => {
@@ -2863,11 +2895,15 @@ window.openPriceEdit = (model) => {
       <div class="pprow">
         <span class="nm">${escapeHtml(pp.name)}</span>
         <span class="pv">$${pp.price.input} in / $${pp.price.output} out per 1M</span>
-        <button onclick="removePrice('${escapeHtml(model)}', '${pp.providerId}')">remove</button>
+        <button data-act="removeprice" data-model="${escapeHtml(model)}" data-provider="${escapeHtml(pp.providerId)}">remove</button>
       </div>`).join('')
     : '';
   $('priceEdit').hidden = false;
 };
+$('peProviders').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-act="removeprice"]');
+  if (b) removePrice(b.dataset.model, b.dataset.provider);
+});
 window.closePriceEdit = () => { $('priceEdit').hidden = true; };
 $('priceEdit').addEventListener('click', (e) => { if (e.target === $('priceEdit')) closePriceEdit(); });
 

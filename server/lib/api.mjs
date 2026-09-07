@@ -325,10 +325,13 @@ export async function handleApi(req, res, pathname, cfg) {
           model,
           inputTokens: u.inputTokens,
           outputTokens: u.outputTokens,
+          cacheReadTokens: u.cacheReadTokens,
+          cacheCreationTokens: u.cacheCreationTokens,
           requests: u.requests,
           costUsd: u.costUsd || 0,
         }))
-        .sort((a, b) => (b.inputTokens + b.outputTokens) - (a.inputTokens + a.outputTokens));
+        .sort((a, b) => ((b.inputTokens + b.outputTokens + (b.cacheReadTokens || 0) + (b.cacheCreationTokens || 0))
+          - (a.inputTokens + a.outputTokens + (a.cacheReadTokens || 0) + (a.cacheCreationTokens || 0))));
       // models with no price anywhere (no model-level, no per-provider override)
       const unpricedModels = Object.keys(usage.byModel || {}).filter((m) => {
         if (effectivePrice(m, undefined, cfg.pricing).price) return false;
@@ -569,11 +572,19 @@ export async function handleApi(req, res, pathname, cfg) {
           baseUrl: String(p.baseUrl),
           apiKey: String(p.apiKey || ''),
           authStyle: ['anthropic', 'bearer', 'auto'].includes(p.authStyle) ? p.authStyle : 'auto',
-          priority: clean.length + 1,
+          // Honor the exported priority when every entry has a usable one;
+          // array position is insertion order, not routing order.
+          priority: providers.every((x) => Number.isFinite(parseInt(x.priority, 10)) && parseInt(x.priority, 10) >= 1)
+            ? parseInt(p.priority, 10)
+            : clean.length + 1,
           enabled: p.enabled !== false,
           models: typeof p.models === 'object' && p.models ? p.models : {},
         });
       }
+      // Dedupe/compact priorities to a dense 1..N set preserving relative order.
+      const byPrio = [...clean].sort((a, b) => a.priority - b.priority);
+      byPrio.forEach((p, i) => { p.priority = i + 1; });
+      clean.sort((a, b) => a.priority - b.priority);
       cfg.providers = clean;
       logEvent(cfg, `Imported ${clean.length} provider(s)`);
       persistSoon(cfg, 0);
@@ -604,9 +615,11 @@ export async function handleApi(req, res, pathname, cfg) {
         const body = await readJson(req);
         const { errors, value } = sanitizeProviderInput(body);
         if (errors.length) return send(res, 400, { error: errors.join('; ') });
-        Object.assign(p, value);
         // Empty apiKey on edit means "keep existing" (dashboard doesn't resend it).
-        if (!value.apiKey) p.apiKey = p.apiKey || '';
+        // Capture it BEFORE the assign — Object.assign would wipe it with ''.
+        const prevKey = p.apiKey;
+        Object.assign(p, value);
+        if (!value.apiKey) p.apiKey = prevKey || '';
         if (body.priority != null) p.priority = Math.max(1, parseInt(body.priority, 10) || 1);
         logEvent(cfg, `Provider "${p.name}" updated`);
         persistSoon(cfg, 0);
