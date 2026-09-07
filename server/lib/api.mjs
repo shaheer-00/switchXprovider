@@ -272,6 +272,8 @@ export async function handleApi(req, res, pathname, cfg) {
           date: dayKey(d),
           inputTokens: u.inputTokens || 0,
           outputTokens: u.outputTokens || 0,
+          cacheReadTokens: u.cacheReadTokens || 0,
+          cacheCreationTokens: u.cacheCreationTokens || 0,
           requests: u.requests || 0,
           costUsd: u.costUsd || 0,
         });
@@ -279,12 +281,14 @@ export async function handleApi(req, res, pathname, cfg) {
       // Period aggregates for the share card: today / 7d / 14d / 30d / all-time,
       // summed from the full daily history (which is kept forever).
       const sumDays = (offsets) => {
-        const out = { inputTokens: 0, outputTokens: 0, requests: 0, costUsd: 0 };
+        const out = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0, requests: 0, costUsd: 0 };
         for (const off of offsets) {
           const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - off);
           const u = usage.daily?.[dayKey(d)] || {};
           out.inputTokens += u.inputTokens || 0;
           out.outputTokens += u.outputTokens || 0;
+          out.cacheReadTokens += u.cacheReadTokens || 0;
+          out.cacheCreationTokens += u.cacheCreationTokens || 0;
           out.requests += u.requests || 0;
           out.costUsd += u.costUsd || 0;
         }
@@ -300,6 +304,8 @@ export async function handleApi(req, res, pathname, cfg) {
         all: {
           inputTokens: totals.inputTokens,
           outputTokens: totals.outputTokens,
+          cacheReadTokens: totals.cacheReadTokens || 0,
+          cacheCreationTokens: totals.cacheCreationTokens || 0,
           requests: totals.requests,
           costUsd: totals.costUsd || 0,
         },

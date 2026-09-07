@@ -1821,7 +1821,7 @@ function renderUsage() {
   const todayKey = new Date().toISOString().slice(0, 10);
   const today = (usage.daily || []).find((d) => d.date === todayKey) || {};
   const todayCost = today.costUsd || 0;
-  countUp('stToday', (today.inputTokens || 0) + (today.outputTokens || 0));
+  countUp('stToday', (today.inputTokens || 0) + (today.cacheReadTokens || 0) + (today.cacheCreationTokens || 0) + (today.outputTokens || 0));
   $('stTodayDetail').textContent = `${today.requests || 0} requests today · ${fmtCost(todayCost)} today`;
   countUp('stCost', totalCost, fmtCost);
   $('stCostDetail').textContent = `${fmtCost(todayCost)} today · ${fmtCost((usage.daily || []).slice(-7).reduce((s, d) => s + (d.costUsd || 0), 0))} 7d`;
@@ -2618,15 +2618,16 @@ function drawShareCard() {
   if (shareState.show.tokens || shareState.show.cost) {
     const rowH = shareState.show.tokens ? 128 : 80;
     if (shareState.show.tokens) {
+      const inTok = (pdat.inputTokens || 0) + (pdat.cacheReadTokens || 0) + (pdat.cacheCreationTokens || 0);
       ctx.fillStyle = t.dim;
       ctx.font = shareFont(t, '700', 12);
       ctx.fillText('T O K E N S', P, y);
       ctx.fillStyle = t.text;
       ctx.font = shareFont(t, '800', 78);
-      ctx.fillText(fmtTok((pdat.inputTokens || 0) + (pdat.outputTokens || 0)), P, y + 52);
+      ctx.fillText(fmtTok(inTok + (pdat.outputTokens || 0)), P, y + 52);
       ctx.fillStyle = t.muted;
       ctx.font = shareFont(t, '500', 15);
-      ctx.fillText(`in ${fmtTok(pdat.inputTokens || 0)} · out ${fmtTok(pdat.outputTokens || 0)} · ${(pdat.requests || 0).toLocaleString()} requests`, P, y + 102);
+      ctx.fillText(`in ${fmtTok(inTok)} · out ${fmtTok(pdat.outputTokens || 0)} · ${(pdat.requests || 0).toLocaleString()} requests`, P, y + 102);
     }
     if (shareState.show.cost) {
       ctx.textAlign = 'right';
@@ -2659,10 +2660,10 @@ function drawShareCard() {
       const gy = y + 20 + (chartH / 3) * i;
       ctx.beginPath(); ctx.moveTo(P, gy); ctx.lineTo(W - P, gy); ctx.stroke();
     }
-    const max = Math.max(1, ...data.map((d) => (d.inputTokens || 0) + (d.outputTokens || 0)));
+    const max = Math.max(1, ...data.map((d) => (d.inputTokens || 0) + (d.cacheReadTokens || 0) + (d.cacheCreationTokens || 0) + (d.outputTokens || 0)));
     const slot = (W - 2 * P) / data.length, bw = Math.max(4, slot - 6);
     data.forEach((d, i) => {
-      const inH = ((d.inputTokens || 0) / max) * chartH;
+      const inH = ((d.inputTokens || 0) + (d.cacheReadTokens || 0) + (d.cacheCreationTokens || 0)) / max * chartH;
       const outH = ((d.outputTokens || 0) / max) * chartH;
       const bx = P + slot * i + (slot - bw) / 2;
       if (inH > 0) { ctx.fillStyle = t.accent; roundRect(ctx, bx, baseY - inH, bw, inH, Math.min(3, bw / 2)); ctx.fill(); }
@@ -2698,8 +2699,9 @@ function drawShareCard() {
 
   // ---- top provider / model ----
   if (shareState.show.breakdown) {
-    const tot = ((shareUsage.totals?.inputTokens || 0) + (shareUsage.totals?.outputTokens || 0)) || 1;
-    const topP = [...(shareUsage.byProvider || [])].sort((a, b) => ((b.inputTokens + b.outputTokens) - (a.inputTokens + a.outputTokens)))[0];
+    const inOf = (u) => (u.inputTokens || 0) + (u.cacheReadTokens || 0) + (u.cacheCreationTokens || 0) + (u.outputTokens || 0);
+    const tot = inOf(shareUsage.totals || {}) || 1;
+    const topP = [...(shareUsage.byProvider || [])].sort((a, b) => (inOf(b) - inOf(a)))[0];
     const topM = (shareUsage.byModel || [])[0];
     const colW = (W - 2 * P) / 2;
     const bkRow = (label, name, tokens, x) => {
@@ -2715,8 +2717,8 @@ function drawShareCard() {
         ctx.fillText(`${fmtTok(tokens)} tokens · ${Math.round((tokens / tot) * 100)}% of all traffic`, x, y + 50);
       }
     };
-    bkRow('TOP PROVIDER — ALL TIME', topP?.name, topP ? topP.inputTokens + topP.outputTokens : 0, P);
-    bkRow('TOP MODEL — ALL TIME', topM?.model, topM ? topM.inputTokens + topM.outputTokens : 0, P + colW);
+    bkRow('TOP PROVIDER — ALL TIME', topP?.name, topP ? inOf(topP) : 0, P);
+    bkRow('TOP MODEL — ALL TIME', topM?.model, topM ? inOf(topM) : 0, P + colW);
   }
 
   // ---- footer ----
