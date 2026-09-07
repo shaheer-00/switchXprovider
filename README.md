@@ -36,9 +36,9 @@ proxy with automatic failover, auto-recovery, live usage analytics — and
 |---|---|
 | ![Share widget](docs/screenshots/share.png) | ![Share card](docs/screenshots/share-card.png) |
 
-| Settings |
-|---|
-| ![Settings](docs/screenshots/settings.png) |
+| Pricing — per-model rates, aliases, recalculation | Settings |
+|---|---|
+| ![Pricing](docs/screenshots/pricing.png) | ![Settings](docs/screenshots/settings.png) |
 
 </details>
 
@@ -50,8 +50,9 @@ proxy with automatic failover, auto-recovery, live usage analytics — and
 | 🔀 **Automatic failover** | Provider dies mid-request? Retried on the next one before you notice |
 | 🔁 **Auto-recovery** | Down providers are re-probed every 30s and return to rotation on their own |
 | 🔑 **Your keys, your machine** | Traffic goes straight to the provider — no third party in the path |
-| 🚀 **Zero dependencies** | One Node process, ~10 files, ~1,800 lines — readable in an afternoon |
+| 🚀 **Zero dependencies** | One Node process, ~10 files, under 5,000 lines — readable in an afternoon |
 | 📊 **Usage & cost analytics** | Tokens, latency, success rate, and estimated cost per provider / model / day |
+| 💰 **Pricing editor** | Real market rates built in; set prices per model or per provider, alias same models under different names, and recalculate history when prices change |
 | 📤 **Shareable stats card** | Build a pretty usage card in the dashboard — pick period, stats, and theme — export or share it as a PNG |
 | 🧭 **Provider discovery** | Curated catalog with one-click setup, plus community-maintained remote catalogs |
 
@@ -67,7 +68,7 @@ Both projects solve *"never stop coding when a provider dies"* — but with oppo
 | **Keys** | Yours only — never leaves your `~/.claude` | Pooled community keys handled by their service |
 | **Free tokens** | Freemium providers built in + your providers' free tiers | ~1.5B/month pooled across 352+ providers |
 | **Footprint** | One Node process, 0 dependencies, ~10 files | Full gateway infrastructure |
-| **Auditability** | ~1,800 lines you can read in an afternoon | Centralized service |
+| **Auditability** | under 5,000 lines you can read in an afternoon | Centralized service |
 | **Provider choice** | Any Anthropic-compatible endpoint you have a key for | Their supported provider pool |
 | **Usage analytics** | Token/latency/success tracking of *your* traffic, locally | Gateway-side stats |
 | **Cost** | Free (your provider usage) | Free tier + premium |
@@ -134,7 +135,8 @@ node switchXprovider/server/ensure.mjs
 - **Auto-learning cooldowns** — cooldowns scale up to 8× with consecutive failures (exponential backoff), and honor upstream `retry-after` headers. Each provider tracks requests, success rate, and EMA latency.
 - **Auto-recovery** — a background health loop re-probes down providers every 30s (and just before cooldown expiry); a recovered provider returns to rotation automatically at its priority (e.g. when your Claude subscription window resets, you drift back to provider #1 with zero action).
 - **Usage analytics** — the proxy reads token usage (`input`/`output`/`cache_read`/`cache_creation`) out of every response — streaming and non-streaming — without touching the stream, and tracks totals per provider, per model, and per day. The dashboard shows animated stat cards, a 14-day usage chart, per-provider token share, a per-model table, and a live request feed (model, tokens, latency, status).
-- **Cost tracking** — every request is priced against a per-model rate table (Claude models at official Anthropic rates, free-tier gateway models at $0), so you can see roughly what your traffic would cost if you paid per-token. Estimated cost shows up as a hero pill, a stat card with today/7-day breakdowns, per-day chart tooltips, per-provider bars, and a per-model table column. Estimates only — gateway subscriptions, credits, and promos aren't modelled.
+- **Cost tracking** — every request is priced against a per-model rate table (Claude models at official Anthropic rates, GLM/DeepSeek/Kimi/MiMo/MiniMax/Qwen at current market rates, explicit `-free` variants at $0), so you can see roughly what your traffic would cost if you paid per-token. Estimated cost shows up as a hero pill, a stat card with today/7-day breakdowns, per-day chart tooltips, per-provider bars, and a per-model table column. Estimates only — gateway subscriptions, credits, and promos aren't modelled.
+- **Pricing editor** — the Pricing view lists every model seen in usage, mapped on a provider, or known built-in, with its effective rate and where it comes from (built-in / your override / per-provider). Set a price universally or per provider (e.g. $0 for a free-tier gateway, market rate elsewhere). Models the same under different names across providers (GLM-5.2 / GLM-5.2-Free) are auto-detected and can be aliased to share one price while stats stay separate. Unpriced models are badged instead of silently costing $0. When a price changes, the dashboard asks whether to recalculate past usage with the new price or apply it from now on — recalculation is exact for per-provider/model/day tracked history, and there's a manual *Recalculate costs* button for history recorded before a price existed.
 - **Shareable stats card** — the Overview's *Share stats* button opens a popup where you compose a usage card: pick a time period (today / 7d / 14d / 30d / all-time), toggle which stats show (tokens, estimated cost, daily chart, top provider & model), and choose one of four themes (Midnight, Aurora, Light, Terminal). The live preview is the exported image — download it as a PNG or hand it straight to the OS share sheet where the browser supports it. Rendered entirely in-browser on a canvas, no external services.
 - **Traffic flow playground** — the overview's Traffic flow widget renders your providers as free-floating bubbles around the switchX core. Drag them anywhere (both sides), toss them and watch them bounce off the walls — purely cosmetic, nothing about routing changes. Edges redraw live as bubbles move; the active route keeps its animated gradient. Click a bubble to open that provider in the Providers view.
 - **Provider discovery** — a curated catalog of gateways — **including several freemium providers with free models, and more added over time** — with descriptions, ratings, pricing notes, and one-click prefill of the add-provider form. A remote catalog (same JSON schema, e.g. a raw GitHub file) can be set in Settings and overrides matching entries — useful for community-maintained lists.
@@ -164,7 +166,7 @@ Or as a plugin: the `SessionStart` hook auto-starts the proxy, and `/switchx-ins
 
 ## Use
 
-- **Dashboard:** http://127.0.0.1:8787 — add/edit/delete providers, reorder priority (▲▼), test connectivity (including a check that your configured model IDs actually exist on the provider), watch status and the event log live, and check estimated costs. The Traffic flow bubbles on the Overview page are draggable just for fun. The **Share stats** button on the Overview exports your usage as a shareable PNG card.
+- **Dashboard:** http://127.0.0.1:8787 — add/edit/delete providers, reorder priority (▲▼), test connectivity (including a check that your configured model IDs actually exist on the provider), watch status and the event log live, check estimated costs, and edit per-model prices in the Pricing view. The Traffic flow bubbles on the Overview page are draggable just for fun. The **Share stats** button on the Overview exports your usage as a shareable PNG card.
 - **Commands:** `/switchx` (status), `/switchx-add` (add provider), `/switchx-install` (run installer).
 - **Config lives in** `~/.claude/switchx/config.json` (providers + keys + stats). Server log: `~/.claude/switchx/server.log`.
 
