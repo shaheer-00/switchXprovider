@@ -40,6 +40,10 @@ proxy with automatic failover, auto-recovery, live usage analytics — and
 |---|---|
 | ![Pricing](docs/screenshots/pricing.png) | ![Settings](docs/screenshots/settings.png) |
 
+| Help — common issues and fixes |
+|---|
+| ![Help](docs/screenshots/help.png) |
+
 </details>
 
 ## ✨ Highlights
@@ -53,6 +57,7 @@ proxy with automatic failover, auto-recovery, live usage analytics — and
 | 🚀 **Zero dependencies** | One Node process, ~10 files, under 5,000 lines — readable in an afternoon |
 | 📊 **Usage & cost analytics** | Tokens, latency, success rate, and estimated cost per provider / model / day |
 | 💰 **Pricing editor** | Real market rates built in; set prices per model or per provider, alias same models under different names, and recalculate history when prices change |
+| 🆘 **Built-in Help** | Troubleshooting view in the dashboard — claude-mem capture sync, stale proxy after updates, env-var conflicts, cooldowns, and more |
 | 📤 **Shareable stats card** | Build a pretty usage card in the dashboard — pick period, stats, and theme — export or share it as a PNG |
 | 🧭 **Provider discovery** | Curated catalog with one-click setup, plus community-maintained remote catalogs |
 
@@ -142,6 +147,7 @@ node switchXprovider/server/ensure.mjs
 - **Provider discovery** — a curated catalog of gateways — **including several freemium providers with free models, and more added over time** — with descriptions, ratings, pricing notes, and one-click prefill of the add-provider form. A remote catalog (same JSON schema, e.g. a raw GitHub file) can be set in Settings and overrides matching entries — useful for community-maintained lists.
 - **Config backup** — export/import the full provider list (including keys) as JSON from the dashboard.
 - **Install status detection** — the dashboard reads `~/.claude/settings.json` and shows whether Claude Code is actually routed through the proxy.
+- **Help & troubleshooting** — a built-in Help view with the common problems and their fixes: claude-mem capture dying after proxy setup (with the credentials-sync hook fix), statusline plugins showing stale mode labels, the proxy serving old code after a plugin update, shell `ANTHROPIC_*` env vars overriding `settings.json`, providers stuck in cooldown, model-name mismatches across providers, $0 cost estimates, and a dead dashboard.
 - **Deadlock protection** — if *every* provider is down, cooldowns reset once and the request is retried rather than hard-failing.
 
 ## Setup
