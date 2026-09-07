@@ -29,18 +29,36 @@ export const PRICING = {
   'claude-haiku-4-5-20251001': { input: 1.00, output: 5.00, cacheRead: 0.10, cacheCreate: 1.25 },
 
   // ── DeepSeek (official, very cheap) ─────────────────────────────
-  'deepseek-chat':         { input: 0.14, output: 0.28, cacheRead: 0.014, cacheCreate: 0.14 },
-  'deepseek-v4-flash':     { input: 0.00, output: 0.00, cacheRead: 0.00,  cacheCreate: 0.00  },  // free-tier model
+  'deepseek-chat':         { input: 0.14, output: 0.28, cacheRead: 0.0028, cacheCreate: 0.14 },
+  'deepseek-v4-flash':     { input: 0.14, output: 0.28, cacheRead: 0.0028, cacheCreate: 0.14 },
   'deepseek-v4-flash-free':{ input: 0.00, output: 0.00, cacheRead: 0.00,  cacheCreate: 0.00  },
 
   // ── Z.AI GLM ────────────────────────────────────────────────────
-  'glm-5.3':               { input: 0.00, output: 0.00, cacheRead: 0.00,  cacheCreate: 0.00  },
+  // GLM-5.2/5.1/5.3 share the same rate card ($1.40/$4.40, cache read $0.26,
+  // cached-input storage free). GLM-5.3-Flash: $0.15/$0.50.
+  'glm-5.3':               { input: 1.40, output: 4.40, cacheRead: 0.26,  cacheCreate: 0.00 },
+  'glm-5.2':               { input: 1.40, output: 4.40, cacheRead: 0.26,  cacheCreate: 0.00 },
+  'glm-5.3-flash':         { input: 0.15, output: 0.50, cacheRead: 0.03,  cacheCreate: 0.00 },
   'glm-4.6':               { input: 0.70, output: 0.70, cacheRead: 0.07,  cacheCreate: 0.70  },
   'glm-4.5-air':           { input: 0.10, output: 0.10, cacheRead: 0.01,  cacheCreate: 0.10  },
 
-  // ── Free-tier gateway models (bynara, agentrouter, seekai) ──────
+  // ── Moonshot Kimi ───────────────────────────────────────────────
+  'kimi-k2.5':             { input: 0.60, output: 3.00, cacheRead: 0.10,  cacheCreate: 0.00 },
+  'kimi-k2':               { input: 0.60, output: 2.50, cacheRead: 0.10,  cacheCreate: 0.00 },
+
+  // ── Xiaomi MiMo (¥1/¥2 per 1M ≈ $0.14/$0.28 after the 2026-05 cut) ──
+  'mimo-v2.5':             { input: 0.14, output: 0.28, cacheRead: 0.003, cacheCreate: 0.00 },
   'mimo-v2.5-free':        { input: 0.00, output: 0.00, cacheRead: 0.00,  cacheCreate: 0.00  },
+
+  // ── MiniMax M3 (list price; standard ≤512K tier) ────────────────
+  'minimax-m3':            { input: 0.60, output: 2.40, cacheRead: 0.12,  cacheCreate: 0.00 },
   'minimax-m3-free':       { input: 0.00, output: 0.00, cacheRead: 0.00,  cacheCreate: 0.00  },
+
+  // ── Alibaba Qwen ────────────────────────────────────────────────
+  'qwen3.8-flash':         { input: 0.15, output: 0.47, cacheRead: 0.016, cacheCreate: 0.23 },
+
+  // ── Free-tier gateway variants (explicit -free model IDs) ───────
+  // Only models whose ID says -free are free; base IDs carry real rates.
 
   // ── OpenRouter (example rates) ──────────────────────────────────
   'anthropic/claude-opus-5':   { input: 5.00, output: 25.00, cacheRead: 0.50, cacheCreate: 6.25 },
@@ -111,15 +129,10 @@ export function recalcCosts(cfg) {
 
   // pass 1: snapshot what each tracked bucket cost at its recorded prices
   const oldTrackedByModel = new Map();
-  const oldTrackedDaily = new Map();
-  const oldTrackedByProvider = new Map();
-  for (const [providerId, models] of Object.entries(pm)) {
+  for (const models of Object.values(pm)) {
     for (const [model, days] of Object.entries(models)) {
-      for (const [day, b] of Object.entries(days)) {
-        const c = b.costUsd || 0;
-        oldTrackedByModel.set(model, (oldTrackedByModel.get(model) || 0) + c);
-        oldTrackedDaily.set(day, (oldTrackedDaily.get(day) || 0) + c);
-        oldTrackedByProvider.set(providerId, (oldTrackedByProvider.get(providerId) || 0) + c);
+      for (const b of Object.values(days)) {
+        oldTrackedByModel.set(model, (oldTrackedByModel.get(model) || 0) + (b.costUsd || 0));
       }
     }
   }
@@ -128,6 +141,8 @@ export function recalcCosts(cfg) {
   const newByModel = new Map();
   const newDaily = new Map();
   const newByProvider = new Map();
+  const trackedTokDaily = new Map();    // day → tracked tokens
+  const trackedTokByProvider = new Map(); // providerId → tracked tokens
   for (const [providerId, models] of Object.entries(pm)) {
     for (const [model, days] of Object.entries(models)) {
       for (const [day, b] of Object.entries(days)) {
@@ -140,6 +155,9 @@ export function recalcCosts(cfg) {
         newByModel.set(model, (newByModel.get(model) || 0) + cost);
         newDaily.set(day, (newDaily.get(day) || 0) + cost);
         newByProvider.set(providerId, (newByProvider.get(providerId) || 0) + cost);
+        const tok = (b.inputTokens || 0) + (b.outputTokens || 0);
+        trackedTokDaily.set(day, (trackedTokDaily.get(day) || 0) + tok);
+        trackedTokByProvider.set(providerId, (trackedTokByProvider.get(providerId) || 0) + tok);
       }
     }
   }
@@ -180,17 +198,32 @@ export function recalcCosts(cfg) {
     legacyNew += cost;
   }
   const legacyFactor = legacyOld > 0 ? legacyNew / legacyOld : 1;
-  const withLegacy = (oldCost, exactNew, oldTracked) =>
-    exactNew + Math.max(0, (oldCost || 0) - oldTracked) * legacyFactor;
+  // Daily/per-provider buckets have no model split, so legacy cost is
+  // distributed across them by each bucket's un-tracked token share. (Scaling
+  // the old cost fails when history was recorded entirely at $0 — the share
+  // of zero is zero.) Falls back to cost-scaling when there are no tokens.
+  const tokOf = (b) => (b.inputTokens || 0) + (b.outputTokens || 0);
+  let legacyTokDaily = 0;
+  let legacyTokByProvider = 0;
+  for (const [day, b] of Object.entries(usage.daily || {})) {
+    legacyTokDaily += Math.max(0, tokOf(b) - (trackedTokDaily.get(day) || 0));
+  }
+  for (const [providerId, b] of Object.entries(usage.byProvider || {})) {
+    legacyTokByProvider += Math.max(0, tokOf(b) - (trackedTokByProvider.get(providerId) || 0));
+  }
+  const allocByTokens = (legacyTokens, legacyTokTotal) =>
+    legacyTokTotal > 0 ? (legacyNew * legacyTokens) / legacyTokTotal : legacyOld > 0 ? legacyFactor : 0;
 
   for (const [model, b] of Object.entries(usage.byModel || {})) {
     b.costUsd = (newByModel.get(model) || 0) + (legacyModelCost.get(model) || 0);
   }
   for (const [day, b] of Object.entries(usage.daily || {})) {
-    b.costUsd = withLegacy(b.costUsd, newDaily.get(day) || 0, oldTrackedDaily.get(day) || 0);
+    const legacyTokens = Math.max(0, tokOf(b) - (trackedTokDaily.get(day) || 0));
+    b.costUsd = (newDaily.get(day) || 0) + allocByTokens(legacyTokens, legacyTokDaily);
   }
   for (const [providerId, b] of Object.entries(usage.byProvider || {})) {
-    b.costUsd = withLegacy(b.costUsd, newByProvider.get(providerId) || 0, oldTrackedByProvider.get(providerId) || 0);
+    const legacyTokens = Math.max(0, tokOf(b) - (trackedTokByProvider.get(providerId) || 0));
+    b.costUsd = (newByProvider.get(providerId) || 0) + allocByTokens(legacyTokens, legacyTokByProvider);
   }
   usage.totals.costUsd = [...newByModel.values()].reduce((s, c) => s + c, 0) + legacyNew;
 

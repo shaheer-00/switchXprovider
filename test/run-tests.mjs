@@ -355,6 +355,27 @@ async function main() {
   assert(Math.abs(fakeCfg.usage.daily['2026-09-07'].costUsd - 30) < 1e-9, 'recalc scales legacy daily by price factor');
   assert(Math.abs(fakeCfg.usage.byProvider.p1.costUsd - 30) < 1e-9, 'recalc scales legacy byProvider by price factor');
 
+  // zero-cost history (all recorded before any price existed): legacy cost
+  // must be distributed across days/providers by token share, not left at 0
+  const zeroCfg = {
+    pricing: { overrides: { m: { input: 1, output: 1, cacheRead: 0, cacheCreate: 0 } } },
+    usage: {
+      totals: { costUsd: 0 },
+      byModel: { m: { inputTokens: 2_000_000, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0, requests: 2, costUsd: 0 } },
+      byProvider: { p1: { name: 'P1', inputTokens: 2_000_000, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0, requests: 2, costUsd: 0 } },
+      daily: {
+        '2026-09-06': { inputTokens: 1_500_000, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0, requests: 1, costUsd: 0 },
+        '2026-09-07': { inputTokens: 500_000, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0, requests: 1, costUsd: 0 },
+      },
+      pmDaily: {},
+    },
+  };
+  recalcCosts(zeroCfg);
+  assert(Math.abs(zeroCfg.usage.byModel.m.costUsd - 2) < 1e-9, 'zero-history byModel repriced', `${zeroCfg.usage.byModel.m.costUsd}`);
+  assert(Math.abs(zeroCfg.usage.daily['2026-09-06'].costUsd - 1.5) < 1e-9, 'zero-history daily distributed by token share (3/4)', `${zeroCfg.usage.daily['2026-09-06'].costUsd}`);
+  assert(Math.abs(zeroCfg.usage.daily['2026-09-07'].costUsd - 0.5) < 1e-9, 'zero-history daily distributed by token share (1/4)', `${zeroCfg.usage.daily['2026-09-07'].costUsd}`);
+  assert(Math.abs(zeroCfg.usage.byProvider.p1.costUsd - 2) < 1e-9, 'zero-history byProvider distributed by token share');
+
   // unpriced model visible before any override
   let pr = await (await fetch(`${proxyUrl}/api/pricing`)).json();
   const impEntry = pr.models.find((m) => m.model === 'imp-sonnet');

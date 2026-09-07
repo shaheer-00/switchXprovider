@@ -1085,6 +1085,11 @@
       <div class="viewhead">
         <h1>Pricing</h1>
         <span class="sub">per-model rates per 1M tokens · drives the estimated cost everywhere</span>
+        <span class="spacer"></span>
+        <button class="sharebtn" onclick="doRecalc()" title="Rewrite stored usage costs with the current prices — fixes history recorded before a price was set">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
+          Recalculate costs
+        </button>
       </div>
 
       <div class="panelcard" id="unpricedCard" hidden>
@@ -1392,16 +1397,16 @@ function initials(name) {
 
 /* ---- animated count-up ---- */
 const counters = new Map();
-function countUp(id, target) {
+function countUp(id, target, fmt = fmtTok) {
   const el = $(id);
   const from = counters.get(id) ?? 0;
   counters.set(id, target);
-  if (from === target) { el.textContent = fmtTok(target); return; }
+  if (from === target) { el.textContent = fmt(target); return; }
   const t0 = performance.now(), dur = 750;
   const step = (now) => {
     const k = Math.min(1, (now - t0) / dur);
     const eased = 1 - Math.pow(1 - k, 3);
-    el.textContent = fmtTok(Math.round(from + (target - from) * eased));
+    el.textContent = fmt(from + (target - from) * eased);
     if (k < 1) requestAnimationFrame(step);
   };
   requestAnimationFrame(step);
@@ -1700,7 +1705,7 @@ function renderUsage() {
   const todayCost = today.costUsd || 0;
   countUp('stToday', (today.inputTokens || 0) + (today.outputTokens || 0));
   $('stTodayDetail').textContent = `${today.requests || 0} requests today · ${fmtCost(todayCost)} today`;
-  countUp('stCost', totalCost);
+  countUp('stCost', totalCost, fmtCost);
   $('stCostDetail').textContent = `${fmtCost(todayCost)} today · ${fmtCost((usage.daily || []).slice(-7).reduce((s, d) => s + (d.costUsd || 0), 0))} 7d`;
 
   // 14-day chart
