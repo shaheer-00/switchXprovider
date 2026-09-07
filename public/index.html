@@ -736,6 +736,69 @@
     transition: none !important;
   }
 
+  /* ---- SHARED COMPONENT LAYER (Task 2) ---- */
+  /* Placed after the legacy per-view rules so component classes win ties.
+     Legacy rules with higher specificity (table.tbl, button.primary,
+     button.danger) still win until their view is restyled (Tasks 3–5). */
+  /* ---- buttons ---- */
+  .btn, .shbtn, button.primary {
+    display: inline-flex; align-items: center; gap: 6px;
+    font: 600 12.5px var(--sans); border-radius: var(--r-sm);
+    padding: 7px 14px; cursor: pointer; border: 1px solid transparent;
+    transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+  }
+  .btn-primary, button.primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #7d87f6; }
+  .btn-secondary { background: var(--surface); border-color: var(--border); color: var(--text); }
+  .btn-secondary:hover { background: var(--surface-2); }
+  .btn-ghost { background: none; color: var(--muted); }
+  .btn-ghost:hover { color: var(--text); background: var(--surface-2); }
+  .btn-danger { background: none; color: var(--red); border-color: transparent; }
+  .btn-danger:hover { background: rgba(248,113,113,.08); }
+
+  /* ---- cards & stats ---- */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--sp-4); }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--sp-4); }
+  .statlabel { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); font-weight: 600; }
+  .statnum { font: 700 28px var(--mono); letter-spacing: -0.02em; margin: 6px 0 2px; }
+  .statdetail { color: var(--muted); font-size: 12px; font-family: var(--mono); }
+
+  /* ---- tables ---- */
+  .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tbl th {
+    text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--dim); font-weight: 600; padding: var(--sp-2) var(--sp-3);
+    border-bottom: 1px solid var(--border); background: var(--surface);
+  }
+  .tbl td { padding: 10px var(--sp-3); border-bottom: 1px solid var(--border); }
+  .tbl tr:last-child td { border-bottom: 0; }
+  .tbl tr:hover td { background: var(--surface-2); }
+  .tbl .num { text-align: right; font-family: var(--mono); }
+
+  /* ---- status dots ---- */
+  .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 7px; vertical-align: middle; }
+  .dot-up { background: var(--green); box-shadow: 0 0 0 0 rgba(52,211,153,.5); animation: dotpulse 2s infinite; }
+  .dot-down { background: var(--red); }
+  .dot-cd { background: var(--amber); }
+  .dot-off { background: var(--dim); }
+  @keyframes dotpulse { 70% { box-shadow: 0 0 0 5px rgba(52,211,153,0); } 100% { box-shadow: 0 0 0 0 rgba(52,211,153,0); } }
+
+  /* ---- pills, inputs, toasts, modals, empty states ---- */
+  .pill { display: inline-flex; align-items: center; gap: 5px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; font-size: 11px; color: var(--muted); }
+  .input, input, select, textarea {
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
+    border-radius: var(--r-sm); padding: 7px 10px; font: 13px var(--sans); width: 100%;
+  }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+  .toast { position: fixed; right: var(--sp-4); bottom: var(--sp-4); background: var(--surface-2); border: 1px solid var(--border); border-left: 2px solid var(--accent); border-radius: var(--r-sm); padding: 10px 14px; font-size: 13px; z-index: 200; }
+  .toast.err { border-left-color: var(--red); }
+  /* the dashboard JS toggles the `error` class, not `err` — alias it */
+  .toast.error { border-left-color: var(--red); }
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.6); backdrop-filter: blur(4px); display: grid; place-items: center; z-index: 100; }
+  .modal .card { box-shadow: 0 8px 32px rgba(0,0,0,.5); }
+  .empty { text-align: center; color: var(--dim); padding: var(--sp-6); }
+  .mono { font-family: var(--mono); }
+
   /* ---- BRIDGE (delete per-view as restyled; all gone by Task 6) ---- */
   /* Old token names still referenced by retained per-view CSS (cards, tables,
      forms, wizard, share, toasts) and by inline styles inside JS template
@@ -847,7 +910,7 @@
         <h1>Overview</h1>
         <span class="sub" id="ovConn">connecting…</span>
         <div class="actions">
-          <button class="sharebtn" onclick="openShare()" title="Create a shareable usage card">
+          <button class="sharebtn btn btn-secondary" onclick="openShare()" title="Create a shareable usage card">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>
             Share stats
           </button>
@@ -894,35 +957,35 @@
       <div class="stats">
         <div class="stat">
           <div class="glowcorner" style="background:var(--acc1)"></div>
-          <div class="toprow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#8b9dff" stroke-width="2"><path d="M4 7h16M4 12h10M4 17h13"/></svg></span><span class="label">Tokens total</span></div>
-          <div class="value" id="stTotal">0</div>
-          <div class="detail" id="stTotalDetail">in 0 · out 0</div>
+          <div class="toprow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#8b9dff" stroke-width="2"><path d="M4 7h16M4 12h10M4 17h13"/></svg></span><span class="statlabel">Tokens total</span></div>
+          <div class="statnum" id="stTotal">0</div>
+          <div class="statdetail" id="stTotalDetail">in 0 · out 0</div>
           <div class="sparkwrap"><svg id="sparkTokens" viewBox="0 0 100 26" preserveAspectRatio="none"></svg></div>
         </div>
         <div class="stat">
           <div class="glowcorner" style="background:var(--acc2)"></div>
-          <div class="toprow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#67e8f9" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span><span class="label">Tokens today</span></div>
-          <div class="value" id="stToday">0</div>
-          <div class="detail" id="stTodayDetail">0 requests today</div>
+          <div class="toprow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#67e8f9" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span><span class="statlabel">Tokens today</span></div>
+          <div class="statnum" id="stToday">0</div>
+          <div class="statdetail" id="stTodayDetail">0 requests today</div>
         </div>
         <div class="stat">
           <div class="glowcorner" style="background:var(--acc3)"></div>
-          <div class="toprow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></svg></span><span class="label">Requests</span></div>
-          <div class="value" id="stReqs">0</div>
-          <div class="detail">routed through proxy</div>
+          <div class="toprow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></svg></span><span class="statlabel">Requests</span></div>
+          <div class="statnum" id="stReqs">0</div>
+          <div class="statdetail">routed through proxy</div>
           <div class="sparkwrap"><svg id="sparkReqs" viewBox="0 0 100 26" preserveAspectRatio="none"></svg></div>
         </div>
         <div class="stat">
           <div class="glowcorner" style="background:var(--green)"></div>
-          <div class="toprow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#6ee7b7" stroke-width="2"><path d="M5 12a7 7 0 0 1 14 0v5a2 2 0 0 1-2 2h-2v-6h4M5 12v5a2 2 0 0 0 2 2h2v-6H5"/></svg></span><span class="label">Providers</span></div>
-          <div class="value" id="stProv">0/0</div>
-          <div class="detail">up / configured</div>
+          <div class="toprow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#6ee7b7" stroke-width="2"><path d="M5 12a7 7 0 0 1 14 0v5a2 2 0 0 1-2 2h-2v-6h4M5 12v5a2 2 0 0 0 2 2h2v-6H5"/></svg></span><span class="statlabel">Providers</span></div>
+          <div class="statnum" id="stProv">0/0</div>
+          <div class="statdetail">up / configured</div>
         </div>
         <div class="stat">
           <div class="glowcorner" style="background:var(--amber)"></div>
-          <div class="toprow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M12 2v16M17 7H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span><span class="label">Estimated cost</span></div>
-          <div class="value" id="stCost" style="color:var(--amber)">$0</div>
-          <div class="detail" id="stCostDetail">all time</div>
+          <div class="toprow"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M12 2v16M17 7H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span><span class="statlabel">Estimated cost</span></div>
+          <div class="statnum" id="stCost" style="color:var(--amber)">$0</div>
+          <div class="statdetail" id="stCostDetail">all time</div>
         </div>
       </div>
 
@@ -980,7 +1043,7 @@
         <span class="sub">priority order · traffic goes to the highest healthy one</span>
         <div class="actions">
           <span class="sub"><span class="kbd">1</span>–<span class="kbd">8</span> switch views</span>
-          <button class="primary" id="testAllBtn" onclick="testAll()">Test all</button>
+          <button class="btn btn-primary" id="testAllBtn" onclick="testAll()">Test all</button>
         </div>
       </div>
       <div class="searchbar">
@@ -1035,8 +1098,8 @@
             </div>
           </div>
           <div class="formactions">
-            <button class="primary" type="submit" id="submitBtn">Add</button>
-            <button type="button" onclick="resetForm()">Cancel</button>
+            <button class="btn btn-primary" type="submit" id="submitBtn">Add</button>
+            <button class="btn btn-secondary" type="button" onclick="resetForm()">Cancel</button>
           </div>
         </form>
       </div>
@@ -1072,14 +1135,14 @@
             <div class="d">Curated and vetted by the plugin author — same list shipped in the repo, synced straight from GitHub.</div>
             <div class="mono">https://raw.githubusercontent.com/shaheer-00/switchXprovider/master/server/catalog.json</div>
           </div>
-          <button class="primary" onclick="restoreOfficialCatalog()">Restore official catalog</button>
+          <button class="btn btn-primary" onclick="restoreOfficialCatalog()">Restore official catalog</button>
         </div>
 
         <h2 style="margin-top:18px">Custom remote catalog</h2>
         <div class="hint">Optional — point at any raw JSON catalog (e.g. your GitHub repo) to extend/override the list. Same schema — see README.</div>
         <div class="urlbar">
           <input id="catalogUrl" placeholder="https://raw.githubusercontent.com/you/switchx-catalog/main/catalog.json">
-          <button class="primary" onclick="refreshCatalog()">Fetch &amp; apply</button>
+          <button class="btn btn-primary" onclick="refreshCatalog()">Fetch &amp; apply</button>
         </div>
         <div class="hint" id="catalogMeta" style="margin-top:10px"></div>
       </div>
@@ -1094,7 +1157,7 @@
         <span class="sub">tokens per provider and per model</span>
         <div class="actions">
           <button class="unpricedbadge" id="usageUnpricedBadge" onclick="gotoView('pricing')" hidden></button>
-          <button class="danger" onclick="resetUsage()">reset statistics</button>
+          <button class="btn btn-danger" onclick="resetUsage()">reset statistics</button>
         </div>
       </div>
 
@@ -1117,7 +1180,7 @@
         <h1>Pricing</h1>
         <span class="sub">per-model rates per 1M tokens · drives the estimated cost everywhere</span>
         <div class="actions">
-          <button class="sharebtn" onclick="doRecalc()" title="Rewrite stored usage costs with the current prices — fixes history recorded before a price was set">
+          <button class="sharebtn btn btn-secondary" onclick="doRecalc()" title="Rewrite stored usage costs with the current prices — fixes history recorded before a price was set">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
             Recalculate costs
           </button>
@@ -1277,8 +1340,8 @@
             <div class="t">Backup / restore</div>
             <div class="d">Export includes API keys — store the file safely.</div>
           </div>
-          <button onclick="exportConfig()">export JSON</button>
-          <button onclick="document.getElementById('importFile').click()">import JSON</button>
+          <button class="btn btn-secondary" onclick="exportConfig()">export JSON</button>
+          <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">import JSON</button>
           <input type="file" id="importFile" accept=".json" style="display:none" onchange="importConfig(event)">
         </div>
         <div class="setrow">
@@ -1298,7 +1361,7 @@
             <div class="t">Reset statistics</div>
             <div class="d">Zeroes all token counters and the request feed. Providers and keys are untouched.</div>
           </div>
-          <button class="danger" onclick="resetUsage()">reset</button>
+          <button class="btn btn-danger" onclick="resetUsage()">reset</button>
         </div>
       </div>
 
@@ -1309,7 +1372,7 @@
             <div class="t">☕ Buy me a coffee</div>
             <div class="d">If switchXprovider saved your session, support development — every coffee keeps the failovers coming.</div>
           </div>
-          <button class="primary" onclick="window.open('https://buymeacoffee.com/shaheer0.0','_blank')">buymeacoffee.com/shaheer0.0</button>
+          <button class="btn btn-primary" onclick="window.open('https://buymeacoffee.com/shaheer0.0','_blank')">buymeacoffee.com/shaheer0.0</button>
         </div>
       </div>
 
@@ -1336,7 +1399,7 @@
         <h1>Events</h1>
         <span class="sub">failovers, recoveries, cooldowns, config changes</span>
         <div class="actions">
-          <button class="danger" id="clearEventsBtn" onclick="clearEvents()">Clear log</button>
+          <button class="btn btn-danger" id="clearEventsBtn" onclick="clearEvents()">Clear log</button>
         </div>
       </div>
       <div class="searchbar">
