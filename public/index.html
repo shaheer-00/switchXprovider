@@ -311,6 +311,83 @@
   .wizskip:hover { color: var(--muted); }
   .wiztest { margin-top: 4px; font-size: 13px; min-height: 20px; }
 
+  /* ---- share widget ---- */
+  .sharebtn {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--panel); color: var(--muted);
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 4px 12px; font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .sharebtn:hover { border-color: var(--acc1); color: var(--text); box-shadow: 0 4px 22px rgba(99,102,241,0.25); }
+  .sharebtn svg { width: 13px; height: 13px; }
+  .share {
+    position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
+    background: rgba(5,7,14,0.72); backdrop-filter: blur(6px); padding: 24px;
+  }
+  .sharecard {
+    width: min(980px, 100%); max-height: calc(100vh - 48px); overflow: auto;
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 18px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.55); padding: 22px;
+  }
+  .sharehead { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .sharehead h2 { margin: 0; font-size: 18px; letter-spacing: -0.02em; }
+  .sharehead .sub { color: var(--muted); font-size: 12.5px; }
+  .sharehead .x { margin-left: auto; }
+  .sharegrid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 18px; }
+  @media (max-width: 820px) { .sharegrid { grid-template-columns: 1fr; } }
+  .shareprev {
+    background: repeating-conic-gradient(rgba(130,150,200,0.06) 0% 25%, transparent 0% 50%) 0 0/22px 22px;
+    border: 1px solid var(--border); border-radius: 12px; padding: 10px; display: grid; place-items: center;
+  }
+  .shareprev canvas { width: 100%; height: auto; border-radius: 8px; display: block; }
+  .shlabel { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); margin: 14px 0 6px; font-weight: 600; }
+  .shlabel:first-child { margin-top: 0; }
+  .shchips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .shchip {
+    background: var(--panel); border: 1px solid var(--border); color: var(--muted);
+    border-radius: 999px; padding: 5px 12px; font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  }
+  .shchip:hover { border-color: var(--acc1); color: var(--text); }
+  .shchip.on { border-color: var(--acc1); color: var(--text); background: rgba(99,102,241,0.13); }
+  .shtog {
+    display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 10px;
+    border: 1px solid transparent; cursor: pointer; user-select: none;
+  }
+  .shtog:hover { background: rgba(99,102,241,0.06); }
+  .shtog .box {
+    width: 16px; height: 16px; border-radius: 5px; border: 1.5px solid var(--border-hi);
+    display: grid; place-items: center; flex: none; transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .shtog.on .box { background: var(--acc1); border-color: var(--acc1); }
+  .shtog .box svg { width: 10px; height: 10px; opacity: 0; }
+  .shtog.on .box svg { opacity: 1; }
+  .shtog .t { font-size: 13px; color: var(--muted); }
+  .shtog.on .t { color: var(--text); }
+  .shthemes { display: flex; flex-wrap: wrap; gap: 8px; }
+  .shtheme {
+    border: 1px solid var(--border); border-radius: 10px; padding: 7px 10px 8px; cursor: pointer;
+    background: var(--panel); text-align: center; transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+  .shtheme:hover { transform: translateY(-2px); }
+  .shtheme.on { border-color: var(--acc1); box-shadow: 0 0 0 3px rgba(99,102,241,0.18); }
+  .shtheme .sw { display: flex; gap: 3px; margin-bottom: 5px; }
+  .shtheme .sw i { width: 14px; height: 14px; border-radius: 4px; display: block; }
+  .shtheme .nm { font-size: 10.5px; color: var(--muted); font-weight: 600; }
+  .shtheme.on .nm { color: var(--text); }
+  .shareactions { display: flex; gap: 10px; margin-top: 18px; }
+  .shbtn {
+    flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    border-radius: 10px; padding: 10px 14px; font-size: 13px; font-weight: 700; cursor: pointer;
+    border: 1px solid var(--border); background: var(--panel); color: var(--text);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .shbtn:hover { border-color: var(--border-hi); }
+  .shbtn.primary { border: none; background: var(--grad); color: #fff; }
+  .shbtn.primary:hover { box-shadow: 0 6px 24px rgba(99,102,241,0.4); }
+  .shbtn svg { width: 14px; height: 14px; }
+
   /* ---- stat cards ---- */
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 15px; margin-bottom: 22px; }
   .stat {
@@ -658,6 +735,10 @@
       <div class="viewhead">
         <h1>Overview</h1>
         <span class="sub" id="ovConn">connecting…</span>
+        <button class="sharebtn" onclick="openShare()" title="Create a shareable usage card">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>
+          Share stats
+        </button>
       </div>
 
       <div class="hero">
@@ -1027,6 +1108,40 @@
     <div class="wizbody" id="wizBody"></div>
     <div class="wizactions" id="wizActions"></div>
     <a class="wizskip" href="#" onclick="wizSkip(); return false">skip — I'll explore myself</a>
+  </div>
+</div>
+
+<!-- ============ SHARE WIDGET ============ -->
+<div class="share" id="share" hidden>
+  <div class="sharecard">
+    <div class="sharehead">
+      <h2>Share your stats</h2>
+      <span class="sub">pick what shows on the card — the preview is exactly what exports</span>
+      <button class="shbtn x" style="flex:none;width:34px;height:34px;padding:0" onclick="closeShare()" title="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="sharegrid">
+      <div class="shareprev"><canvas id="shareCanvas" width="2400" height="1350"></canvas></div>
+      <div class="sharectl">
+        <div class="shlabel">Time period</div>
+        <div class="shchips" id="sharePeriods"></div>
+        <div class="shlabel">Show on card</div>
+        <div id="shareToggles"></div>
+        <div class="shlabel">Theme</div>
+        <div class="shthemes" id="shareThemes"></div>
+        <div class="shareactions">
+          <button class="shbtn primary" onclick="shareDownload()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+            Download PNG
+          </button>
+          <button class="shbtn" id="shareNativeBtn" onclick="shareNative()" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+            Share
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -2055,6 +2170,315 @@ setInterval(() => {
     el.textContent = remain > 0 ? `back in ${Math.ceil(remain / 1000)}s` : 'recovering…';
   });
 }, 1000);
+
+/* ---- share widget ---- */
+const SHARE_PERIODS = [
+  { id: 'today', label: 'Today', days: 1 },
+  { id: 'd7', label: '7 days', days: 7 },
+  { id: 'd14', label: '14 days', days: 14 },
+  { id: 'd30', label: '30 days', days: 30 },
+  { id: 'all', label: 'All time', days: 0 },
+];
+const SHARE_TOGGLES = [
+  { id: 'tokens', label: 'Tokens (big number)' },
+  { id: 'cost', label: 'Estimated cost' },
+  { id: 'chart', label: 'Daily usage chart' },
+  { id: 'breakdown', label: 'Top provider & model' },
+];
+const SHARE_THEMES = {
+  midnight: {
+    label: 'Midnight', sw: ['#0b0e1a', '#6366f1', '#22d3ee'], glow: true, mono: false,
+    bg: '#0b0e1a', text: '#e8ecff', muted: '#8b93b5', dim: '#5d677e',
+    accent: '#6366f1', accent2: '#22d3ee', amber: '#fbbf24',
+    grid: 'rgba(130,150,200,0.10)', border: 'rgba(130,150,200,0.16)',
+  },
+  aurora: {
+    label: 'Aurora', sw: ['#141034', '#a855f7', '#2dd4bf'], glow: true, mono: false,
+    bg: ['#141034', '#0a1f2e'], text: '#f0edff', muted: '#a39fc9', dim: '#6f6b96',
+    accent: '#a855f7', accent2: '#2dd4bf', amber: '#fbbf24',
+    grid: 'rgba(168,140,255,0.10)', border: 'rgba(168,140,255,0.18)',
+  },
+  light: {
+    label: 'Light', sw: ['#f7f8fc', '#6366f1', '#0891b2'], glow: false, mono: false,
+    bg: ['#f7f8fc', '#edf0fa'], text: '#111627', muted: '#5b6478', dim: '#9aa3b8',
+    accent: '#6366f1', accent2: '#0891b2', amber: '#b45309',
+    grid: 'rgba(20,30,60,0.08)', border: 'rgba(20,30,60,0.12)',
+  },
+  terminal: {
+    label: 'Terminal', sw: ['#050a06', '#39d353', '#7ee787'], glow: false, mono: true,
+    bg: '#050a06', text: '#9dff9d', muted: '#4e9e58', dim: '#2f6a3a',
+    accent: '#39d353', accent2: '#7ee787', amber: '#f0c674',
+    grid: 'rgba(61,220,110,0.09)', border: 'rgba(61,220,110,0.22)',
+  },
+};
+let shareState = { period: 'd14', show: { tokens: true, cost: true, chart: true, breakdown: true }, theme: 'midnight' };
+let shareUsage = null;
+
+const shareFont = (t, weight, size) =>
+  t.mono
+    ? `${weight} ${size}px ui-monospace, "Cascadia Code", Consolas, monospace`
+    : `${weight} ${size}px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
+
+function buildShareControls() {
+  $('sharePeriods').innerHTML = SHARE_PERIODS.map((p) =>
+    `<button class="shchip${shareState.period === p.id ? ' on' : ''}" data-p="${p.id}">${p.label}</button>`).join('');
+  $('sharePeriods').querySelectorAll('.shchip').forEach((b) =>
+    b.addEventListener('click', () => { shareState.period = b.dataset.p; buildShareControls(); drawShareCard(); }));
+  $('shareToggles').innerHTML = SHARE_TOGGLES.map((t) => `
+    <div class="shtog${shareState.show[t.id] ? ' on' : ''}" data-t="${t.id}">
+      <span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>
+      <span class="t">${t.label}</span>
+    </div>`).join('');
+  $('shareToggles').querySelectorAll('.shtog').forEach((el) =>
+    el.addEventListener('click', () => {
+      const id = el.dataset.t;
+      shareState.show[id] = !shareState.show[id];
+      // never let the card go fully empty — force tokens back on
+      if (!Object.values(shareState.show).some(Boolean)) shareState.show.tokens = true;
+      buildShareControls(); drawShareCard();
+    }));
+  $('shareThemes').innerHTML = Object.entries(SHARE_THEMES).map(([id, t]) => `
+    <div class="shtheme${shareState.theme === id ? ' on' : ''}" data-th="${id}">
+      <div class="sw">${t.sw.map((c) => `<i style="background:${c}"></i>`).join('')}</div>
+      <div class="nm">${t.label}</div>
+    </div>`).join('');
+  $('shareThemes').querySelectorAll('.shtheme').forEach((el) =>
+    el.addEventListener('click', () => { shareState.theme = el.dataset.th; buildShareControls(); drawShareCard(); }));
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function drawShareCard() {
+  const cv = $('shareCanvas');
+  if (!cv || !shareUsage) return;
+  const ctx = cv.getContext('2d');
+  const t = SHARE_THEMES[shareState.theme];
+  const period = SHARE_PERIODS.find((p) => p.id === shareState.period);
+  const pdat = (shareUsage.periods || {})[shareState.period] || { inputTokens: 0, outputTokens: 0, requests: 0, costUsd: 0 };
+  const W = 1200, H = 675, P = 56;
+
+  ctx.setTransform(2, 0, 0, 2, 0, 0); // canvas is 2400×1350 — draw at 2x for crisp export
+  if (Array.isArray(t.bg)) {
+    const g = ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, t.bg[0]); g.addColorStop(1, t.bg[1]);
+    ctx.fillStyle = g;
+  } else ctx.fillStyle = t.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // soft accent glow
+  if (t.glow) {
+    let g = ctx.createRadialGradient(W - 80, -40, 0, W - 80, -40, 420);
+    g.addColorStop(0, t.accent + '38'); g.addColorStop(1, t.accent + '00');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    g = ctx.createRadialGradient(40, H + 40, 0, 40, H + 40, 420);
+    g.addColorStop(0, t.accent2 + '2e'); g.addColorStop(1, t.accent2 + '00');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  }
+
+  // ---- header ----
+  const logo = 52, ly = P;
+  const lg = ctx.createLinearGradient(P, ly, P + logo, ly + logo);
+  lg.addColorStop(0, t.accent); lg.addColorStop(1, t.accent2);
+  ctx.fillStyle = lg;
+  roundRect(ctx, P, ly, logo, logo, 14); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = shareFont(t, '800', 21);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('SX', P + logo / 2, ly + logo / 2 + 1);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = t.text;
+  ctx.font = shareFont(t, '800', 26);
+  ctx.fillText('switchXprovider', P + logo + 16, ly + logo / 2 - 6);
+  ctx.fillStyle = t.muted;
+  ctx.font = shareFont(t, '500', 14);
+  ctx.fillText('Claude Code multi-provider proxy', P + logo + 16, ly + logo / 2 + 15);
+  // period pill (right)
+  ctx.font = shareFont(t, '700', 13);
+  const plabel = period.label.toUpperCase();
+  const pw = ctx.measureText(plabel).width + 30;
+  ctx.strokeStyle = t.border; ctx.lineWidth = 1.5;
+  roundRect(ctx, W - P - pw, ly + logo / 2 - 14, pw, 28, 14); ctx.stroke();
+  ctx.fillStyle = t.accent2;
+  ctx.fillText(plabel, W - P - pw + 15, ly + logo / 2 + 0.5);
+
+  let y = P + logo + 30;
+  ctx.strokeStyle = t.border; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(P, y); ctx.lineTo(W - P, y); ctx.stroke();
+  y += 34;
+
+  // ---- tokens + cost row ----
+  if (shareState.show.tokens || shareState.show.cost) {
+    const rowH = shareState.show.tokens ? 128 : 80;
+    if (shareState.show.tokens) {
+      ctx.fillStyle = t.dim;
+      ctx.font = shareFont(t, '700', 12);
+      ctx.fillText('T O K E N S', P, y);
+      ctx.fillStyle = t.text;
+      ctx.font = shareFont(t, '800', 78);
+      ctx.fillText(fmtTok((pdat.inputTokens || 0) + (pdat.outputTokens || 0)), P, y + 52);
+      ctx.fillStyle = t.muted;
+      ctx.font = shareFont(t, '500', 15);
+      ctx.fillText(`in ${fmtTok(pdat.inputTokens || 0)} · out ${fmtTok(pdat.outputTokens || 0)} · ${(pdat.requests || 0).toLocaleString()} requests`, P, y + 102);
+    }
+    if (shareState.show.cost) {
+      ctx.textAlign = 'right';
+      ctx.fillStyle = t.dim;
+      ctx.font = shareFont(t, '700', 12);
+      ctx.fillText('E S T I M A T E D   C O S T', W - P, y);
+      ctx.fillStyle = t.amber;
+      ctx.font = shareFont(t, '800', shareState.show.tokens ? 46 : 54);
+      ctx.fillText(fmtCost(pdat.costUsd || 0), W - P, y + (shareState.show.tokens ? 50 : 58));
+      ctx.textAlign = 'left';
+    }
+    y += rowH + 18;
+    ctx.strokeStyle = t.border;
+    ctx.beginPath(); ctx.moveTo(P, y); ctx.lineTo(W - P, y); ctx.stroke();
+    y += 28;
+  }
+
+  // ---- daily chart ----
+  if (shareState.show.chart) {
+    const n = period.days === 1 ? 14 : period.days === 0 ? 30 : period.days;
+    const data = (shareUsage.daily || []).slice(-n);
+    const chartH = shareState.show.breakdown ? 148 : 168;
+    ctx.fillStyle = t.dim;
+    ctx.font = shareFont(t, '700', 12);
+    ctx.fillText('D A I L Y   U S A G E', P, y);
+    // baseline grid
+    const baseY = y + 20 + chartH;
+    ctx.strokeStyle = t.grid; ctx.lineWidth = 1;
+    for (let i = 0; i <= 3; i++) {
+      const gy = y + 20 + (chartH / 3) * i;
+      ctx.beginPath(); ctx.moveTo(P, gy); ctx.lineTo(W - P, gy); ctx.stroke();
+    }
+    const max = Math.max(1, ...data.map((d) => (d.inputTokens || 0) + (d.outputTokens || 0)));
+    const slot = (W - 2 * P) / data.length, bw = Math.max(4, slot - 6);
+    data.forEach((d, i) => {
+      const inH = ((d.inputTokens || 0) / max) * chartH;
+      const outH = ((d.outputTokens || 0) / max) * chartH;
+      const bx = P + slot * i + (slot - bw) / 2;
+      if (inH > 0) { ctx.fillStyle = t.accent; roundRect(ctx, bx, baseY - inH, bw, inH, Math.min(3, bw / 2)); ctx.fill(); }
+      if (outH > 0) { ctx.fillStyle = t.accent2; roundRect(ctx, bx, baseY - inH - outH, bw, outH, Math.min(3, bw / 2)); ctx.fill(); }
+    });
+    // input/output legend, top-right of the chart area
+    ctx.font = shareFont(t, '600', 12);
+    ctx.textAlign = 'right';
+    let lx = W - P;
+    ctx.fillStyle = t.accent2;
+    ctx.fillText('output', lx, y + 6); lx -= ctx.measureText('output').width + 12;
+    ctx.fillStyle = t.accent2; roundRect(ctx, lx - 10, y - 3, 10, 10, 3); ctx.fill(); lx -= 26;
+    ctx.fillStyle = t.muted;
+    ctx.fillText('input', lx, y + 6); lx -= ctx.measureText('input').width + 12;
+    ctx.fillStyle = t.accent; roundRect(ctx, lx - 10, y - 3, 10, 10, 3); ctx.fill();
+    ctx.textAlign = 'left';
+    // date labels at both ends
+    ctx.fillStyle = t.dim;
+    ctx.font = shareFont(t, '500', 11);
+    if (data.length > 1) {
+      const fmtD = (iso) => { const [m, d] = iso.split('-'); return `${+m}/${+d}`; };
+      ctx.fillText(fmtD(data[0].date), P, baseY + 18);
+      ctx.textAlign = 'right';
+      ctx.fillText(fmtD(data[data.length - 1].date), W - P, baseY + 18);
+      ctx.textAlign = 'left';
+    }
+    y = baseY + 40;
+    if (shareState.show.breakdown) {
+      ctx.strokeStyle = t.border;
+      ctx.beginPath(); ctx.moveTo(P, y - 14); ctx.lineTo(W - P, y - 14); ctx.stroke();
+    }
+  }
+
+  // ---- top provider / model ----
+  if (shareState.show.breakdown) {
+    const tot = ((shareUsage.totals?.inputTokens || 0) + (shareUsage.totals?.outputTokens || 0)) || 1;
+    const topP = [...(shareUsage.byProvider || [])].sort((a, b) => ((b.inputTokens + b.outputTokens) - (a.inputTokens + a.outputTokens)))[0];
+    const topM = (shareUsage.byModel || [])[0];
+    const colW = (W - 2 * P) / 2;
+    const bkRow = (label, name, tokens, x) => {
+      ctx.fillStyle = t.dim;
+      ctx.font = shareFont(t, '700', 11);
+      ctx.fillText(label, x, y);
+      ctx.fillStyle = t.text;
+      ctx.font = shareFont(t, '700', 21);
+      ctx.fillText(name || '—', x, y + 28);
+      if (name) {
+        ctx.fillStyle = t.muted;
+        ctx.font = shareFont(t, '500', 13);
+        ctx.fillText(`${fmtTok(tokens)} tokens · ${Math.round((tokens / tot) * 100)}% of all traffic`, x, y + 50);
+      }
+    };
+    bkRow('TOP PROVIDER — ALL TIME', topP?.name, topP ? topP.inputTokens + topP.outputTokens : 0, P);
+    bkRow('TOP MODEL — ALL TIME', topM?.model, topM ? topM.inputTokens + topM.outputTokens : 0, P + colW);
+  }
+
+  // ---- footer ----
+  const fy = H - P + 6;
+  ctx.fillStyle = t.dim;
+  ctx.font = shareFont(t, '500', 12);
+  const now = new Date();
+  const dstr = now.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  const first = (shareUsage.daily || [])[0];
+  let range = dstr;
+  if (period.days > 1 && first) {
+    const fd = new Date(first.date + 'T00:00:00');
+    range = `${fd.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} — ${dstr}`;
+  } else if (period.days === 0) range = `all time · through ${dstr}`;
+  ctx.fillText(range, P, fy);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = t.accent;
+  ctx.font = shareFont(t, '800', 13);
+  ctx.fillText('switchXprovider', W - P, fy);
+  ctx.textAlign = 'left';
+}
+
+window.openShare = async () => {
+  try {
+    shareUsage = await api('/api/usage?days=30');
+  } catch {
+    toast('could not load usage stats', true);
+    return;
+  }
+  $('share').hidden = false;
+  buildShareControls();
+  drawShareCard();
+  // Web Share with files (local https / localhost only) — hide the button if unavailable
+  try {
+    const probe = new File([new Blob(['x'])], 'p.png', { type: 'image/png' });
+    $('shareNativeBtn').hidden = !(navigator.canShare && navigator.canShare({ files: [probe] }));
+  } catch { $('shareNativeBtn').hidden = true; }
+};
+window.closeShare = () => { $('share').hidden = true; };
+$('share').addEventListener('click', (e) => { if (e.target === $('share')) closeShare(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('share').hidden) closeShare(); });
+
+window.shareDownload = () => {
+  $('shareCanvas').toBlob((blob) => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `switchx-stats-${shareState.period}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    toast('PNG saved');
+  }, 'image/png');
+};
+window.shareNative = async () => {
+  const blob = await new Promise((r) => $('shareCanvas').toBlob(r, 'image/png'));
+  const file = new File([blob], `switchx-stats-${shareState.period}.png`, { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: 'switchXprovider usage stats' }); } catch { /* user cancelled */ }
+  } else {
+    toast('sharing not supported here — downloaded instead');
+    shareDownload();
+  }
+};
 
 /* ---- polling ---- */
 function renderHero() {

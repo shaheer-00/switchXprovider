@@ -223,21 +223,59 @@ export async function handleApi(req, res, pathname, cfg) {
     // ---- usage analytics ----
     if (method === 'GET' && resource === 'usage') {
       const usage = cfg.usage || { totals: {}, byProvider: {}, daily: {} };
-      // Dense 14-day series (fill gaps with zeros so the chart never breaks).
-      const days = [];
+      // Dense N-day series (fill gaps with zeros so the chart never breaks).
+      // ?days= widens the window (1..90, default 14) for the share card.
+      let windowDays = 14;
+      try {
+        const raw = new URL(req.url, 'http://localhost').searchParams.get('days');
+        if (raw !== null) {
+          const q = Number(raw);
+          if (Number.isFinite(q)) windowDays = Math.min(90, Math.max(1, Math.round(q)));
+        }
+      } catch { /* no/invalid query — keep default */ }
+      const dayKey = (d) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const now = new Date();
-      for (let i = 13; i >= 0; i--) {
+      const days = [];
+      for (let i = windowDays - 1; i >= 0; i--) {
         const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
-        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        const u = usage.daily?.[key] || {};
+        const u = usage.daily?.[dayKey(d)] || {};
         days.push({
-          date: key,
+          date: dayKey(d),
           inputTokens: u.inputTokens || 0,
           outputTokens: u.outputTokens || 0,
           requests: u.requests || 0,
           costUsd: u.costUsd || 0,
         });
       }
+      // Period aggregates for the share card: today / 7d / 14d / 30d / all-time,
+      // summed from the full daily history (which is kept forever).
+      const sumDays = (offsets) => {
+        const out = { inputTokens: 0, outputTokens: 0, requests: 0, costUsd: 0 };
+        for (const off of offsets) {
+          const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - off);
+          const u = usage.daily?.[dayKey(d)] || {};
+          out.inputTokens += u.inputTokens || 0;
+          out.outputTokens += u.outputTokens || 0;
+          out.requests += u.requests || 0;
+          out.costUsd += u.costUsd || 0;
+        }
+        return out;
+      };
+      const range = (n) => Array.from({ length: n }, (_, i) => i);
+      const totals = { ...emptyUsage(), ...(usage.totals || {}) };
+      const periods = {
+        today: sumDays(range(1)),
+        d7: sumDays(range(7)),
+        d14: sumDays(range(14)),
+        d30: sumDays(range(30)),
+        all: {
+          inputTokens: totals.inputTokens,
+          outputTokens: totals.outputTokens,
+          requests: totals.requests,
+          costUsd: totals.costUsd || 0,
+        },
+      };
       const byProvider = Object.entries(usage.byProvider || {}).map(([id, u]) => ({
         id,
         name: u.name,
@@ -259,6 +297,7 @@ export async function handleApi(req, res, pathname, cfg) {
         .sort((a, b) => (b.inputTokens + b.outputTokens) - (a.inputTokens + a.outputTokens));
       return send(res, 200, {
         totals: { ...emptyUsage(), ...(usage.totals || {}) },
+        periods,
         counters: cfg.counters || { failovers: 0 },
         byProvider,
         byModel,

@@ -75,6 +75,26 @@ async function main() {
 
   // --- isolated proxy config ---
   fs.mkdirSync(home, { recursive: true });
+  const dkey = (offset) => {
+    const n = new Date();
+    const d = new Date(n.getFullYear(), n.getMonth(), n.getDate() - offset);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  // Multi-day usage history for period-aggregation tests (keys match the API's
+  // local-date format exactly — see the dense-series loop in api.mjs).
+  const dayBucket = (inputTokens, outputTokens, requests, costUsd) =>
+    ({ inputTokens, outputTokens, cacheReadTokens: 0, cacheCreationTokens: 0, requests, costUsd });
+  const seededUsage = {
+    totals: { inputTokens: 1900, outputTokens: 410, cacheReadTokens: 0, cacheCreationTokens: 0, requests: 11, costUsd: 2.4 },
+    byProvider: {},
+    byModel: {},
+    daily: {
+      [dkey(0)]: dayBucket(300, 60, 3, 0.3),    // today
+      [dkey(3)]: dayBucket(1000, 200, 5, 1.5),  // inside 7d
+      [dkey(10)]: dayBucket(500, 100, 2, 0.5),  // inside 14d/30d, outside 7d
+      [dkey(40)]: dayBucket(100, 50, 1, 0.1),   // outside 30d, inside all-time
+    },
+  };
   fs.writeFileSync(path.join(home, 'config.json'), JSON.stringify({
     port: PROXY_PORT,
     providers: [
@@ -83,6 +103,7 @@ async function main() {
       { id: 'pok', name: 'GoodProvider', baseUrl: `http://127.0.0.1:${MOCK_OK}`, apiKey: 'key-ok', authStyle: 'anthropic', priority: 3, enabled: true, models: { sonnet: 'good-sonnet', opus: 'good-opus' } },
       { id: 'p400', name: 'BadRequest', baseUrl: `http://127.0.0.1:${MOCK_400}`, apiKey: 'key-400', authStyle: 'anthropic', priority: 4, enabled: true, models: { sonnet: 'bad-sonnet' } },
     ],
+    usage: seededUsage,
     stats: {},
     events: [],
   }));
@@ -98,6 +119,25 @@ async function main() {
   assert(await waitUp(`http://127.0.0.1:${PROXY_PORT}/healthz`), 'proxy up on 8899');
 
   const proxyUrl = `http://127.0.0.1:${PROXY_PORT}`;
+
+  // --- 0. usage period aggregation (from seeded multi-day history) ---
+  console.log('\n— usage period aggregation —');
+  let u0 = await (await fetch(`${proxyUrl}/api/usage`)).json();
+  assert(u0.daily.length === 14, 'default daily series is 14 days', `got ${u0.daily.length}`);
+  const P = u0.periods || {};
+  const pIs = (p, exp, label) =>
+    assert(P[p] && P[p].inputTokens === exp.in && P[p].outputTokens === exp.out && P[p].requests === exp.req && Math.abs((P[p].costUsd || 0) - exp.cost) < 1e-9,
+      label, JSON.stringify(P[p]));
+  pIs('today', { in: 300, out: 60, req: 3, cost: 0.3 }, 'periods.today = today bucket only');
+  pIs('d7', { in: 1300, out: 260, req: 8, cost: 1.8 }, 'periods.d7 sums last 7 days');
+  pIs('d14', { in: 1800, out: 360, req: 10, cost: 2.3 }, 'periods.d14 sums last 14 days');
+  pIs('d30', { in: 1800, out: 360, req: 10, cost: 2.3 }, 'periods.d30 excludes 40-day-old bucket');
+  pIs('all', { in: 1900, out: 410, req: 11, cost: 2.4 }, 'periods.all = grand totals');
+  let u30 = await (await fetch(`${proxyUrl}/api/usage?days=30`)).json();
+  assert(u30.daily.length === 30, '?days=30 widens dense series to 30', `got ${u30.daily.length}`);
+  const d30key = dkey(3);
+  const d30entry = u30.daily.find((d) => d.date === d30key);
+  assert(d30entry && d30entry.inputTokens === 1000, '30-day series carries seeded history', JSON.stringify(d30entry));
 
   // --- 1. failover: 500 then 429 then success on third provider ---
   console.log('\n— failover through 500 and 429 —');
