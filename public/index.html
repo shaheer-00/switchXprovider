@@ -380,55 +380,56 @@
   .pegrid label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
   .pegrid input {
     display: block; width: 100%; margin-top: 4px; padding: 8px 10px; font-size: 14px;
-    font-family: var(--mono); color: var(--text); background: var(--panel);
-    border: 1px solid var(--border); border-radius: 8px;
+    font-family: var(--mono); color: var(--text); background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: var(--r-sm);
   }
-  .pegrid input:focus { outline: none; border-color: var(--acc1); box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+  .pegrid input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(110,121,244,0.15); }
   .pescope {
     width: 100%; padding: 8px 10px; font-size: 13px; color: var(--text);
-    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-sm);
   }
   .pprow {
     display: flex; align-items: center; gap: 10px; padding: 8px 10px; margin-top: 8px;
-    border: 1px solid var(--border); border-radius: 10px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2);
   }
   .pprow .nm { font-size: 13px; font-weight: 700; }
   .pprow .pv { font-family: var(--mono); font-size: 12px; color: var(--muted); flex: 1; }
-  .pprow button {
-    background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 7px;
-    padding: 3px 9px; font-size: 11px; cursor: pointer;
+  /* price-source pill variants (markup: component .pill + .mono + source) */
+  .pill.user { color: var(--accent-2); border-color: rgba(34,211,238,0.4); background: rgba(34,211,238,0.07); }
+  .pill.builtin { color: var(--dim); }
+  .pill.provider { color: #c084fc; border-color: rgba(192,132,252,0.4); background: rgba(192,132,252,0.07); }
+  .pill.none { color: var(--amber); border-color: rgba(251,191,36,0.4); background: rgba(251,191,36,0.07); }
+  /* amber dot inside unpriced pills (usage viewhead badge + table rows) */
+  .pill.unpriced::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--amber); flex: none;
   }
-  .pprow button:hover { border-color: var(--amber); color: var(--amber); }
-  .srcpill {
-    display: inline-block; font-size: 10.5px; font-weight: 700; padding: 2px 9px;
-    border-radius: 999px; border: 1px solid var(--border); color: var(--muted);
-  }
-  .srcpill.user { color: var(--acc2); border-color: rgba(34,211,238,0.4); background: rgba(34,211,238,0.07); }
-  .srcpill.builtin { color: var(--dim); }
-  .srcpill.provider { color: #c084fc; border-color: rgba(192,132,252,0.4); background: rgba(192,132,252,0.07); }
-  .srcpill.none { color: var(--amber); border-color: rgba(251,191,36,0.45); background: rgba(251,191,36,0.08); }
-  .unpricedbadge {
-    display: inline-flex; align-items: center; gap: 5px;
-    font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; cursor: pointer;
-    color: var(--amber); border: 1px solid rgba(251,191,36,0.45); background: rgba(251,191,36,0.08);
-  }
-  .unpricedbadge:hover { border-color: var(--amber); }
+  button.pill.warn:hover { border-color: rgba(251,191,36,0.55); box-shadow: none; }
   .aliasgrp {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
     padding: 10px 12px; margin-top: 8px; border: 1px solid var(--border);
-    border-radius: 10px; background: var(--panel);
+    border-radius: var(--r-md); background: var(--surface-2);
   }
-  .aliasgrp .models { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
-  .aliasgrp .m {
-    font-family: var(--mono); font-size: 12px; padding: 3px 9px;
-    border-radius: 7px; background: rgba(99,102,241,0.1); color: var(--text);
+  .aliasgrp .models { display: flex; align-items: center; flex-wrap: wrap; flex: 1; }
+  .aliasgrp .models > span:not(.m) { margin: 0 6px; }
+  /* 16px hairline connector joining adjacent model pills in a suggestion group */
+  .aliasgrp .m { position: relative; }
+  .aliasgrp .m + .m { margin-left: 16px; }
+  .aliasgrp .m + .m::before {
+    content: ''; position: absolute; left: -16px; top: 50%; width: 16px; height: 1px;
+    background: var(--border);
   }
-  .aliasgrp button {
-    background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 7px;
-    padding: 4px 10px; font-size: 11.5px; font-weight: 600; cursor: pointer;
-  }
-  .aliasgrp button:hover { border-color: var(--acc1); color: var(--text); }
-  .aliasgrp button.warn:hover { border-color: var(--amber); color: var(--amber); }
+  .aliasgrp button.warn:hover { border-color: rgba(251,191,36,0.4); color: var(--amber); background: none; }
+  /* unpriced callout + recalc prompt ride the component .card */
+  #unpricedCard { border-left: 2px solid var(--amber); margin-bottom: 22px; }
+  #priceEdit, #recalcAsk { padding: var(--sp-6); }
+  #priceEdit .card { max-height: calc(100vh - 48px); overflow-y: auto; }
+  #recalcAsk .card { width: min(430px, 100%); text-align: center; border-left: 2px solid var(--amber); }
+  #recalcAsk p { color: var(--muted); font-size: 13.5px; line-height: 1.6; margin: 0 0 18px; }
+  #recalcAsk p b { color: var(--text); }
+  #unpricedCard h2, #priceEdit h2, #recalcAsk h2 { font-size: 15px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  #unpricedCard .hint, #priceEdit .hint { color: var(--muted); font-size: 12.5px; margin-bottom: 14px; }
+  .updactions .btn { flex: 1; }
 
   /* ---- help view ---- */
   .helpbody { font-size: 13.5px; line-height: 1.65; color: var(--muted); }
@@ -459,7 +460,16 @@
   .stat-big .statnum { font-size: 34px; }
 
   /* ---- chart ---- */
-  .chart { display: flex; align-items: flex-end; gap: 6px; height: 170px; }
+  /* hairline grid rows behind the bars: 1px var(--border) at 33% and 66% height */
+  .chart {
+    display: flex; align-items: flex-end; gap: 6px; height: 170px;
+    background-image: linear-gradient(
+      to bottom,
+      transparent calc(33.333% - 1px), var(--border) calc(33.333% - 1px), var(--border) 33.333%,
+      transparent 33.333%, transparent calc(66.667% - 1px), var(--border) calc(66.667% - 1px), var(--border) 66.667%,
+      transparent 66.667%
+    );
+  }
   .barday { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 5px; height: 100%; min-width: 0; position: relative; }
   .barstack { width: 100%; max-width: 42px; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; border-radius: 5px 5px 0 0; overflow: hidden; }
   .bar-in, .bar-out { width: 100%; transition: height 0.8s cubic-bezier(0.22, 1, 0.36, 1); }
@@ -481,13 +491,8 @@
   .prow { margin-bottom: 13px; }
   .prow .ptop { display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 5px; gap: 10px; }
   .prow .ptop .tok { color: var(--muted); font-family: var(--mono); font-size: 11.5px; }
-  .track { height: 8px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
-  .fill { height: 100%; border-radius: 999px; background: var(--grad); box-shadow: 0 0 12px rgba(99,102,241,0.5); width: 0; transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1); }
-
-  table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
-  table.tbl th { text-align: left; color: var(--dim); font-weight: 500; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em; padding: 7px 10px; border-bottom: 1px solid var(--border); }
-  table.tbl td { padding: 9px 10px; border-bottom: 1px solid rgba(130,150,200,0.07); font-family: var(--mono); font-size: 12.5px; }
-  table.tbl tr:hover td { background: rgba(99,102,241,0.05); }
+  .track { height: 8px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+  .fill { height: 100%; border-radius: 999px; background: var(--accent); width: 0; transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1); }
 
   /* ---- request feed ---- */
   .feed { display: flex; flex-direction: column; gap: 7px; max-height: 400px; overflow-y: auto; padding-right: 4px; }
@@ -586,9 +591,27 @@
   button.danger:hover { border-color: var(--red); background: rgba(248,113,113,0.08); box-shadow: none; }
   button:disabled { opacity: 0.35; cursor: default; box-shadow: none; }
 
-  .events { list-style: none; margin: 0; padding: 0; font-family: var(--mono); font-size: 12px; }
-  .events li { padding: 7px 11px; border-bottom: 1px solid rgba(130,150,200,0.07); color: var(--muted); }
-  .events li b { color: var(--text); font-weight: 500; }
+  /* ---- events timeline ---- */
+  .events { list-style: none; margin: 0; padding: 0; font-size: 12.5px; }
+  .events li {
+    display: flex; align-items: center; gap: 10px; padding: 7px 2px;
+    border-bottom: 1px solid var(--border); color: var(--muted);
+  }
+  .events li:last-child { border-bottom: none; }
+  /* type marker: 4px x 16px rounded bar — gray (info) by default */
+  .events li::before {
+    content: ''; width: 4px; height: 16px; border-radius: 2px;
+    background: var(--dim); flex: none;
+  }
+  .events li.ev-ok::before { background: var(--green); }
+  .events li.ev-down::before { background: var(--amber); }
+  .events li.ev-err::before { background: var(--red); }
+  .events li b {
+    font-family: var(--mono); font-size: 12px; font-weight: 400;
+    color: var(--dim); flex: none; width: 64px;
+  }
+  .events li.empty { display: block; text-align: center; padding: var(--sp-6); }
+  .events li.empty::before { display: none; }
   .empty { color: var(--dim); font-style: italic; }
 
   /* ---- settings ---- */
@@ -709,8 +732,10 @@
 
   /* ---- SHARED COMPONENT LAYER (Task 2) ---- */
   /* Placed after the legacy per-view rules so component classes win ties.
-     Legacy rules with higher specificity (table.tbl, button.primary,
-     button.danger) still win until their view is restyled (Tasks 3–5). */
+     Legacy rules with higher specificity (button.primary, button.danger)
+     still win until their view is restyled (Tasks 3–5).
+     The old table.tbl override set was folded into this .tbl treatment in
+     Task 4 (usage/pricing/events tables); all tables render on tokens now. */
   /* ---- buttons ---- */
   .btn, .shbtn, button.primary {
     display: inline-flex; align-items: center; gap: 6px;
@@ -780,7 +805,11 @@
      up the new look through these aliases; each restyled view drops its rules
      and the aliases shrink until Task 6 deletes this block entirely.
      Task 3 (overview + providers) dropped --acc3 — the last consumer was the
-     overview stat glowcorner; --grad3 now inlines the purple. */
+     overview stat glowcorner; --grad3 now inlines the purple.
+     Task 4 (usage/pricing/events) retokenized its per-view rules and deleted
+     the legacy table.tbl set; every alias below is still consumed by
+     discover/settings/help/share, the wizard/update overlays, the shared
+     panelcard/form rules, or the legacy button layer — none is orphaned. */
   :root {
     --acc1: var(--accent);
     --acc2: var(--accent-2);
@@ -1130,7 +1159,7 @@
         <h1>Usage</h1>
         <span class="sub">tokens per provider and per model</span>
         <div class="actions">
-          <button class="unpricedbadge" id="usageUnpricedBadge" onclick="gotoView('pricing')" hidden></button>
+          <button class="pill warn unpriced" id="usageUnpricedBadge" onclick="gotoView('pricing')" hidden></button>
           <button class="btn btn-danger" onclick="resetUsage()">reset statistics</button>
         </div>
       </div>
@@ -1161,7 +1190,7 @@
         </div>
       </div>
 
-      <div class="panelcard" id="unpricedCard" hidden>
+      <div class="card" id="unpricedCard" hidden>
         <h2>⚠ Unpriced models</h2>
         <div class="hint">these count as $0 in every cost total until you set a price</div>
         <div id="unpricedList"></div>
@@ -1373,12 +1402,12 @@
         <h1>Events</h1>
         <span class="sub">failovers, recoveries, cooldowns, config changes</span>
         <div class="actions">
+          <div class="searchbar" style="margin:0;width:280px">
+            <span class="sic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
+            <input id="evSearch" placeholder="filter events by text — e.g. a provider name, &quot;down&quot;, &quot;recovered&quot;…" oninput="renderEvents()">
+          </div>
           <button class="btn btn-danger" id="clearEventsBtn" onclick="clearEvents()">Clear log</button>
         </div>
-      </div>
-      <div class="searchbar">
-        <span class="sic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
-        <input id="evSearch" placeholder="filter events by text — e.g. a provider name, &quot;down&quot;, &quot;recovered&quot;…" oninput="renderEvents()">
       </div>
       <div class="panelcard">
         <ul class="events" id="events"></ul>
@@ -1450,11 +1479,11 @@
 </div>
 
 <!-- ============ PRICE EDITOR ============ -->
-<div class="upd" id="priceEdit" hidden>
-  <div class="updcard peleft">
+<div class="modal" id="priceEdit" hidden>
+  <div class="card peleft">
     <div class="sharehead">
       <h2 id="peTitle">Set price</h2>
-      <button class="shbtn x" style="flex:none;width:34px;height:34px;padding:0" onclick="closePriceEdit()" title="Close">
+      <button class="btn btn-ghost" style="flex:none;width:34px;height:34px;padding:0" onclick="closePriceEdit()" title="Close">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </div>
@@ -1469,15 +1498,15 @@
     <select id="peScope" class="pescope"></select>
     <div id="peProviders"></div>
     <div class="updactions">
-      <button class="shbtn" onclick="closePriceEdit()">Cancel</button>
-      <button class="shbtn primary" id="peSave" onclick="savePrice()">Save price</button>
+      <button class="btn btn-secondary" onclick="closePriceEdit()">Cancel</button>
+      <button class="btn btn-primary" id="peSave" onclick="savePrice()">Save price</button>
     </div>
   </div>
 </div>
 
 <!-- ============ RECALC PROMPT ============ -->
-<div class="upd" id="recalcAsk" hidden>
-  <div class="updcard">
+<div class="modal" id="recalcAsk" hidden>
+  <div class="card">
     <div class="updhead">
       <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg></span>
       <h2>Price updated</h2>
@@ -1488,8 +1517,8 @@
       <span style="font-size:12px;color:var(--dim)">recalculating rewrites stored costs — exact for tracked history, proportionally estimated for older</span>
     </p>
     <div class="updactions">
-      <button class="shbtn" onclick="closeRecalcAsk()">From now on</button>
-      <button class="shbtn primary" onclick="doRecalc()">Recalculate past usage</button>
+      <button class="btn btn-secondary" onclick="closeRecalcAsk()">From now on</button>
+      <button class="btn btn-primary" onclick="doRecalc()">Recalculate past usage</button>
     </div>
   </div>
 </div>
@@ -1847,7 +1876,7 @@ function renderEvents() {
   const q = ($('evSearch').value || '').toLowerCase().trim();
   const list = q ? all.filter((e) => String(e.msg || '').toLowerCase().includes(q)) : all;
   $('events').innerHTML = list.length
-    ? list.slice(0, 300).map((e) => `<li><b>${fmtAgo(e.ts)}</b> ${escapeHtml(e.msg)}</li>`).join('')
+    ? list.slice(0, 300).map((e) => `<li class="${/failed|broke|all providers down/i.test(e.msg) ? 'ev-err' : /down|cooldown/i.test(e.msg) ? 'ev-down' : /recovered|passed/i.test(e.msg) ? 'ev-ok' : ''}"><b>${fmtAgo(e.ts)}</b> ${escapeHtml(e.msg)}</li>`).join('')
     : `<li class="empty">${all.length ? 'No events match your filter.' : 'no events yet'}</li>`;
   $('navEvents').textContent = all.length ? (all.length > 99 ? '99+' : all.length) : '';
   $('clearEventsBtn').disabled = !all.length;
@@ -1925,18 +1954,18 @@ function renderUsage() {
   // by-model table
   const byModel = usage.byModel || [];
   $('modelTbl').innerHTML = byModel.length
-    ? `<tr><th>model</th><th>requests</th><th>input</th><th>output</th><th>total</th><th>est. cost</th></tr>` +
+    ? `<tr><th>model</th><th class="num">requests</th><th class="num">input</th><th class="num">output</th><th class="num">total</th><th class="num">est. cost</th></tr>` +
       byModel.map((m) => {
         const cost = m.costUsd || 0;
         const unpriced = (usage.unpricedModels || []).includes(m.model);
         return `
         <tr>
-          <td>${escapeHtml(m.model)}${unpriced ? ' <span class="srcpill none" title="no price set — costs $0" style="cursor:pointer" onclick="gotoView(\'pricing\')">unpriced</span>' : ''}</td>
-          <td>${m.requests}</td>
-          <td>${fmtTok(m.inputTokens)}</td>
-          <td>${fmtTok(m.outputTokens)}</td>
-          <td><b>${fmtTok((m.inputTokens || 0) + (m.outputTokens || 0))}</b></td>
-          <td style="color:var(--amber)">${fmtCost(cost)}</td>
+          <td>${escapeHtml(m.model)}${unpriced ? ' <span class="pill warn unpriced" title="no price set — costs $0" style="cursor:pointer" onclick="gotoView(\'pricing\')">unpriced</span>' : ''}</td>
+          <td class="num">${m.requests}</td>
+          <td class="num">${fmtTok(m.inputTokens)}</td>
+          <td class="num">${fmtTok(m.outputTokens)}</td>
+          <td class="num"><b>${fmtTok((m.inputTokens || 0) + (m.outputTokens || 0))}</b></td>
+          <td class="num" style="color:var(--amber)">${fmtCost(cost)}</td>
         </tr>`;
       }).join('')
     : '<tr><td class="empty">no usage yet</td></tr>';
@@ -2866,9 +2895,9 @@ function renderPricing() {
   $('unpricedCard').hidden = !unpriced.length;
   $('unpricedList').innerHTML = unpriced.map((m) => `
     <div class="aliasgrp">
-      <div class="models"><span class="m">${escapeHtml(m.model)}</span></div>
+      <div class="models"><span class="m pill mono">${escapeHtml(m.model)}</span></div>
       <span class="tok" style="font-size:12px;color:var(--dim)">${fmtTok(m.tokens)} tokens</span>
-      <button data-act="price" data-model="${escapeHtml(m.model)}">set price</button>
+      <button class="btn btn-secondary" data-act="price" data-model="${escapeHtml(m.model)}">set price</button>
     </div>`).join('');
 
   // alias suggestions (not yet aliased, not dismissed this session)
@@ -2877,31 +2906,31 @@ function renderPricing() {
   $('aliasCard').hidden = !sugg.length && !aliasEntries.length;
   $('aliasSuggest').innerHTML = sugg.map((g) => `
     <div class="aliasgrp">
-      <div class="models">${g.map((m) => `<span class="m">${escapeHtml(m)}</span>`).join('')}</div>
-      <button data-act="merge" data-group="${escapeHtml(JSON.stringify(g))}">same model — share price</button>
-      <button class="warn" data-act="dismiss" data-group="${escapeHtml(JSON.stringify(g))}">different</button>
+      <div class="models">${g.map((m) => `<span class="m pill mono">${escapeHtml(m)}</span>`).join('')}</div>
+      <button class="btn btn-secondary" data-act="merge" data-group="${escapeHtml(JSON.stringify(g))}">same model — share price</button>
+      <button class="btn btn-ghost warn" data-act="dismiss" data-group="${escapeHtml(JSON.stringify(g))}">different</button>
     </div>`).join('');
   $('aliasList').innerHTML = aliasEntries.length
     ? '<div class="shlabel" style="margin-top:14px">Active aliases</div>' + aliasEntries.map(([alias, canonical]) => `
       <div class="aliasgrp">
-        <div class="models"><span class="m">${escapeHtml(alias)}</span><span style="color:var(--dim)">→</span><span class="m" style="background:rgba(34,211,238,0.1)">${escapeHtml(canonical)}</span></div>
-        <button class="warn" data-act="unlink" data-alias="${escapeHtml(alias)}">unlink</button>
+        <div class="models"><span class="m pill mono">${escapeHtml(alias)}</span><span style="color:var(--dim)">→</span><span class="m pill mono" style="background:rgba(34,211,238,0.1)">${escapeHtml(canonical)}</span></div>
+        <button class="btn btn-ghost warn" data-act="unlink" data-alias="${escapeHtml(alias)}">unlink</button>
       </div>`).join('')
     : '';
 
   // full table
-  $('priceTbl').innerHTML = `<tr><th>model</th><th>tokens</th><th>in $/1M</th><th>out $/1M</th><th>cache r/w</th><th>price source</th><th></th></tr>` +
+  $('priceTbl').innerHTML = `<tr><th>model</th><th class="num">tokens</th><th class="num">in $/1M</th><th class="num">out $/1M</th><th class="num">cache r/w</th><th>price source</th><th></th></tr>` +
     models.map((m) => {
       const p = m.price;
       return `
       <tr>
         <td>${escapeHtml(m.model)}</td>
-        <td>${m.tokens ? fmtTok(m.tokens) : '—'}</td>
-        <td>${p ? '$' + p.input : '—'}</td>
-        <td>${p ? '$' + p.output : '—'}</td>
-        <td>${p ? '$' + p.cacheRead + ' / $' + p.cacheCreate : '—'}</td>
-        <td><span class="srcpill ${m.source}">${m.source === 'none' ? 'unpriced' : m.source}${m.providers?.length ? ' · ' + m.providers.length + ' provider' + (m.providers.length > 1 ? 's' : '') : ''}</span></td>
-        <td><button style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:3px 10px;font-size:11px;cursor:pointer" data-act="price" data-model="${escapeHtml(m.model)}">edit</button></td>
+        <td class="num">${m.tokens ? fmtTok(m.tokens) : '—'}</td>
+        <td class="num">${p ? '$' + p.input : '—'}</td>
+        <td class="num">${p ? '$' + p.output : '—'}</td>
+        <td class="num">${p ? '$' + p.cacheRead + ' / $' + p.cacheCreate : '—'}</td>
+        <td><span class="pill mono ${m.source}">${m.source === 'none' ? 'unpriced' : m.source}${m.providers?.length ? ' · ' + m.providers.length + ' provider' + (m.providers.length > 1 ? 's' : '') : ''}</span></td>
+        <td><button class="btn btn-ghost" data-act="price" data-model="${escapeHtml(m.model)}">edit</button></td>
       </tr>`;
     }).join('');
 }
@@ -2943,7 +2972,7 @@ window.openPriceEdit = (model) => {
       <div class="pprow">
         <span class="nm">${escapeHtml(pp.name)}</span>
         <span class="pv">$${pp.price.input} in / $${pp.price.output} out per 1M</span>
-        <button data-act="removeprice" data-model="${escapeHtml(model)}" data-provider="${escapeHtml(pp.providerId)}">remove</button>
+        <button class="btn btn-danger" data-act="removeprice" data-model="${escapeHtml(model)}" data-provider="${escapeHtml(pp.providerId)}">remove</button>
       </div>`).join('')
     : '';
   $('priceEdit').hidden = false;
