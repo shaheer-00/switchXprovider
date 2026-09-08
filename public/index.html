@@ -678,7 +678,6 @@
   .herocard .name { font-weight: 600; font-size: 18px; }
   .herocard .desc {
     color: var(--muted); font-size: 13px; flex: 1;
-    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
   }
   .catgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--sp-3); margin-top: var(--sp-4); }
   .catcard { display: flex; flex-direction: column; gap: 9px; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
@@ -689,19 +688,19 @@
   .herocard .avatar { width: 48px; height: 48px; border-radius: 13px; }
   .subline { display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: 12px; margin-top: 1px; min-width: 0; }
   .subline .rate { color: var(--amber); font-weight: 600; font-size: 12.5px; }
-  .subline .pricenote { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .subline .pricenote { }
   .catcard .desc {
     color: var(--muted); font-size: 12.5px; flex: 1;
   }
   /* all details visible by default — no expand/collapse */
-  .catcard .pricenote { color: var(--dim); font-size: 11.5px; font-family: var(--mono); }
-  .catcard .tag { font-family: var(--mono); font-size: 11px; color: var(--dim); }
-  .catcard .facts { display: flex; flex-wrap: wrap; gap: 6px; }
-  .catcard .mrow { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; }
-  .catcard .mrow .tag { color: var(--muted); }
-  .catcard .urls { display: flex; gap: 14px; font-size: 12px; }
-  .catcard .urls a { color: var(--accent-2); text-decoration: none; }
-  .catcard .urls a:hover { text-decoration: underline; }
+  .catcard .pricenote, .herocard .pricenote { color: var(--dim); font-size: 11.5px; font-family: var(--mono); }
+  .catcard .tag, .herocard .tag { font-family: var(--mono); font-size: 11px; color: var(--dim); }
+  .catcard .facts, .herocard .facts { display: flex; flex-wrap: wrap; gap: 6px; }
+  .catcard .mrow, .herocard .mrow { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; }
+  .catcard .mrow .tag, .herocard .mrow .tag { color: var(--muted); }
+  .catcard .urls, .herocard .urls { display: flex; gap: 14px; font-size: 12px; }
+  .catcard .urls a, .herocard .urls a { color: var(--accent-2); text-decoration: none; }
+  .catcard .urls a:hover, .herocard .urls a:hover { text-decoration: underline; }
   .catcard .dot { margin: 0; }
 
   /* ---- forms ---- */
@@ -3035,6 +3034,14 @@ function renderCatalog() {
       ? '<span class="pill added" title="You already have this provider configured — you can add it again with a different API key (e.g. a second account); there is no limit."><i class="dot dot-off"></i>ADDED</span>' : ''}`;
     const rate = `<span class="rate">★ ${(Number(c.rating) || 0).toFixed(1)}</span>`;
     const setup = `<button class="btn btn-primary" onclick='prefillFromCatalog(${JSON.stringify(c).replace(/'/g, "&#39;")})'>${added ? 'Add again' : 'Set up'}</button>`;
+    const modelChips = Object.entries(c.models || {})
+      .filter(([, id]) => id)
+      .map(([slot, id]) => `<span class="tag">${escapeHtml(slot)} → ${escapeHtml(id)}</span>`)
+      .join('');
+    const cardFacts = (c.tags || []).map((t) => `<span class="tag">#${escapeHtml(t)}</span>`).join('')
+      + (c.source === 'remote' ? '<span class="tag">remote</span>' : '');
+    const cardLinks = (c.website ? `<a href="${escapeHtml(c.website)}" target="_blank" rel="noopener">${/sign-up|register|invite/.test(c.website) ? 'sign up ↗' : 'website ↗'}</a>` : '')
+      + (c.docsUrl ? `<a href="${escapeHtml(c.docsUrl)}" target="_blank" rel="noopener">docs ↗</a>` : '');
     if (hero) {
       return `
       <div class="card herocard">
@@ -3047,13 +3054,12 @@ function renderCatalog() {
           <span class="spacer"></span>${pills}
         </div>
         <div class="desc">${escapeHtml(c.description || '')}</div>
+        ${modelChips ? `<div class="mrow">${modelChips}</div>` : ''}
+        ${cardFacts ? `<div class="facts">${cardFacts}</div>` : ''}
+        ${cardLinks ? `<div class="urls">${cardLinks}</div>` : ''}
         <div class="formactions" style="margin:0">${setup}</div>
       </div>`;
     }
-    const modelChips = Object.entries(c.models || {})
-      .filter(([, id]) => id)
-      .map(([slot, id]) => `<span class="tag">${escapeHtml(slot)} → ${escapeHtml(id)}</span>`)
-      .join('');
     return `
     <div class="card catcard">
       <div class="top">
@@ -3067,14 +3073,8 @@ function renderCatalog() {
       <div class="desc">${escapeHtml(c.description || '')}</div>
       <div class="more">
         ${modelChips ? `<div class="mrow">${modelChips}</div>` : ''}
-        <div class="facts">
-          ${(c.tags || []).map((t) => `<span class="tag">#${escapeHtml(t)}</span>`).join('')}
-          ${c.source === 'remote' ? '<span class="tag">remote</span>' : ''}
-        </div>
-        <div class="urls">
-          ${c.website ? `<a href="${escapeHtml(c.website)}" target="_blank" rel="noopener">${/sign-up|register|invite/.test(c.website) ? 'sign up ↗' : 'website ↗'}</a>` : ''}
-          ${c.docsUrl ? `<a href="${escapeHtml(c.docsUrl)}" target="_blank" rel="noopener">docs ↗</a>` : ''}
-        </div>
+        <div class="facts">${cardFacts}</div>
+        ${cardLinks ? `<div class="urls">${cardLinks}</div>` : ''}
       </div>
       <div class="formactions" style="margin:0">${setup}</div>
     </div>`;
