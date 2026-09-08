@@ -173,6 +173,19 @@
         "sonnet": "z-ai/glm-5.3-free",
         "haiku": "z-ai/glm-5.3-free"
       }
+    },
+    {
+      "id": "vyceai",
+      "name": "VyceAI",
+      "baseUrl": "https://vyceai.com",
+      "authStyle": "auto",
+      "description": "API proxy for Claude, GPT, DeepSeek, Gemini and more — one key, multiple models. Anthropic endpoint supported. Model IDs from your dashboard after sign-up.",
+      "website": "https://vyceai.com/signup?ref=VYCE_TFC239",
+      "pricing": "free tier + per-token",
+      "freeTier": true,
+      "rating": 3.5,
+      "tags": ["gateway", "anthropic-compatible", "multi-model"],
+      "models": {}
     }
   ]
 }

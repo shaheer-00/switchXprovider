@@ -40,12 +40,25 @@
     width: 220px; flex: none; display: flex; flex-direction: column;
     position: sticky; top: 0; height: 100vh; overflow-y: auto;
     border-right: 1px solid var(--border); background: var(--bg);
-    padding: var(--sp-4) var(--sp-3) 64px; gap: var(--sp-4);
+    padding: var(--sp-4) var(--sp-3); gap: var(--sp-4);
   }
-  /* the extra 64px bottom padding above clears a strip at the foot of the
-     sidebar for the fixed .wizlaunch pill — it must never overlap the
-     sidebottom links above it or main content to the right */
   .brand { display: flex; gap: 10px; align-items: center; padding: 0 var(--sp-2); }
+  /* collapse toggle — in the brand row when open, floats at the left edge
+     when collapsed; preference persists via localStorage */
+  .sidetoggle {
+    margin-left: auto; width: 24px; height: 24px; flex: none;
+    background: none; border: 1px solid var(--border); border-radius: var(--r-sm);
+    color: var(--dim); cursor: pointer; display: grid; place-items: center;
+    transition: color 150ms ease, border-color 150ms ease;
+  }
+  .sidetoggle:hover { color: var(--text); border-color: var(--accent); }
+  .sidetoggle svg { width: 13px; height: 13px; }
+  .sidetoggle.floating {
+    position: fixed; left: 12px; top: 16px; z-index: 300;
+    width: 32px; height: 32px; background: rgba(23,23,27,0.82);
+    backdrop-filter: blur(10px);
+  }
+  html.sidebar-collapsed aside { display: none; }
   .brandmark {
     width: 28px; height: 28px; border-radius: var(--r-sm); flex: none;
     background: var(--accent); color: #fff; font-weight: 800; font-size: 14px;
@@ -87,7 +100,7 @@
     display: flex; align-items: flex-end; gap: 6px;
     padding: 8px 12px; border-radius: var(--r-lg);
     background: rgba(23,23,27,0.82); backdrop-filter: blur(10px);
-    border: 1px solid var(--border); z-index: 60;
+    border: 1px solid var(--border); z-index: 300;
   }
   #dock button {
     position: relative; width: 40px; height: 40px; padding: 0;
@@ -120,34 +133,16 @@
     transition: opacity 120ms ease, transform 120ms ease;
   }
   #dock button:hover .dlbl { opacity: 1; transform: translateX(-50%) translateY(0); }
-  /* vertical rail under 1000px — magnifies along X instead of Y */
-  @media (max-width: 1000px) {
-    #dock {
-      bottom: 50%; left: 10px; transform: translateY(50%);
-      flex-direction: column; align-items: center; gap: 6px;
-      padding: 12px 8px; max-height: calc(100vh - 32px); overflow-y: auto;
-    }
-    #dock button { transform-origin: left center; }
-    #dock button.active::after { bottom: 50%; left: -5px; transform: translateY(50%); }
-    #dock button .dlbl { bottom: 50%; left: calc(100% + 14px); transform: translateY(50%) translateX(-4px); }
-    #dock button:hover .dlbl { transform: translateY(50%) translateX(0); }
+  /* small window: the dock hides rather than fighting the collapsed sidebar */
+  @media (max-width: 860px) {
+    #dock { display: none; }
   }
 
   .sidebottom { margin-top: auto; padding-top: var(--sp-3); border-top: 1px solid var(--border); font-size: 11.5px; color: var(--muted); }
   .sidebottom .row { display: flex; align-items: center; gap: 7px; margin-top: 6px; }
   .sidebottom .row b { color: var(--text); font-weight: 500; }
-  .bmc {
-    display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 8px 11px;
-    border-radius: var(--r-md); border: 1px solid rgba(251, 191, 36, 0.35);
-    background: rgba(251, 191, 36, 0.07); color: var(--amber);
-    text-decoration: none; font-size: 12px; font-weight: 600;
-    transition: background 150ms ease, color 150ms ease;
-  }
-  .bmc:hover { background: rgba(251, 191, 36, 0.14); }
-  .bmc.gh { border-color: var(--border); background: rgba(255,255,255,0.02); color: var(--muted); }
-  .bmc.gh:hover { background: rgba(255,255,255,0.06); color: var(--text); }
 
-  main { flex: 1; min-width: 0; padding: var(--sp-6); max-width: 1200px; }
+  main { flex: 1; min-width: 0; padding: var(--sp-6); padding-bottom: 96px; }
   .view { display: none; }
   .view.active { display: block; animation: viewfade 150ms ease; }
   @keyframes viewfade { from { opacity: 0; } to { opacity: 1; } }
@@ -207,6 +202,7 @@
   .pill.ok { color: var(--green); border-color: rgba(52, 211, 153, 0.4); background: rgba(52, 211, 153, 0.07); }
   .pill.bad { color: var(--red); border-color: rgba(248, 113, 113, 0.4); background: rgba(248, 113, 113, 0.07); }
   .pill.warn { color: var(--amber); border-color: rgba(251, 191, 36, 0.4); background: rgba(251, 191, 36, 0.07); }
+  .pill.added { color: var(--accent-2); border-color: rgba(34, 211, 238, 0.4); background: rgba(34, 211, 238, 0.07); cursor: help; }
 
   /* ---- flow diagram (traffic-flow bubbles) ---- */
   .flowwrap {
@@ -280,18 +276,26 @@
      without this, .wiz's display:grid keeps the overlay on screen even
      after el.hidden = true. */
   [hidden] { display: none !important; }
-  .wizlaunch {
-    /* docked at the foot of the sidebar (space carved by aside's bottom
-       padding) — the old top:14px/right:18px spot sat on top of every
-       viewhead's action buttons at viewport widths <= ~1420px */
-    position: fixed; left: 18px; bottom: 14px; z-index: 40;
-    background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px;
-    color: var(--muted); font-size: 12px; font-weight: 600; padding: 7px 14px;
-    cursor: pointer; backdrop-filter: blur(8px);
-    box-shadow: 0 4px 18px rgba(0,0,0,0.3);
-    transition: all 0.15s ease;
+  /* ---- right-side action column: wizard / GitHub / coffee ----
+     Lives at body level (the dock's lesson: any fixed element inside the
+     sticky sidebar gets caged in its stacking context). */
+  .railactions {
+    position: fixed; right: 16px; top: 50%; transform: translateY(-50%);
+    display: flex; flex-direction: column; gap: 10px; z-index: 300;
   }
-  .wizlaunch:hover { border-color: var(--accent); color: var(--text); box-shadow: 0 4px 22px rgba(110,121,244,0.25); }
+  .railactions a, .railactions button {
+    width: 40px; height: 40px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: rgba(23,23,27,0.82); backdrop-filter: blur(10px);
+    border: 1px solid var(--border); color: var(--muted);
+    cursor: pointer; text-decoration: none; font-size: 17px;
+    transition: color 150ms ease, border-color 150ms ease, transform 150ms ease;
+  }
+  .railactions a:hover, .railactions button:hover {
+    color: var(--text); border-color: var(--accent); transform: scale(1.08);
+  }
+  .railactions svg { width: 17px; height: 17px; }
+  @media (max-width: 860px) { .railactions { display: none; } }
   .wiz {
     position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
     background: rgba(8, 11, 22, 0.72); backdrop-filter: blur(6px);
@@ -805,12 +809,10 @@
 
   @media (max-width: 860px) {
     aside { width: 62px; padding: var(--sp-3) var(--sp-2); }
-    /* the 62px collapsed sidebar can't fit the wizlaunch pill — float it
-       bottom-right, stacked above the toast zone */
-    .wizlaunch { left: auto; right: var(--sp-4); bottom: 70px; }
     .brand .t, .brand .s, nav button .lbl, .navlbl, .sidebottom .sideText { display: none; }
     .brand { justify-content: center; }
     nav button { justify-content: center; }
+    /* dock hidden at ≤860px — the collapsed icon rail covers navigation */
     main { padding: var(--sp-4); }
   }
   /* Motion control: follow the OS reduced-motion preference by default, but
@@ -945,6 +947,9 @@
         <div class="t">switch<span>X</span>provider</div>
         <div class="s">multi-provider proxy</div>
       </div>
+      <button class="sidetoggle" onclick="toggleSidebar()" title="Hide sidebar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
     </div>
     <nav id="nav">
       <div class="navgroup">
@@ -991,18 +996,10 @@
         </button>
       </div>
     </nav>
-    <div id="dock" aria-label="quick navigation"></div>
     <div class="sidebottom">
       <div class="row"><span class="pulse" id="sideDot" style="background:var(--dim)"></span><span id="sideStatus" class="sideText">connecting…</span></div>
       <div class="row sideText" id="sideActive">active: —</div>
       <div class="row sideText" id="sidePort">:8787</div>
-      <a class="bmc gh" href="https://github.com/shaheer-00/switchXprovider" target="_blank" rel="noopener" title="View source on GitHub">
-        <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" style="flex:none"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
-        <span class="sideText">GitHub</span>
-      </a>
-      <a class="bmc" href="https://buymeacoffee.com/shaheer0.0" target="_blank" rel="noopener" title="Support development">
-        ☕ <span class="sideText">Buy me a coffee</span>
-      </a>
     </div>
   </aside>
 
@@ -1560,7 +1557,6 @@
   </main>
 </div>
 <!-- first-run setup wizard -->
-<button class="wizlaunch" onclick="runWizard()" title="Run the setup wizard">⚙ Setup wizard</button>
 <div class="wiz" id="wiz" hidden>
   <div class="wizcard">
     <div class="wizsteps" id="wizSteps"></div>
@@ -1669,6 +1665,20 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- right-side action rail — body level so the sticky sidebar can't cage it -->
+<button class="sidetoggle floating" id="sideRestore" onclick="toggleSidebar()" title="Show sidebar" hidden>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+</button>
+<div class="railactions">
+  <button onclick="runWizard()" title="Run the setup wizard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+  <a href="https://github.com/shaheer-00/switchXprovider" target="_blank" rel="noopener" title="View source on GitHub"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a>
+  <a href="https://buymeacoffee.com/shaheer0.0" target="_blank" rel="noopener" title="Support development">☕</a>
+</div>
+
+<!-- dock lives at body level: the sticky sidebar creates a stacking context
+     that would otherwise cage the dock's z-index under every page overlay -->
+<div id="dock" aria-label="quick navigation"></div>
+
 <script>
 const $ = (id) => document.getElementById(id);
 let statusState = { providers: [], events: [] };
@@ -1688,6 +1698,18 @@ document.querySelectorAll('#nav button').forEach((b) => {
   b.addEventListener('click', () => setViewActive(b.dataset.view));
 });
 window.gotoView = (name) => document.querySelector(`#nav button[data-view="${name}"]`).click();
+
+/* ---- sidebar collapse (persisted) ---- */
+window.toggleSidebar = () => {
+  const collapsed = document.documentElement.classList.toggle('sidebar-collapsed');
+  $('sideRestore').hidden = !collapsed;
+  try { localStorage.setItem('switchx-sidebar-collapsed', collapsed ? '1' : ''); } catch { /* private mode */ }
+};
+(() => {
+  let pref = null;
+  try { pref = localStorage.getItem('switchx-sidebar-collapsed'); } catch { /* private mode */ }
+  if (pref === '1') { document.documentElement.classList.add('sidebar-collapsed'); $('sideRestore').hidden = false; }
+})();
 
 /* ---- dock: macOS-style quick nav, built from the sidebar (single source of
    truth for icons/labels). Magnification = gaussian falloff from the cursor,
@@ -1722,33 +1744,24 @@ window.gotoView = (name) => document.querySelector(`#nav button[data-view="${nam
   const motionOff = () => document.documentElement.classList.contains('no-motion')
     || (matchMedia('(prefers-reduced-motion: reduce)').matches && !document.documentElement.classList.contains('force-motion'));
   let raf = null;
-  const apply = (mx, my) => {
+  const apply = (mx) => {
     raf = null;
-    const vertical = dock.classList.contains('vertical');
     for (const b of btns) {
       const r = b.getBoundingClientRect();
       if (!r.width && !r.height) continue;
-      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-      // distance along the dock axis only — the dock is a 1-D magnifier
-      const d = vertical ? Math.abs(my - cy) : Math.abs(mx - cx);
+      const d = Math.abs(mx - (r.left + r.width / 2)); // distance along the dock axis
       const s = 1 + 0.55 * Math.exp(-((d / 80) ** 2));
-      const lift = (s - 1) * 16;
-      b.style.transform = vertical ? `translateX(${lift}px) scale(${s})` : `translateY(${-lift}px) scale(${s})`;
+      b.style.transform = `translateY(${-(s - 1) * 16}px) scale(${s})`;
     }
   };
   const onMove = (e) => {
     if (motionOff()) return;
     if (raf) cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(() => apply(e.clientX, e.clientY));
+    raf = requestAnimationFrame(() => apply(e.clientX));
   };
   const reset = () => { for (const b of btns) b.style.transform = ''; };
   dock.addEventListener('pointermove', onMove);
   dock.addEventListener('pointerleave', () => { if (raf) cancelAnimationFrame(raf); reset(); });
-  // vertical-rail mode flips with the CSS media query — track it for the axis math
-  const mq = matchMedia('(max-width: 1000px)');
-  const syncVertical = () => { dock.classList.toggle('vertical', mq.matches); reset(); };
-  mq.addEventListener('change', syncVertical);
-  syncVertical();
   syncBadges();
 })();
 
@@ -2462,18 +2475,28 @@ function renderCatalog() {
     ? `built-in catalog ${catalog.seedUpdated || '—'} · remote catalog ${catalog.remoteUpdated} (overrides matching entries)`
     : `built-in catalog ${catalog.seedUpdated || '—'} · no remote catalog configured`;
   const q = ($('catSearch').value || '').toLowerCase().trim();
+  // "already added" matching: normalize by host (+path), ignoring scheme,
+  // www., trailing slashes — so https://vyceai.com matches vyceai.com/.
+  const normUrl = (u) => {
+    try { return new URL(u).host.replace(/^www\./, '') + new URL(u).pathname.replace(/\/+$/, '').toLowerCase(); }
+    catch { return String(u).toLowerCase(); }
+  };
+  const addedHosts = new Set((statusState.providers || []).map((p) => normUrl(p.baseUrl)));
   const list = (catalog.providers || []).filter((c) => {
     if (!q) return true;
     return (c.name + ' ' + (c.description || '') + ' ' + (c.tags || []).join(' ') + ' ' + (c.pricing || '')).toLowerCase().includes(q);
   });
   $('catgrid').innerHTML = list.length
-    ? list.map((c) => `
+    ? list.map((c) => {
+      const added = addedHosts.has(normUrl(c.baseUrl));
+      return `
     <div class="card catcard">
       <div class="top">
         <span class="avatar">${escapeHtml(initials(c.name))}</span>
         <span class="name">${escapeHtml(c.name)}</span>
         <span class="spacer"></span>
         ${c.freeTier ? '<span class="pill ok"><i class="dot dot-up"></i>FREE</span>' : ''}
+        ${added ? '<span class="pill added" title="You already have this provider configured — you can add it again with a different API key (e.g. a second account); there is no limit."><i class="dot dot-off"></i>ADDED</span>' : ''}
       </div>
       <div class="desc">${escapeHtml(c.description || '')}</div>
       <div class="meta">
@@ -2490,10 +2513,10 @@ function renderCatalog() {
         ${c.docsUrl ? `<a href="${escapeHtml(c.docsUrl)}" target="_blank" rel="noopener">docs ↗</a>` : ''}
       </div>
       <div class="formactions" style="margin:0">
-        <button class="btn btn-primary" onclick='prefillFromCatalog(${JSON.stringify(c).replace(/'/g, "&#39;")})'>Set up</button>
+        <button class="btn btn-primary" onclick='prefillFromCatalog(${JSON.stringify(c).replace(/'/g, "&#39;")})'>${added ? 'Add again' : 'Set up'}</button>
       </div>
     </div>
-  `).join('')
+  `;}).join('')
     : '<div class="card empty">No catalog entries match your filter.</div>';
 }
 
