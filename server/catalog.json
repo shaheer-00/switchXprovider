@@ -139,6 +139,23 @@
         "sonnet": "claude-sonnet-4-6",
         "haiku": "orcarouter/free"
       }
+    },
+    {
+      "id": "kiraai",
+      "name": "KiraAI",
+      "baseUrl": "https://kiraai.vn",
+      "authStyle": "auto",
+      "description": "Vietnamese gateway with free GLM-5.3, MiMo, Qwen and Kira models (daily free quota), plus paid partner models. Anthropic endpoint supported.",
+      "website": "https://kiraai.vn",
+      "pricing": "free daily quota + per-token",
+      "freeTier": true,
+      "rating": 3.5,
+      "tags": ["gateway", "free-models", "multi-model"],
+      "models": {
+        "opus": "glm-5.3-free",
+        "sonnet": "glm-5.3-flash-free",
+        "haiku": "mimo-v2.5-free"
+      }
     }
   ]
 }

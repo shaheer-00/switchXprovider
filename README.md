@@ -99,6 +99,7 @@ The plugin ships with a curated catalog in which **every provider has a free tie
 | **B.AI** | Free tier — invite-based |
 | **APInex** | Free tier — "one API for every model" |
 | **OrcaRouter** | 200+ models behind one API — free Claude Opus/Sonnet slots + free auto-router model |
+| **KiraAI** | Free daily quota — GLM-5.3, MiMo, Qwen, Kira free models |
 
 Combine them with daily-login rewards (most gateways hand out free credits or tokens for a daily check-in — sign out and back in **every day** to claim) and failover, and you have a zero-cost coding pipeline with redundancy. **More free providers are being added to the catalog continually** — and you can plug in any community-maintained catalog via Settings → Remote catalog.
 
