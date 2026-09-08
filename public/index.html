@@ -222,13 +222,13 @@
   [hidden] { display: none !important; }
   .wizlaunch {
     position: fixed; top: 14px; right: 18px; z-index: 40;
-    background: var(--panel-solid); border: 1px solid var(--border); border-radius: 999px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px;
     color: var(--muted); font-size: 12px; font-weight: 600; padding: 7px 14px;
     cursor: pointer; backdrop-filter: blur(8px);
     box-shadow: 0 4px 18px rgba(0,0,0,0.3);
     transition: all 0.15s ease;
   }
-  .wizlaunch:hover { border-color: var(--acc1); color: var(--text); box-shadow: 0 4px 22px rgba(99,102,241,0.25); }
+  .wizlaunch:hover { border-color: var(--accent); color: var(--text); box-shadow: 0 4px 22px rgba(110,121,244,0.25); }
   .wiz {
     position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
     background: rgba(8, 11, 22, 0.72); backdrop-filter: blur(6px);
@@ -236,17 +236,18 @@
   }
   .wizcard {
     width: min(640px, calc(100vw - 40px)); max-height: calc(100vh - 80px);
-    background: var(--panel-solid); border: 1px solid var(--border-hi); border-radius: 16px;
+    background: var(--surface-2); border: 1px solid var(--border-hi); border-radius: 16px;
     box-shadow: 0 30px 80px rgba(0,0,0,0.6); padding: 26px 30px 20px;
     display: flex; flex-direction: column; position: relative; overflow-y: auto;
   }
   .wizcard::before {
     content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-    background: var(--grad3); background-size: 200% 100%; animation: hue 6s linear infinite;
+    background: linear-gradient(100deg, #a855f7, var(--accent), var(--accent-2));
+    background-size: 200% 100%; animation: hue 6s linear infinite;
   }
   .wizsteps { display: flex; gap: 6px; margin-bottom: 18px; }
   .wizsteps i { flex: 1; height: 4px; border-radius: 2px; background: rgba(130,150,200,0.15); }
-  .wizsteps i.on { background: var(--grad); box-shadow: 0 0 8px rgba(99,102,241,0.5); }
+  .wizsteps i.on { background: var(--grad); box-shadow: 0 0 8px rgba(110,121,244,0.5); }
   .wizbody h2 { margin: 0 0 6px; font-size: 21px; letter-spacing: -0.02em; }
   .wizbody p { color: var(--muted); font-size: 13.5px; line-height: 1.55; margin: 0 0 14px; }
   .wizbody .big { font-size: 15px; }
@@ -256,18 +257,12 @@
     padding: 13px 15px; cursor: pointer; transition: all 0.15s ease; text-align: left;
     color: var(--text); font: inherit;
   }
-  .wizopt:hover { border-color: var(--acc1); background: rgba(99,102,241,0.07); transform: translateY(-2px); }
+  .wizopt:hover { border-color: var(--accent); background: rgba(110,121,244,0.07); transform: translateY(-2px); }
   .wizopt .ot { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; }
   .wizopt .od { color: var(--muted); font-size: 12px; margin-top: 4px; line-height: 1.4; }
-  .wizopt .fact { display: inline-block; margin-top: 6px; font-size: 10.5px; padding: 2px 8px; border-radius: 999px; }
-  .wizopt .fact.free { color: var(--green); border: 1px solid rgba(52,211,153,0.4); background: rgba(52,211,153,0.07); }
+  .wizopt .pill { margin-top: 6px; }
+  /* inputs ride the component .input layer — no per-wizard overrides */
   .wizform label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 4px; }
-  .wizform input {
-    width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.03);
-    border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px;
-    color: var(--text); font: inherit; font-family: var(--mono);
-  }
-  .wizform input:focus { outline: none; border-color: var(--acc1); box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
   .wizactions { display: flex; gap: 10px; margin-top: 20px; }
   .wizactions .spacer { flex: 1; }
   .wizskip { display: block; text-align: center; margin-top: 14px; color: var(--dim); font-size: 12px; text-decoration: none; }
@@ -431,20 +426,52 @@
   #unpricedCard .hint, #priceEdit .hint { color: var(--muted); font-size: 12.5px; margin-bottom: 14px; }
   .updactions .btn { flex: 1; }
 
-  /* ---- help view ---- */
+  /* ---- help view (doc layout: main + sticky anchor nav) ---- */
+  html { scroll-behavior: smooth; }
+  .helpwrap { display: grid; grid-template-columns: 1fr 160px; gap: var(--sp-6); align-items: start; }
+  .helpnav { position: sticky; top: var(--sp-6); display: flex; flex-direction: column; gap: 2px; }
+  .helpnav a {
+    display: block; padding: 4px 10px; border-radius: 999px; font-size: 12px;
+    color: var(--muted); text-decoration: none;
+    transition: background 150ms ease, color 150ms ease;
+  }
+  .helpnav a:hover { color: var(--text); background: var(--surface-2); }
+  .helpblock { margin-bottom: var(--sp-3); scroll-margin-top: var(--sp-6); }
+  .helpblock h2 { font-size: 15px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  /* current-section highlight: plain href="#id" anchors make the browser set
+     :target on the card — the component "active" accent treatment, no JS */
+  .helpblock:target { border-color: rgba(110,121,244,0.45); box-shadow: 0 0 0 1px rgba(110,121,244,0.25); }
   .helpbody { font-size: 13.5px; line-height: 1.65; color: var(--muted); }
   .helpbody p { margin: 8px 0; }
   .helpbody b { color: var(--text); }
   .helpbody code {
-    font-family: var(--mono); font-size: 12px; color: var(--acc2);
+    font-family: var(--mono); font-size: 12px; color: var(--accent-2);
     background: rgba(34,211,238,0.07); padding: 1px 5px; border-radius: 5px;
   }
   .helpbody pre {
-    background: rgba(5,7,14,0.55); border: 1px solid var(--border); border-radius: 10px;
-    padding: 12px 14px; overflow-x: auto; margin: 10px 0;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-sm);
+    padding: var(--sp-3) var(--sp-4); overflow-x: auto; margin: 10px 0;
   }
   .helpbody pre code { background: none; padding: 0; color: var(--text); font-size: 12px; }
-  .helpbody a { color: var(--acc2); }
+  .helpbody a { color: var(--accent-2); }
+  /* numbered fix steps — dim circled numbers */
+  .fixsteps { list-style: none; counter-reset: fix; margin: 10px 0; padding: 0; }
+  .fixsteps > li { counter-increment: fix; position: relative; padding-left: 30px; margin: 10px 0; }
+  .fixsteps > li::before {
+    content: counter(fix); position: absolute; left: 0; top: 0;
+    width: 21px; height: 21px; border: 1px solid var(--border); border-radius: 999px;
+    display: grid; place-items: center; font-family: var(--mono); font-size: 11px; color: var(--dim);
+  }
+  .helpbody ul.causes { list-style: none; margin: 10px 0; padding: 0; }
+  .causes li { position: relative; padding-left: 14px; margin: 6px 0; }
+  .causes li::before { content: '•'; position: absolute; left: 0; color: var(--dim); }
+  .backtop { text-align: right; margin-top: var(--sp-4); }
+  .backtop a { color: var(--muted); font-size: 12.5px; text-decoration: none; }
+  .backtop a:hover { color: var(--text); text-decoration: underline; }
+  @media (max-width: 900px) {
+    .helpwrap { grid-template-columns: 1fr; }
+    .helpnav { position: static; flex-direction: row; flex-wrap: wrap; }
+  }
 
   /* ---- stat cards (overview hero row) ---- */
   .stats { display: grid; grid-template-columns: 1.5fr repeat(4, 1fr); gap: var(--sp-3); margin-bottom: var(--sp-4); }
@@ -535,31 +562,40 @@
   .avatar {
     width: 36px; height: 36px; border-radius: 11px; flex-shrink: 0;
     display: grid; place-items: center; font-weight: 700; font-size: 15px; color: #fff;
-    background: var(--grad3); background-size: 200% 200%;
-    box-shadow: 0 4px 14px rgba(99,102,241,0.3);
+    background: linear-gradient(100deg, #a855f7, var(--accent), var(--accent-2));
+    background-size: 200% 200%;
+    box-shadow: 0 4px 14px rgba(110,121,244,0.3);
   }
   .spacer { flex: 1; }
 
-  /* ---- catalog ---- */
-  .catgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
-  .catcard {
-    background: var(--panel); backdrop-filter: blur(12px);
-    border: 1px solid var(--border); border-radius: var(--r);
-    padding: 18px; display: flex; flex-direction: column; gap: 9px;
-    transition: transform 0.22s ease, border-color 0.2s, box-shadow 0.22s;
-  }
-  .catcard:hover { border-color: var(--border-hi); transform: translateY(-4px); box-shadow: 0 16px 40px rgba(99,102,241,0.16); }
+  /* ---- discover catalog (card grid on components) ---- */
+  .catgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--sp-3); }
+  .catcard { display: flex; flex-direction: column; gap: 9px; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+  .catcard:hover { border-color: rgba(110,121,244,0.45); box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
   .catcard .top { display: flex; align-items: center; gap: 11px; }
   .catcard .top .name { font-weight: 600; font-size: 15px; }
   .catcard .desc { color: var(--muted); font-size: 12.5px; flex: 1; }
+  .catcard .meta { display: flex; align-items: center; gap: 10px; }
+  .catcard .pricenote { color: var(--dim); font-size: 11.5px; font-family: var(--mono); }
+  .catcard .tag { font-family: var(--mono); font-size: 11px; color: var(--dim); }
   .catcard .facts { display: flex; flex-wrap: wrap; gap: 6px; }
-  .fact { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; font-size: 11px; color: var(--muted); }
-  .fact.free { color: var(--green); border-color: rgba(52,211,153,0.35); background: rgba(52,211,153,0.07); }
   .catcard .urls { display: flex; gap: 14px; font-size: 12px; }
-  .catcard .urls a { color: var(--acc2); text-decoration: none; }
+  .catcard .urls a { color: var(--accent-2); text-decoration: none; }
   .catcard .urls a:hover { text-decoration: underline; }
-  .stars { position: relative; display: inline-block; font-size: 13px; color: #2c3550; letter-spacing: 1.5px; flex-shrink: 0; }
-  .stars .fillstars { position: absolute; left: 0; top: 0; overflow: hidden; white-space: nowrap; color: var(--amber); text-shadow: 0 0 10px rgba(251,191,36,0.4); }
+  .catcard .dot { margin: 0; }
+  /* rating: 5-dot row — the JS overlay clips the accent dots at the rating
+     percentage; empty dots come from the base layer (border token) */
+  .stars {
+    position: relative; display: inline-block; width: 60px; height: 8px; flex-shrink: 0;
+    font-size: 0; letter-spacing: 0;
+    background-image: radial-gradient(circle 3px at 5px 50%, var(--border) 98%, transparent 100%);
+    background-size: 12px 100%; background-repeat: repeat-x;
+  }
+  .stars .fillstars {
+    position: absolute; left: 0; top: 0; height: 100%; overflow: hidden; white-space: nowrap;
+    background-image: radial-gradient(circle 3px at 5px 50%, var(--accent) 98%, transparent 100%);
+    background-size: 12px 100%; background-repeat: repeat-x;
+  }
 
   /* ---- forms ---- */
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
@@ -614,39 +650,57 @@
   .events li.empty::before { display: none; }
   .empty { color: var(--dim); font-style: italic; }
 
-  /* ---- settings ---- */
-  .setrow { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 13px 0; border-bottom: 1px solid rgba(130,150,200,0.08); }
+  /* ---- settings (grouped card sections) ---- */
+  .grouplbl {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--dim); margin: var(--sp-6) 0 var(--sp-2);
+  }
+  .grouplbl.danger { color: var(--red); }
+  .card .hint { color: var(--muted); font-size: 12.5px; margin-bottom: 14px; }
+  #view-settings .card h2 { font-size: 15px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .setrow { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 13px 0; border-bottom: 1px solid var(--border); }
   .setrow:last-child { border-bottom: none; }
   .setrow .info { flex: 1; min-width: 260px; }
-  .setrow .info .t { font-weight: 600; font-size: 13.5px; }
+  .setrow .info .t { font-weight: 600; font-size: 13.5px; display: flex; align-items: center; gap: 8px; }
   .setrow .info .d { color: var(--muted); font-size: 12px; margin-top: 2px; }
   .setrow .info .mono { font-family: var(--mono); font-size: 11.5px; color: var(--muted); margin-top: 3px; word-break: break-all; }
-  .urlbar { display: flex; gap: 8px; flex: 1; min-width: 300px; }
+  /* install-status dot: green while routing is on — the JS flips the sibling
+     button to class "danger" when configured, so :has() tracks it, no JS hook */
+  #installCard .dot { background: var(--dim); }
+  #installCard .setrow:has(button.danger) .dot { background: var(--green); box-shadow: 0 0 8px rgba(52,211,153,0.5); }
+  /* bordered file-card rows, mono */
+  .filecards { margin-top: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); }
+  .filecard {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--r-md);
+    background: var(--surface-2);
+  }
+  .filecard .fname { font-family: var(--mono); font-size: 12px; color: var(--text); word-break: break-all; }
+  .filecard .fsub { color: var(--dim); font-size: 11.5px; }
+  .urlbar { display: flex; gap: var(--sp-2); }
+  /* .card rides the component layer further down, so the danger border needs
+     the extra class to win the tie */
+  .card.dangercard { border-color: rgba(248,113,113,0.25); }
 
-  /* ---- official catalog source (recommended) ---- */
+  /* ---- official catalog source (recommended) — settings, provider catalog ---- */
   .offrow {
-    display: flex; align-items: center; gap: 14px;
-    padding: 13px 16px; border-radius: 12px;
-    background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(52,211,153,0.07));
-    border: 1px solid rgba(99,102,241,0.4);
-    margin-bottom: 10px;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: var(--sp-3) var(--sp-4); border-radius: var(--r-md);
+    background: linear-gradient(135deg, rgba(110,121,244,0.12), rgba(52,211,153,0.07));
+    border: 1px solid rgba(110,121,244,0.4);
+    margin-bottom: var(--sp-3);
   }
   .offrow .offico {
-    flex: 0 0 auto; width: 34px; height: 34px; border-radius: 10px;
-    background: var(--grad); display: flex; align-items: center; justify-content: center;
-    color: #fff; box-shadow: 0 4px 14px rgba(99,102,241,0.4);
+    flex: 0 0 auto; width: 34px; height: 34px; border-radius: var(--r-md);
+    background: linear-gradient(100deg, var(--accent), var(--accent-2));
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; box-shadow: 0 4px 14px rgba(110,121,244,0.4);
   }
   .offrow .offinfo { flex: 1; min-width: 220px; }
-  .offrow .offinfo .t { font-weight: 600; font-size: 13.5px; display: flex; align-items: center; gap: 8px; }
+  .offrow .offinfo .t { font-weight: 600; font-size: 13.5px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .offrow .offinfo .d { color: var(--muted); font-size: 12px; margin-top: 2px; }
   .offrow .offinfo .mono { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 3px; word-break: break-all; }
-  .badge-off {
-    display: inline-flex; align-items: center; gap: 4px;
-    font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
-    color: #34d399; background: rgba(52,211,153,0.12); border: 1px solid rgba(52,211,153,0.35);
-    border-radius: 999px; padding: 2px 8px;
-  }
-  .offrow button.primary { white-space: nowrap; }
+  .offrow .btn { white-space: nowrap; }
 
   .toast {
     position: fixed; bottom: 22px; right: 22px; background: #10152a;
@@ -805,18 +859,20 @@
      up the new look through these aliases; each restyled view drops its rules
      and the aliases shrink until Task 6 deletes this block entirely.
      Task 3 (overview + providers) dropped --acc3 — the last consumer was the
-     overview stat glowcorner; --grad3 now inlines the purple.
+     overview stat glowcorner, which now inlines the purple.
      Task 4 (usage/pricing/events) retokenized its per-view rules and deleted
-     the legacy table.tbl set; every alias below is still consumed by
-     discover/settings/help/share, the wizard/update overlays, the shared
-     panelcard/form rules, or the legacy button layer — none is orphaned. */
+     the legacy table.tbl set.
+     Task 5 (discover/settings/help) retokenized its per-view rules and the
+     wizard visuals, dropping --grad3 (last consumers: discover avatar,
+     wizcard top-line) and --panel-solid (last consumers: wizlaunch, wizcard);
+     every remaining alias is consumed by share, the update popup, the shared
+     panelcard/form/button rules, or inline JS template styles — none is
+     orphaned. */
   :root {
     --acc1: var(--accent);
     --acc2: var(--accent-2);
     --grad: linear-gradient(100deg, var(--accent), var(--accent-2));
-    --grad3: linear-gradient(100deg, #a855f7, var(--accent), var(--accent-2));
     --panel: var(--surface);
-    --panel-solid: var(--surface-2);
     --bg2: var(--surface);
     --border-hi: rgba(110, 121, 244, 0.45);
     --r: var(--r-lg);
@@ -1120,34 +1176,11 @@
         <input id="catSearch" placeholder="filter by name, tag, or pricing…" oninput="renderCatalog()">
       </div>
 
-      <div class="panelcard" style="padding:14px 20px">
+      <div class="card" style="padding:10px var(--sp-4);margin-bottom:var(--sp-3)">
         <div class="hint" style="margin:0">
           Sign-up links are affiliate links — they support development at no extra cost to you.
           Most providers give <b style="color:var(--text)">daily login rewards</b>: sign out and back in every day to claim free credits.
         </div>
-      </div>
-
-      <div class="panelcard">
-        <h2>Catalog source</h2>
-        <div class="hint">Where Discover gets its provider list. Start with the official source — it's maintained by the plugin author and updated as new providers (including free ones) are vetted.</div>
-
-        <div class="offrow">
-          <div class="offico"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
-          <div class="offinfo">
-            <div class="t">Official switchXprovider catalog <span class="badge-off">✓ recommended</span></div>
-            <div class="d">Curated and vetted by the plugin author — same list shipped in the repo, synced straight from GitHub.</div>
-            <div class="mono">https://raw.githubusercontent.com/shaheer-00/switchXprovider/master/server/catalog.json</div>
-          </div>
-          <button class="btn btn-primary" onclick="restoreOfficialCatalog()">Restore official catalog</button>
-        </div>
-
-        <h2 style="margin-top:18px">Custom remote catalog</h2>
-        <div class="hint">Optional — point at any raw JSON catalog (e.g. your GitHub repo) to extend/override the list. Same schema — see README.</div>
-        <div class="urlbar">
-          <input id="catalogUrl" placeholder="https://raw.githubusercontent.com/you/switchx-catalog/main/catalog.json">
-          <button class="btn btn-primary" onclick="refreshCatalog()">Fetch &amp; apply</button>
-        </div>
-        <div class="hint" id="catalogMeta" style="margin-top:10px"></div>
       </div>
 
       <div class="catgrid" id="catgrid"></div>
@@ -1217,13 +1250,17 @@
         <span class="sub">common issues and how to fix them</span>
       </div>
 
-      <div class="panelcard">
-        <h2>🔧 claude-mem stops capturing sessions</h2>
-        <div class="hint">proxy is working fine, but claude-mem shows "no API key configured" or zero batches</div>
-        <div class="helpbody">
-          <p><b>Why it happens:</b> claude-mem's worker reads API credentials from <code>~/.claude-mem/.env</code>, not from <code>settings.json</code>. When the proxy changes the base URL and token in <code>settings.json</code>, claude-mem's own <code>.env</code> goes stale — capture dies silently.</p>
-          <p><b>Fix:</b> Add a SessionStart hook that mirrors your credentials into claude-mem's <code>.env</code> on every session. Open <code>~/.claude/settings.json</code> and add inside <code>"hooks"</code>:</p>
-          <pre><code>"SessionStart": [
+      <div class="helpwrap">
+        <div class="helpmain">
+          <div class="card helpblock" id="h-claude-mem">
+            <h2>🔧 claude-mem stops capturing sessions</h2>
+            <div class="hint">proxy is working fine, but claude-mem shows "no API key configured" or zero batches</div>
+            <div class="helpbody">
+              <p><b>Why it happens:</b> claude-mem's worker reads API credentials from <code>~/.claude-mem/.env</code>, not from <code>settings.json</code>. When the proxy changes the base URL and token in <code>settings.json</code>, claude-mem's own <code>.env</code> goes stale — capture dies silently.</p>
+              <p><b>Fix:</b> add a hook that keeps claude-mem's credentials in sync automatically:</p>
+              <ol class="fixsteps">
+                <li>Add a SessionStart hook that mirrors your credentials into claude-mem's <code>.env</code> on every session. Open <code>~/.claude/settings.json</code> and add inside <code>"hooks"</code>:
+                  <pre><code>"SessionStart": [
   {
     "hooks": [
       {
@@ -1233,79 +1270,118 @@
     ]
   }
 ]</code></pre>
-          <p>The sync script (<a href="https://github.com/thedotmack/claude-mem" target="_blank">included with claude-mem</a>) reads the base URL, auth token, and haiku model ID from <code>settings.json</code> and writes them to <code>~/.claude-mem/.env</code> on every session start — credentials stay in sync automatically.</p>
-          <p>If capture still doesn't work after adding the hook, restart the worker:</p>
-          <pre><code>node ~/.claude/plugins/cache/thedotmack/claude-mem/*/scripts/worker-cli.js restart</code></pre>
-        </div>
-      </div>
+                </li>
+                <li>If capture still doesn't work after adding the hook, restart the worker:
+                  <pre><code>node ~/.claude/plugins/cache/thedotmack/claude-mem/*/scripts/worker-cli.js restart</code></pre>
+                </li>
+              </ol>
+              <p>The sync script (<a href="https://github.com/thedotmack/claude-mem" target="_blank">included with claude-mem</a>) reads the base URL, auth token, and haiku model ID from <code>settings.json</code> and writes them to <code>~/.claude-mem/.env</code> on every session start — credentials stay in sync automatically.</p>
+            </div>
+          </div>
 
-      <div class="panelcard">
-        <h2>🗣 "CAVEMAN MODE ACTIVE" showing everywhere</h2>
-        <div class="hint">statusline shows caveman prefix on every line, looks messy or throws errors</div>
-        <div class="helpbody">
-          <p><b>What it is:</b> caveman plugin's statusline hook is cosmetic — it prepends a mode label to your status line. If the hook script path is stale (plugin updated but path still points at old version), it may show up garbled or fail silently.</p>
-          <p><b>Impact:</b> Purely visual. Does not affect proxy routing, failover, pricing, or Claude Code functionality.</p>
-          <p><b>Fix if it's noisy:</b> Edit <code>~/.claude/settings.json</code>, find <code>"statusLine"</code>, and update the path to the current installed version. Or remove the statusLine entry entirely to suppress it — caveman works fine without the visual indicator.</p>
-        </div>
-      </div>
+          <div class="card helpblock" id="h-caveman">
+            <h2>🗣 "CAVEMAN MODE ACTIVE" showing everywhere</h2>
+            <div class="hint">statusline shows caveman prefix on every line, looks messy or throws errors</div>
+            <div class="helpbody">
+              <p><b>What it is:</b> caveman plugin's statusline hook is cosmetic — it prepends a mode label to your status line. If the hook script path is stale (plugin updated but path still points at old version), it may show up garbled or fail silently.</p>
+              <p><b>Impact:</b> purely visual. Does not affect proxy routing, failover, pricing, or Claude Code functionality.</p>
+              <ol class="fixsteps">
+                <li>If it's noisy: edit <code>~/.claude/settings.json</code>, find <code>"statusLine"</code>, and update the path to the current installed version.</li>
+                <li>Or remove the statusLine entry entirely to suppress it — caveman works fine without the visual indicator.</li>
+              </ol>
+            </div>
+          </div>
 
-      <div class="panelcard">
-        <h2>🔄 Plugin updated but proxy still old</h2>
-        <div class="hint">you ran /plugin update but the dashboard shows old features</div>
-        <div class="helpbody">
-          <p><b>Why it happens:</b> The running proxy is a Node process from the old install path. Plugin files update on disk, but the live process still serves the old code.</p>
-          <p><b>Fix:</b> Kill the old proxy — the SessionStart hook starts a new one automatically on your next Claude Code session. Or run:</p>
-          <pre><code>node ~/.claude/plugins/cache/switchx-marketplace/switchXprovider/&lt;NEW_VERSION&gt;/server/ensure.mjs</code></pre>
-          <p><b>From v0.1.9+:</b> this is automatic. The hook detects a stale proxy and restarts it in place — you'll see a one-click update popup in the dashboard too.</p>
-        </div>
-      </div>
+          <div class="card helpblock" id="h-stale-proxy">
+            <h2>🔄 Plugin updated but proxy still old</h2>
+            <div class="hint">you ran /plugin update but the dashboard shows old features</div>
+            <div class="helpbody">
+              <p><b>Why it happens:</b> the running proxy is a Node process from the old install path. Plugin files update on disk, but the live process still serves the old code.</p>
+              <ol class="fixsteps">
+                <li>Kill the old proxy — the SessionStart hook starts a new one automatically on your next Claude Code session. Or run:
+                  <pre><code>node ~/.claude/plugins/cache/switchx-marketplace/switchXprovider/&lt;NEW_VERSION&gt;/server/ensure.mjs</code></pre>
+                </li>
+              </ol>
+              <p><b>From v0.1.9+:</b> this is automatic. The hook detects a stale proxy and restarts it in place — you'll see a one-click update popup in the dashboard too.</p>
+            </div>
+          </div>
 
-      <div class="panelcard">
-        <h2>⚡ Shell environment variables override settings.json</h2>
-        <div class="hint">ANTHROPIC_BASE_URL or ANTHROPIC_API_KEY set in shell/profile wins over settings.json</div>
-        <div class="helpbody">
-          <p><b>What it is:</b> if <code>ANTHROPIC_BASE_URL</code>, <code>ANTHROPIC_API_KEY</code>, or <code>ANTHROPIC_AUTH_TOKEN</code> are set in your shell environment (via <code>.bashrc</code>, <code>.zshrc</code>, <code>Set-Item Env:</code> in PowerShell, or system-wide env vars), they take priority over <code>settings.json</code> and bypass the proxy entirely.</p>
-          <p><b>Symptoms:</b> proxy shows zero traffic; requests go straight to Anthropic.</p>
-          <p><b>Fix:</b> remove the conflicting env vars. Run <code>echo $env:ANTHROPIC_BASE_URL</code> (PowerShell) or <code>env | grep ANTHROPIC</code> (bash) to check. If they're in <code>~/.bashrc</code> / <code>~/.zshrc</code>, comment them out. The installer warns about this but can't see all places.</p>
-        </div>
-      </div>
+          <div class="card helpblock" id="h-env-vars">
+            <h2>⚡ Shell environment variables override settings.json</h2>
+            <div class="hint">ANTHROPIC_BASE_URL or ANTHROPIC_API_KEY set in shell/profile wins over settings.json</div>
+            <div class="helpbody">
+              <p><b>What it is:</b> if <code>ANTHROPIC_BASE_URL</code>, <code>ANTHROPIC_API_KEY</code>, or <code>ANTHROPIC_AUTH_TOKEN</code> are set in your shell environment (via <code>.bashrc</code>, <code>.zshrc</code>, <code>Set-Item Env:</code> in PowerShell, or system-wide env vars), they take priority over <code>settings.json</code> and bypass the proxy entirely.</p>
+              <p><b>Symptoms:</b> proxy shows zero traffic; requests go straight to Anthropic.</p>
+              <ol class="fixsteps">
+                <li>Check for the conflicting env vars — run <code>echo $env:ANTHROPIC_BASE_URL</code> (PowerShell) or <code>env | grep ANTHROPIC</code> (bash).</li>
+                <li>Remove them — if they're in <code>~/.bashrc</code> / <code>~/.zshrc</code>, comment them out. The installer warns about this but can't see all places.</li>
+              </ol>
+            </div>
+          </div>
 
-      <div class="panelcard">
-        <h2>📉 Provider marked "down" but works fine manually</h2>
-        <div class="hint">proxy won't route to a provider you know is up</div>
-        <div class="helpbody">
-          <p><b>Why it happens:</b> the proxy received a 500, 429, or network error and set a cooldown (1 min to 60 min). The provider stays "down" until the cooldown expires — even if the provider recovered instantly.</p>
-          <p><b>Fix:</b> reset the provider manually in the Providers view (click the provider → reset), or just wait for the cooldown to expire (shown in the provider row). For 429 errors the proxy respects <code>retry-after</code> headers and won't retry until that window passes.</p>
-        </div>
-      </div>
+          <div class="card helpblock" id="h-provider-down">
+            <h2>📉 Provider marked "down" but works fine manually</h2>
+            <div class="hint">proxy won't route to a provider you know is up</div>
+            <div class="helpbody">
+              <p><b>Why it happens:</b> the proxy received a 500, 429, or network error and set a cooldown (1 min to 60 min). The provider stays "down" until the cooldown expires — even if the provider recovered instantly.</p>
+              <ol class="fixsteps">
+                <li>Reset the provider manually in the Providers view (click the provider → reset).</li>
+                <li>Or wait for the cooldown to expire (shown in the provider row). For 429 errors the proxy respects <code>retry-after</code> headers and won't retry until that window passes.</li>
+              </ol>
+            </div>
+          </div>
 
-      <div class="panelcard">
-        <h2>🎛 Model names don't match between providers</h2>
-        <div class="hint">Provider A uses "glm-5.3", Provider B uses "GLM-5.2-Free" for the same model</div>
-        <div class="helpbody">
-          <p><b>Why it happens:</b> different providers use different naming for the same model. switchXprovider maps <code>switchx:opus</code> / <code>switchx:sonnet</code> / <code>switchx:haiku</code> to whatever model name you set per-provider, so every provider can use completely different names.</p>
-          <p><b>For pricing:</b> use the Pricing view — it auto-detects same-base model variants and lets you alias them to share one price. Stats stay separate per name, but pricing is unified.</p>
-        </div>
-      </div>
+          <div class="card helpblock" id="h-model-names">
+            <h2>🎛 Model names don't match between providers</h2>
+            <div class="hint">Provider A uses "glm-5.3", Provider B uses "GLM-5.2-Free" for the same model</div>
+            <div class="helpbody">
+              <p><b>Why it happens:</b> different providers use different naming for the same model. switchXprovider maps <code>switchx:opus</code> / <code>switchx:sonnet</code> / <code>switchx:haiku</code> to whatever model name you set per-provider, so every provider can use completely different names.</p>
+              <ol class="fixsteps">
+                <li>Set the per-provider model IDs in the Providers view.</li>
+                <li>For pricing, use the Pricing view — it auto-detects same-base model variants and lets you alias them to share one price. Stats stay separate per name, but pricing is unified.</li>
+              </ol>
+            </div>
+          </div>
 
-      <div class="panelcard">
-        <h2>💰 Cost shows $0 for models I use</h2>
-        <div class="hint">Estimated cost widget shows near-zero even though I use Claude Opus / GLM / etc.</div>
-        <div class="helpbody">
-          <p><b>Why it happens:</b> cost is calculated from the built-in price table at request time. Models not in the table silently get $0. After setting up the proxy, history recorded before prices were set stays at $0.</p>
-          <p><b>Fix:</b> go to Pricing → check for unpriced models (amber badges) → set prices. Then click "Recalculate costs" in the Pricing view header to reprice all history. From v0.2.0+ the built-in table includes real market rates for all common models.</p>
-        </div>
-      </div>
+          <div class="card helpblock" id="h-zero-cost">
+            <h2>💰 Cost shows $0 for models I use</h2>
+            <div class="hint">Estimated cost widget shows near-zero even though I use Claude Opus / GLM / etc.</div>
+            <div class="helpbody">
+              <p><b>Why it happens:</b> cost is calculated from the built-in price table at request time. Models not in the table silently get $0. After setting up the proxy, history recorded before prices were set stays at $0.</p>
+              <ol class="fixsteps">
+                <li>Go to Pricing and check for unpriced models (amber badges).</li>
+                <li>Set prices for them.</li>
+                <li>Click "Recalculate costs" in the Pricing view header to reprice all history. From v0.2.0+ the built-in table includes real market rates for all common models.</li>
+              </ol>
+            </div>
+          </div>
 
-      <div class="panelcard">
-        <h2>📍 Dashboard unreachable at 127.0.0.1:8787</h2>
-        <div class="hint">browser shows "this site can't be reached" or connection refused</div>
-        <div class="helpbody">
-          <p><b>Possible causes:</b></p>
-          <p>• proxy not started — run <code>node server/ensure.mjs</code> or let the SessionStart hook do it<br>
-          • proxy started on a different port — check <code>~/.claude/switchx/config.json</code> for <code>"port"</code><br>
-          • another process on port 8787 — stop it first</p>
+          <div class="card helpblock" id="h-dashboard-unreachable">
+            <h2>📍 Dashboard unreachable at 127.0.0.1:8787</h2>
+            <div class="hint">browser shows "this site can't be reached" or connection refused</div>
+            <div class="helpbody">
+              <p><b>Possible causes:</b></p>
+              <ul class="causes">
+                <li>proxy not started — run <code>node server/ensure.mjs</code> or let the SessionStart hook do it</li>
+                <li>proxy started on a different port — check <code>~/.claude/switchx/config.json</code> for <code>"port"</code></li>
+                <li>another process on port 8787 — stop it first</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="backtop"><a href="#view-help">↑ back to top</a></div>
         </div>
+
+        <nav class="helpnav">
+          <a href="#h-claude-mem">claude-mem capture</a>
+          <a href="#h-caveman">caveman statusline</a>
+          <a href="#h-stale-proxy">stale proxy</a>
+          <a href="#h-env-vars">env var overrides</a>
+          <a href="#h-provider-down">provider cooldown</a>
+          <a href="#h-model-names">model aliases</a>
+          <a href="#h-zero-cost">$0 costs</a>
+          <a href="#h-dashboard-unreachable">dashboard unreachable</a>
+        </nav>
       </div>
     </section>
 
@@ -1316,12 +1392,12 @@
         <span class="sub">local proxy state and setup</span>
       </div>
 
-      <div class="panelcard" id="installCard">
+      <div class="card" id="installCard">
         <h2>Claude Code connection</h2>
         <div class="hint">route Claude Code traffic through this proxy, or back to Anthropic directly</div>
         <div class="setrow">
           <div class="info">
-            <div class="t">Route through switchX</div>
+            <div class="t"><span class="dot"></span>Route through switchX</div>
             <div class="d" id="routingDesc">…</div>
           </div>
           <button class="primary" id="routingBtn" onclick="toggleRouting()">…</button>
@@ -1329,8 +1405,8 @@
         <div class="hint" id="routingHint" style="margin-top:10px"></div>
       </div>
 
-      <div class="panelcard">
-        <h2>Configuration</h2>
+      <div class="grouplbl">Configuration</div>
+      <div class="card">
         <div class="setrow">
           <div class="info">
             <div class="t">Proxy port</div>
@@ -1343,8 +1419,8 @@
             <div class="t">Backup / restore</div>
             <div class="d">Export includes API keys — store the file safely.</div>
           </div>
-          <button class="btn btn-secondary" onclick="exportConfig()">export JSON</button>
-          <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">import JSON</button>
+          <button class="btn btn-secondary mono" onclick="exportConfig()">export JSON</button>
+          <button class="btn btn-secondary mono" onclick="document.getElementById('importFile').click()">import JSON</button>
           <input type="file" id="importFile" accept=".json" style="display:none" onchange="importConfig(event)">
         </div>
         <div class="setrow">
@@ -1359,17 +1435,57 @@
             <option value="off">Off</option>
           </select>
         </div>
+        <div class="filecards">
+          <div class="filecard">
+            <span class="fname">~/.claude/switchx/config.json</span>
+            <span class="fsub">proxy settings</span>
+          </div>
+          <div class="filecard">
+            <span class="fname">~/.claude/switchx/server.log</span>
+            <span class="fsub">server log</span>
+          </div>
+          <div class="filecard">
+            <span class="fname">~/.claude/settings.json.switchx-backup</span>
+            <span class="fsub">settings.json backup (made by installer)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grouplbl">Provider catalog</div>
+      <div class="card">
+        <div class="hint">Where Discover gets its provider list. Start with the official source — it's maintained by the plugin author and updated as new providers (including free ones) are vetted.</div>
+
+        <div class="offrow">
+          <div class="offico"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
+          <div class="offinfo">
+            <div class="t">Official switchXprovider catalog <span class="pill ok">✓ recommended</span></div>
+            <div class="d">Curated and vetted by the plugin author — same list shipped in the repo, synced straight from GitHub.</div>
+            <div class="mono">https://raw.githubusercontent.com/shaheer-00/switchXprovider/master/server/catalog.json</div>
+          </div>
+          <button class="btn btn-secondary" onclick="restoreOfficialCatalog()">Restore official catalog</button>
+        </div>
+
+        <div class="hint">Custom remote catalog — optional. Point at any raw JSON catalog (e.g. your GitHub repo) to extend/override the list. Same schema — see README.</div>
+        <div class="urlbar">
+          <input class="input mono" id="catalogUrl" placeholder="https://raw.githubusercontent.com/you/switchx-catalog/main/catalog.json">
+          <button class="btn btn-primary" onclick="refreshCatalog()">Fetch &amp; apply</button>
+        </div>
+        <div class="hint" id="catalogMeta" style="margin-top:10px"></div>
+      </div>
+
+      <div class="grouplbl danger">Danger zone</div>
+      <div class="card dangercard">
         <div class="setrow">
           <div class="info">
             <div class="t">Reset statistics</div>
             <div class="d">Zeroes all token counters and the request feed. Providers and keys are untouched.</div>
           </div>
-          <button class="btn btn-danger" onclick="resetUsage()">reset</button>
+          <button class="btn btn-danger" onclick="resetUsage()">reset statistics</button>
         </div>
       </div>
 
-      <div class="panelcard">
-        <h2>Support</h2>
+      <div class="grouplbl">Support</div>
+      <div class="card">
         <div class="setrow">
           <div class="info">
             <div class="t">☕ Buy me a coffee</div>
@@ -1377,22 +1493,6 @@
           </div>
           <button class="btn btn-primary" onclick="window.open('https://buymeacoffee.com/shaheer0.0','_blank')">buymeacoffee.com/shaheer0.0</button>
         </div>
-      </div>
-
-      <div class="panelcard">
-        <h2>Files</h2>
-        <div class="setrow"><div class="info">
-          <div class="t">Config</div>
-          <div class="mono">~/.claude/switchx/config.json</div>
-        </div></div>
-        <div class="setrow"><div class="info">
-          <div class="t">Server log</div>
-          <div class="mono">~/.claude/switchx/server.log</div>
-        </div></div>
-        <div class="setrow"><div class="info">
-          <div class="t">settings.json backup (made by installer)</div>
-          <div class="mono">~/.claude/settings.json.switchx-backup</div>
-        </div></div>
       </div>
     </section>
 
@@ -2079,9 +2179,9 @@ function renderWizard() {
 
 function wizNav(back, next, nextLabel = 'Next', nextClass = 'primary') {
   $('wizActions').innerHTML = `
-    ${back ? '<button onclick="wizGo(-1)">Back</button>' : ''}
+    ${back ? '<button class="btn btn-secondary" onclick="wizGo(-1)">Back</button>' : ''}
     <span class="spacer"></span>
-    ${next ? `<button class="${nextClass}" onclick="${next}">${nextLabel}</button>` : ''}`;
+    ${next ? `<button class="btn btn-${nextClass}" onclick="${next}">${nextLabel}</button>` : ''}`;
 }
 
 window.wizGo = (d) => {
@@ -2107,7 +2207,7 @@ function wizPickProvider() {
     <button class="wizopt" onclick='wizChoose(${JSON.stringify(c.id ? { id: c.id } : c).replace(/'/g, "&#39;")})'>
       <span class="ot">${escapeHtml(c.name)}</span>
       <span class="od">${escapeHtml((c.description || '').split('.')[0])}</span>
-      ${c.freeTier ? '<span class="fact free">free models — good first pick</span>' : ''}
+      ${c.freeTier ? '<span class="pill ok">free models — good first pick</span>' : ''}
     </button>`;
   $('wizBody').innerHTML = `
     <h2>Pick your first provider</h2>
@@ -2143,14 +2243,14 @@ function wizKey() {
     <div class="wizform">
       ${c ? '' : `
       <label>Provider name</label>
-      <input id="wz_name" placeholder="My provider">
+      <input id="wz_name" class="input mono" placeholder="My provider">
       <label>Base URL</label>
-      <input id="wz_url" placeholder="https://api.anthropic.com">`}
+      <input id="wz_url" class="input mono" placeholder="https://api.anthropic.com">`}
       <label>API key</label>
-      <input id="wz_key" type="password" placeholder="${c ? 'paste the key from your ' + escapeHtml(name) + ' dashboard' : 'sk-...'}" onkeydown="if(event.key==='Enter')window.wizTest()">
+      <input id="wz_key" class="input mono" type="password" placeholder="${c ? 'paste the key from your ' + escapeHtml(name) + ' dashboard' : 'sk-...'}" onkeydown="if(event.key==='Enter')window.wizTest()">
       ${c ? '' : `
       <label>Sonnet model ID <span style="color:var(--dim)">(optional — for Anthropic-compatible gateways)</span></label>
-      <input id="wz_sonnet" placeholder="claude-sonnet-5">`}
+      <input id="wz_sonnet" class="input mono" placeholder="claude-sonnet-5">`}
     </div>
     <div class="wiztest" id="wz_test"></div>`;
   wizNav(true, 'wizTest()', 'Test & save', 'primary');
@@ -2256,26 +2356,29 @@ function renderCatalog() {
   });
   $('catgrid').innerHTML = list.length
     ? list.map((c) => `
-    <div class="catcard">
+    <div class="card catcard">
       <div class="top">
         <span class="avatar">${escapeHtml(initials(c.name))}</span>
         <span class="name">${escapeHtml(c.name)}</span>
         <span class="spacer"></span>
-        ${stars(c.rating)}
+        ${c.freeTier ? '<span class="pill ok"><i class="dot dot-up"></i>FREE</span>' : ''}
       </div>
       <div class="desc">${escapeHtml(c.description || '')}</div>
+      <div class="meta">
+        ${stars(c.rating)}
+        <span class="spacer"></span>
+        ${c.pricing ? `<span class="pricenote">${escapeHtml(c.pricing)}</span>` : ''}
+      </div>
       <div class="facts">
-        ${c.freeTier ? '<span class="fact free">free tier</span>' : ''}
-        ${c.pricing ? `<span class="fact">${escapeHtml(c.pricing)}</span>` : ''}
-        ${(c.tags || []).map((t) => `<span class="fact">#${escapeHtml(t)}</span>`).join('')}
-        ${c.source === 'remote' ? '<span class="fact free">remote</span>' : ''}
+        ${(c.tags || []).map((t) => `<span class="tag">#${escapeHtml(t)}</span>`).join('')}
+        ${c.source === 'remote' ? '<span class="tag">remote</span>' : ''}
       </div>
       <div class="urls">
         ${c.website ? `<a href="${escapeHtml(c.website)}" target="_blank" rel="noopener">${/sign-up|register|invite/.test(c.website) ? 'sign up ↗' : 'website ↗'}</a>` : ''}
         ${c.docsUrl ? `<a href="${escapeHtml(c.docsUrl)}" target="_blank" rel="noopener">docs ↗</a>` : ''}
       </div>
       <div class="formactions" style="margin:0">
-        <button class="primary" onclick='prefillFromCatalog(${JSON.stringify(c).replace(/'/g, "&#39;")})'>+ add provider</button>
+        <button class="btn btn-primary" onclick='prefillFromCatalog(${JSON.stringify(c).replace(/'/g, "&#39;")})'>Set up</button>
       </div>
     </div>
   `).join('')
