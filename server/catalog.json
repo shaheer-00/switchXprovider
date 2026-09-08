@@ -122,6 +122,23 @@
       "rating": 3.5,
       "tags": ["gateway", "anthropic-compatible", "multi-model"],
       "models": {}
+    },
+    {
+      "id": "orcarouter",
+      "name": "OrcaRouter",
+      "baseUrl": "https://www.orcarouter.ai",
+      "authStyle": "auto",
+      "description": "Gateway with 200+ models behind one API, incl. free Claude Opus/Sonnet slots and a free auto-router model (orcarouter/free). Anthropic endpoint supported.",
+      "website": "https://www.orcarouter.ai",
+      "pricing": "free models + per-token",
+      "freeTier": true,
+      "rating": 4,
+      "tags": ["gateway", "multi-model", "free-models"],
+      "models": {
+        "opus": "claude-opus-4-7",
+        "sonnet": "claude-sonnet-4-6",
+        "haiku": "orcarouter/free"
+      }
     }
   ]
 }
