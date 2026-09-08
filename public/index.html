@@ -79,6 +79,60 @@
   .navbadge:empty { display: none; }
   nav button.active .navbadge { color: var(--text); border-color: rgba(110,121,244,0.4); background: rgba(110,121,244,0.18); }
 
+  /* ---- dock (macOS-style quick nav, bottom-center; vertical at <1000px) ----
+     Magnification is JS-driven (transform only, rAF-throttled) so it can respect
+     the motion preference; the CSS just frames it. */
+  #dock {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: flex-end; gap: 6px;
+    padding: 8px 12px; border-radius: var(--r-lg);
+    background: rgba(23,23,27,0.82); backdrop-filter: blur(10px);
+    border: 1px solid var(--border); z-index: 60;
+  }
+  #dock button {
+    position: relative; width: 40px; height: 40px; padding: 0;
+    background: none; border: 0; border-radius: var(--r-sm);
+    color: var(--muted); cursor: pointer; display: grid; place-items: center;
+    transform-origin: bottom center;
+    transition: transform 120ms ease, color 150ms ease;
+  }
+  #dock button svg { width: 19px; height: 19px; }
+  #dock button:hover, #dock button.active { color: var(--text); }
+  #dock button.active { color: var(--accent); }
+  #dock button.active::after {
+    content: ''; position: absolute; bottom: -5px; left: 50%;
+    width: 4px; height: 4px; border-radius: 50%;
+    background: var(--accent); transform: translateX(-50%);
+  }
+  #dock button .dbadge {
+    position: absolute; top: 1px; right: 1px; width: 8px; height: 8px;
+    border-radius: 50%; background: var(--accent); border: 2px solid var(--bg);
+    display: none;
+  }
+  #dock button .dbadge.on { display: block; }
+  #dock button .dlbl {
+    position: absolute; bottom: calc(100% + 14px); left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--text); font: 600 11px var(--sans); padding: 4px 9px;
+    border-radius: var(--r-sm); white-space: nowrap;
+    opacity: 0; pointer-events: none;
+    transition: opacity 120ms ease, transform 120ms ease;
+  }
+  #dock button:hover .dlbl { opacity: 1; transform: translateX(-50%) translateY(0); }
+  /* vertical rail under 1000px — magnifies along X instead of Y */
+  @media (max-width: 1000px) {
+    #dock {
+      bottom: 50%; left: 10px; transform: translateY(50%);
+      flex-direction: column; align-items: center; gap: 6px;
+      padding: 12px 8px; max-height: calc(100vh - 32px); overflow-y: auto;
+    }
+    #dock button { transform-origin: left center; }
+    #dock button.active::after { bottom: 50%; left: -5px; transform: translateY(50%); }
+    #dock button .dlbl { bottom: 50%; left: calc(100% + 14px); transform: translateY(50%) translateX(-4px); }
+    #dock button:hover .dlbl { transform: translateY(50%) translateX(0); }
+  }
+
   .sidebottom { margin-top: auto; padding-top: var(--sp-3); border-top: 1px solid var(--border); font-size: 11.5px; color: var(--muted); }
   .sidebottom .row { display: flex; align-items: center; gap: 7px; margin-top: 6px; }
   .sidebottom .row b { color: var(--text); font-weight: 500; }
@@ -937,6 +991,7 @@
         </button>
       </div>
     </nav>
+    <div id="dock" aria-label="quick navigation"></div>
     <div class="sidebottom">
       <div class="row"><span class="pulse" id="sideDot" style="background:var(--dim)"></span><span id="sideStatus" class="sideText">connecting…</span></div>
       <div class="row sideText" id="sideActive">active: —</div>
@@ -1623,15 +1678,79 @@ let port = 8787;
 const base = location.origin;
 
 /* ---- nav ---- */
+function setViewActive(name) {
+  document.querySelectorAll('#nav button').forEach((x) => x.classList.toggle('active', x.dataset.view === name));
+  document.querySelectorAll('#dock button').forEach((x) => x.classList.toggle('active', x.dataset.view === name));
+  document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
+  $('view-' + name).classList.add('active');
+}
 document.querySelectorAll('#nav button').forEach((b) => {
-  b.addEventListener('click', () => {
-    document.querySelectorAll('#nav button').forEach((x) => x.classList.remove('active'));
-    b.classList.add('active');
-    document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
-    $('view-' + b.dataset.view).classList.add('active');
-  });
+  b.addEventListener('click', () => setViewActive(b.dataset.view));
 });
 window.gotoView = (name) => document.querySelector(`#nav button[data-view="${name}"]`).click();
+
+/* ---- dock: macOS-style quick nav, built from the sidebar (single source of
+   truth for icons/labels). Magnification = gaussian falloff from the cursor,
+   transform-only, rAF-throttled; honors the motion preference (snap when off). */
+(() => {
+  const dock = $('dock');
+  for (const navBtn of document.querySelectorAll('#nav button[data-view]')) {
+    const b = document.createElement('button');
+    b.dataset.view = navBtn.dataset.view;
+    b.title = ''; // label handled by .dlbl tooltip
+    b.innerHTML = navBtn.querySelector('.ico').innerHTML
+      + `<span class="dbadge"></span><span class="dlbl">${navBtn.querySelector('.lbl').textContent}</span>`;
+    b.addEventListener('click', () => gotoView(navBtn.dataset.view));
+    dock.appendChild(b);
+  }
+  const badges = { events: dock.querySelector('[data-view="events"] .dbadge'), pricing: dock.querySelector('[data-view="pricing"] .dbadge') };
+  // mirror the sidebar count badges as notification dots
+  const syncBadges = () => {
+    for (const [view, el] of Object.entries(badges)) {
+      if (!el) continue;
+      const text = $(view === 'events' ? 'navEvents' : 'navPricing').textContent;
+      el.classList.toggle('on', Boolean(text));
+      el.parentElement.querySelector('.dlbl').textContent =
+        el.parentElement.querySelector('.dlbl').textContent.replace(/ \([^)]+\)$/, '') + (text ? ` (${text})` : '');
+    }
+  };
+  const mo = new MutationObserver(syncBadges);
+  mo.observe($('navEvents'), { childList: true });
+  mo.observe($('navPricing'), { childList: true });
+
+  const btns = [...dock.querySelectorAll('button')];
+  const motionOff = () => document.documentElement.classList.contains('no-motion')
+    || (matchMedia('(prefers-reduced-motion: reduce)').matches && !document.documentElement.classList.contains('force-motion'));
+  let raf = null;
+  const apply = (mx, my) => {
+    raf = null;
+    const vertical = dock.classList.contains('vertical');
+    for (const b of btns) {
+      const r = b.getBoundingClientRect();
+      if (!r.width && !r.height) continue;
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      // distance along the dock axis only — the dock is a 1-D magnifier
+      const d = vertical ? Math.abs(my - cy) : Math.abs(mx - cx);
+      const s = 1 + 0.55 * Math.exp(-((d / 80) ** 2));
+      const lift = (s - 1) * 16;
+      b.style.transform = vertical ? `translateX(${lift}px) scale(${s})` : `translateY(${-lift}px) scale(${s})`;
+    }
+  };
+  const onMove = (e) => {
+    if (motionOff()) return;
+    if (raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => apply(e.clientX, e.clientY));
+  };
+  const reset = () => { for (const b of btns) b.style.transform = ''; };
+  dock.addEventListener('pointermove', onMove);
+  dock.addEventListener('pointerleave', () => { if (raf) cancelAnimationFrame(raf); reset(); });
+  // vertical-rail mode flips with the CSS media query — track it for the axis math
+  const mq = matchMedia('(max-width: 1000px)');
+  const syncVertical = () => { dock.classList.toggle('vertical', mq.matches); reset(); };
+  mq.addEventListener('change', syncVertical);
+  syncVertical();
+  syncBadges();
+})();
 
 function toast(msg, isErr) {
   const t = $('toast');
