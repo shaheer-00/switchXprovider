@@ -27,7 +27,9 @@ export async function probe(p) {
   }
 }
 
-async function fetchModels(p) {
+// GET {base}/v1/models with the provider's auth. Exported for the dashboard's
+// model-discovery endpoint (api.mjs) — the probe loop and manual test reuse it.
+export async function fetchModels(p) {
   let base = String(p.baseUrl || '').replace(/\/+$/, '');
   const url = /\/v\d+$/.test(base) ? `${base}/models` : `${base}/v1/models`;
   const style = p.authStyle || 'auto';

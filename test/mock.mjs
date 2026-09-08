@@ -76,7 +76,13 @@ const server = http.createServer((req, res) => {
 
     if (req.url.includes('/v1/models')) {
       res.writeHead(200, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({ data: [] }));
+      // 'ok' returns a realistic mixed list so /api/providers/fetch-models
+      // can be tested end-to-end (claude slots + non-claude names + versions).
+      res.end(JSON.stringify({ data: [
+        { id: 'claude-opus-5' }, { id: 'claude-sonnet-5' }, { id: 'claude-haiku-4-5-20251001' },
+        { id: 'good-sonnet' }, { id: 'good-opus' }, { id: 'bearer-sonnet' },
+        { id: 'kira-sonnet-v4' }, { id: 'glm-5.2' },
+      ] }));
       return;
     }
     if (!req.url.includes('/v1/messages')) {

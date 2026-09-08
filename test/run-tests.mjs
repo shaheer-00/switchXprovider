@@ -348,6 +348,55 @@ async function main() {
     await fetch(`${proxyUrl}/api/providers/${added.id}`, { method: 'DELETE' });
   }
 
+  // --- 8a. fetch-models: model list discovery from baseUrl + apiKey ---
+  console.log('\n— fetch-models —');
+  resp = await fetch(`${proxyUrl}/api/providers/fetch-models`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ baseUrl: `http://127.0.0.1:${MOCK_OK}`, apiKey: 'any-key', authStyle: 'auto' }),
+  });
+  let fm = await resp.json();
+  assert(resp.status === 200 && Array.isArray(fm.models) && fm.models.length >= 8, 'fetch-models returns the provider model list', JSON.stringify(fm).slice(0, 160));
+  assert(fm.models.includes('claude-opus-5') && fm.models.includes('claude-sonnet-5') && fm.models.includes('claude-haiku-4-5-20251001'), 'claude slot models present in list', JSON.stringify(fm.models));
+  assert(!fm.error, 'no error on success', fm.error);
+  // baseUrl with trailing /v1 — the join logic must not duplicate the segment
+  resp = await fetch(`${proxyUrl}/api/providers/fetch-models`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ baseUrl: `http://127.0.0.1:${MOCK_OK}/v1`, apiKey: 'any-key', authStyle: 'anthropic' }),
+  });
+  fm = await resp.json();
+  assert(resp.status === 200 && fm.models?.length >= 8, 'fetch-models handles /v1-suffixed baseUrl', JSON.stringify(fm).slice(0, 160));
+  // provider without a model list: /v2 base misses /v1/models → 404 → clean error
+  resp = await fetch(`${proxyUrl}/api/providers/fetch-models`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ baseUrl: `http://127.0.0.1:${MOCK_OK}/v2`, apiKey: 'any-key', authStyle: 'auto' }),
+  });
+  fm = await resp.json();
+  assert(resp.status === 200 && fm.models.length === 0 && typeof fm.error === 'string', 'unlistable provider returns empty list + error hint', JSON.stringify(fm));
+  // unreachable host
+  resp = await fetch(`${proxyUrl}/api/providers/fetch-models`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ baseUrl: 'http://127.0.0.1:1/', apiKey: 'any-key', authStyle: 'auto' }),
+  });
+  fm = await resp.json();
+  assert(resp.status === 200 && fm.models.length === 0 && typeof fm.error === 'string', 'unreachable provider returns empty list + error', JSON.stringify(fm));
+  // validation: missing key / bad URL rejected
+  resp = await fetch(`${proxyUrl}/api/providers/fetch-models`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ baseUrl: `http://127.0.0.1:${MOCK_OK}`, authStyle: 'auto' }),
+  });
+  assert(resp.status === 400, 'fetch-models without apiKey → 400', `got ${resp.status}`);
+  resp = await fetch(`${proxyUrl}/api/providers/fetch-models`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ baseUrl: 'ftp://nope', apiKey: 'k', authStyle: 'auto' }),
+  });
+  assert(resp.status === 400, 'fetch-models with non-http baseUrl → 400', `got ${resp.status}`);
+
   // --- 9. usage tracking: JSON + streaming responses ---
   console.log('\n— usage tracking —');
   const before = (await (await fetch(`${proxyUrl}/api/usage`)).json()).totals;

@@ -611,21 +611,29 @@
   .st.s4 { color: var(--red); border: 1px solid rgba(248,113,113,0.4); background: rgba(248,113,113,0.08); }
   .st.s5 { color: var(--amber); border: 1px solid rgba(251,191,36,0.4); background: rgba(251,191,36,0.08); }
 
-  /* ---- providers table ---- */
-  #providers .tbl td { vertical-align: middle; }
-  #providers .prio { white-space: nowrap; width: 1%; }
-  #providers .prio .btn { padding: 3px 7px; }
-  #providers .pname { font-family: var(--sans); font-weight: 600; color: var(--text); white-space: nowrap; }
-  #providers .pmodels { max-width: 280px; }
-  #providers .pmod {
-    font-family: var(--mono); font-size: 11px; color: var(--muted);
-    background: rgba(110,121,244,0.08); border: 1px solid rgba(110,121,244,0.18);
-    border-radius: var(--r-sm); padding: 1px 7px; display: inline-block; margin: 1px 3px 1px 0;
+  /* ---- providers card grid ---- */
+  .pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--sp-3); }
+  .pcard {
+    display: flex; flex-direction: column; gap: 10px; padding: 16px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
   }
-  #providers .pmod em { color: var(--dim); font-style: normal; margin-right: 4px; }
-  #providers .pkey { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
-  #providers .pact { white-space: nowrap; text-align: right; }
-  #providers .pact .btn { padding: 4px 9px; font-size: 11.5px; }
+  .pcard:hover { border-color: rgba(110,121,244,0.45); box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
+  .pcard .top { display: flex; align-items: center; gap: 10px; }
+  .pcard .name { font-weight: 600; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pcard .sub { display: flex; gap: 14px; color: var(--dim); font-size: 11.5px; font-family: var(--mono); }
+  .pcard .mods { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-height: 18px; }
+  .pcard .pmod {
+    font-family: var(--mono); font-size: 12.5px; color: var(--muted);
+    background: rgba(110,121,244,0.08); border: 1px solid rgba(110,121,244,0.18);
+    border-radius: var(--r-sm); padding: 3px 9px; display: inline-flex; align-items: baseline; gap: 7px;
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .pcard .pmod em { color: var(--dim); font-style: normal; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em; }
+  .pcard .stats {
+    display: flex; gap: 16px; color: var(--muted); font-size: 12px; font-family: var(--mono);
+    border-top: 1px solid var(--border); padding-top: 11px;
+  }
+  .pcard .pact { display: flex; gap: 6px; align-items: center; margin-top: auto; }
 
   /* add/edit form card */
   #formcard h2 { font-size: 14.5px; margin: 0 0 10px; letter-spacing: -0.01em; }
@@ -1270,18 +1278,24 @@
                 Auto sends both header styles; every provider just reads the one it knows.
               </div>
             </div>
+            <div style="grid-column:1/-1;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <span style="font-size:12px;color:var(--muted)">Model IDs</span>
+              <button class="btn btn-secondary" type="button" id="fetchModelsBtn" onclick="fetchProviderModels()">⟳ Fetch from provider</button>
+              <span style="color:var(--dim);font-size:11.5px">fills empty slots from the provider's model list — no copy-paste</span>
+            </div>
             <div>
               <label for="f_opus">Opus model ID</label>
-              <input id="f_opus" placeholder="claude-opus-5">
+              <input id="f_opus" list="modelDl" autocomplete="off" placeholder="claude-opus-5">
             </div>
             <div>
               <label for="f_sonnet">Sonnet model ID</label>
-              <input id="f_sonnet" placeholder="claude-sonnet-5">
+              <input id="f_sonnet" list="modelDl" autocomplete="off" placeholder="claude-sonnet-5">
             </div>
             <div>
               <label for="f_haiku">Haiku model ID</label>
-              <input id="f_haiku" placeholder="claude-haiku-4-5-20251001">
+              <input id="f_haiku" list="modelDl" autocomplete="off" placeholder="claude-haiku-4-5-20251001">
             </div>
+            <datalist id="modelDl"></datalist>
             <div class="checkrow" style="align-self:end">
               <input id="f_enabled" type="checkbox" checked>
               <label for="f_enabled" style="margin:0">Enabled</label>
@@ -2151,7 +2165,7 @@ window.flowOpen = (id) => {
 /* ---- providers view ---- */
 function providerCard(p) {
   const cd = p.status === 'down' && p.downForMs
-    ? ` <span class="pill" title="cooldown">back in ~${Math.ceil(p.downForMs / 1000)}s</span>` : '';
+    ? `<span class="pill" title="cooldown">back in ~${Math.ceil(p.downForMs / 1000)}s</span>` : '';
   const lat = p.stats.emaLatencyMs != null ? p.stats.emaLatencyMs + 'ms' : '—';
   const sr = p.stats.requests ? Math.round(100 * p.stats.successes / p.stats.requests) + '%' : '—';
   const models = ['opus', 'sonnet', 'haiku']
@@ -2162,24 +2176,32 @@ function providerCard(p) {
     : p.status === 'down' ? (p.downForMs ? 'dot-cd' : 'dot-down')
     : 'dot-off';
   const reason = p.statusDetail ? ` title="${escapeHtml(p.statusDetail)}"` : '';
+  const off = !p.enabled ? '<span class="pill">disabled</span>' : '';
   return `
-  <tr>
-    <td class="prio">
+  <div class="card pcard">
+    <div class="top">
+      <span class="dot ${dot}"${reason}></span>
+      <span class="name" title="${escapeHtml(p.baseUrl)}">${escapeHtml(p.name)}</span>
+      ${off}${cd}
+      <span class="spacer"></span>
       <button class="btn btn-ghost" title="move up" onclick="move('${p.id}','up')" ${p.priority <= 1 ? 'disabled' : ''}>▲</button>
       <button class="btn btn-ghost" title="move down" onclick="move('${p.id}','down')">▼</button>
-    </td>
-    <td class="pname"><span class="dot ${dot}"${reason}></span>${escapeHtml(p.name)}${cd}</td>
-    <td class="pmodels">${models || '<span style="color:var(--dim)">—</span>'}</td>
-    <td class="mono pkey" title="${escapeHtml(p.baseUrl)}">${escapeHtml(p.maskedKey)}</td>
-    <td class="num">${lat}</td>
-    <td class="num">${sr}</td>
-    <td class="pact">
+    </div>
+    <div class="sub"><span>priority ${p.priority}</span><span>${escapeHtml(p.maskedKey)}</span></div>
+    <div class="mods">${models || '<span style="color:var(--dim);font-size:12px">no model IDs set</span>'}</div>
+    <div class="stats">
+      <span title="average latency">${lat}</span>
+      <span title="success rate">${sr}</span>
+      <span title="requests routed">${p.stats.requests} req</span>
+    </div>
+    <div class="pact">
       <button class="btn btn-ghost" onclick="test('${p.id}')">test</button>
       ${p.status === 'down' ? `<button class="btn btn-ghost" onclick="resetP('${p.id}')">reset</button>` : ''}
       <button class="btn btn-ghost" onclick="edit('${p.id}')">edit</button>
+      <span class="spacer"></span>
       <button class="btn btn-danger" onclick="remove('${p.id}')">delete</button>
-    </td>
-  </tr>`;
+    </div>
+  </div>`;
 }
 
 function renderProviders() {
@@ -2189,10 +2211,7 @@ function renderProviders() {
     return (p.name + ' ' + p.baseUrl + ' ' + Object.values(p.models || {}).join(' ')).toLowerCase().includes(q);
   });
   $('providers').innerHTML = list.length
-    ? `<table class="tbl"><thead><tr>
-        <th></th><th>provider</th><th>models</th><th>key</th>
-        <th class="num">latency</th><th class="num">success</th><th></th>
-      </tr></thead><tbody>${list.map(providerCard).join('')}</tbody></table>`
+    ? `<div class="pgrid">${list.map(providerCard).join('')}</div>`
     : `<div class="card empty">${statusState.providers.length ? 'No providers match your filter.' : `No providers yet — add one below, or prefill from the <a href="#" onclick="gotoView('discover');return false" style="color:var(--accent-2)">Discover</a> catalog.<br><br>
        <b style="color:var(--amber)">Important:</b> add at least one provider with an API key and enable it <i>before</i> running
        <span style="font-family:var(--mono)">scripts/install.mjs</span> — once settings.json points here, Claude Code has no API
@@ -2580,6 +2599,28 @@ window.wizChoose = (sel) => {
 };
 window.wizChooseManual = () => { wizPick = { manual: true }; wizAdded = null; renderWizard(); };
 
+// Fetch the provider's model list from the wizard's manual form: fills the
+// sonnet slot (best guess) and feeds the shared datalist so the input offers
+// every available ID as a dropdown.
+window.wizFetchModels = async () => {
+  const baseUrl = $('wz_url').value.trim();
+  const apiKey = $('wz_key').value.trim();
+  if (!/^https?:\/\//.test(baseUrl) || !apiKey) return toast('Fill in the base URL and API key first', true);
+  try {
+    const r = await api('/api/providers/fetch-models', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ baseUrl, apiKey, authStyle: 'auto' }),
+    });
+    if (!r.models?.length) { toast(r.error || 'No models found', true); return; }
+    $('modelDl').innerHTML = r.models.map((m) => `<option value="${escapeHtml(m)}"></option>`).join('');
+    const sonnet = $('wz_sonnet');
+    const best = bestModelFor(r.models, 'sonnet');
+    if (best && !sonnet.value.trim()) sonnet.value = best;
+    toast(`Found ${r.models.length} models — pick others from the dropdown`);
+  } catch (e) { toast(e.message, true); }
+};
+
 function wizKey() {
   const c = wizPick?.manual ? null : wizPick;
   const name = c?.name || '';
@@ -2598,7 +2639,10 @@ function wizKey() {
       <input id="wz_key" class="input mono" type="password" placeholder="${c ? 'paste the key from your ' + escapeHtml(name) + ' dashboard' : 'sk-...'}" onkeydown="if(event.key==='Enter')window.wizTest()">
       ${c ? '' : `
       <label>Sonnet model ID <span style="color:var(--dim)">(optional — for Anthropic-compatible gateways)</span></label>
-      <input id="wz_sonnet" class="input mono" placeholder="claude-sonnet-5">`}
+      <div style="display:flex;gap:8px">
+        <input id="wz_sonnet" class="input mono" list="modelDl" autocomplete="off" placeholder="claude-sonnet-5">
+        <button class="btn btn-secondary" type="button" onclick="wizFetchModels()" title="Fetch the model list from the provider">⟳</button>
+      </div>`}
     </div>
     <div class="wiztest" id="wz_test"></div>`;
   wizNav(true, 'wizTest()', 'Test & save', 'primary');
@@ -2810,6 +2854,64 @@ window.resetForm = () => {
   $('keyhint').textContent = '';
   $('formTitle').textContent = 'Add provider';
   $('submitBtn').textContent = 'Add';
+};
+
+// Best guess for a slot from a provider's model list: prefer claude-family
+// names, then "latest", then the highest version number. glm-5.2-air beating
+// glm-5.2 is fine — corrections are one dropdown click away (the datalist).
+function bestModelFor(models, slot) {
+  const cands = models.filter((m) => m.toLowerCase().includes(slot));
+  if (!cands.length) return '';
+  const score = (m) => {
+    const l = m.toLowerCase();
+    let s = 0;
+    if (/^claude[-/.]/.test(l)) s += 100;          // direct claude family
+    else if (/\/claude/.test(l)) s += 80;          // namespaced (openrouter/anthropic/...)
+    if (/latest/.test(l)) s += 20;
+    for (const n of l.match(/\d+(\.\d+)*/g) || []) {
+      n.split('.').forEach((p, i) => { s += Number(p) / Math.pow(100, i); });
+    }
+    return s;
+  };
+  return cands.sort((a, b) => score(b) - score(a))[0];
+}
+
+window.fetchProviderModels = async () => {
+  const baseUrl = $('f_baseUrl').value.trim();
+  const apiKey = $('f_apiKey').value.trim();
+  if (!/^https?:\/\//.test(baseUrl)) return toast('Enter the base URL first', true);
+  if (!apiKey) return toast('Enter the API key first — nothing is saved until you click Add', true);
+  const btn = $('fetchModelsBtn');
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = 'fetching…';
+  try {
+    const r = await api('/api/providers/fetch-models', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ baseUrl, apiKey, authStyle: $('f_authStyle').value }),
+    });
+    if (!r.models?.length) { toast(r.error || 'No models found', true); return; }
+    // every slot becomes an autocomplete dropdown of available IDs
+    $('modelDl').innerHTML = r.models.map((m) => `<option value="${escapeHtml(m)}"></option>`).join('');
+    let filled = [], missing = [];
+    for (const slot of ['opus', 'sonnet', 'haiku']) {
+      const input = $('f_' + slot);
+      if (input.value.trim()) continue; // never clobber a manual entry
+      const best = bestModelFor(r.models, slot);
+      if (best) { input.value = best; filled.push(slot); } else missing.push(slot);
+    }
+    if (filled.length) {
+      toast(`Found ${r.models.length} models — filled ${filled.join(', ')}${missing.length ? ` (no ${missing.join('/')} match — pick from the dropdown)` : ''}`);
+    } else {
+      toast(`${r.models.length} models available — pick from the dropdowns`);
+    }
+  } catch (e) {
+    toast(e.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
 };
 
 window.submitForm = async (ev) => {

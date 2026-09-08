@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { newId, statsFor, logEvent, persistSoon, emptyUsage, DIR, PROCESS_START } from './config.mjs';
 import { PRICING, effectivePrice, aliasSuggestions, recalcCosts } from './pricing.mjs';
 import { enabledSorted, isDown, COOLDOWNS } from './proxy.mjs';
-import { probe, deepCheck } from './health.mjs';
+import { probe, deepCheck, fetchModels } from './health.mjs';
 import { enableRouting, disableRouting } from './routing.mjs';
 
 const JSON_HDR = { 'content-type': 'application/json', 'cache-control': 'no-store' };
@@ -696,6 +696,48 @@ ${JSON.stringify(stats)}`;
       logEvent(cfg, `Imported ${clean.length} provider(s)`);
       persistSoon(cfg, 0);
       return send(res, 200, { ok: true, imported: clean.length });
+    }
+
+    // ---- model discovery: list a provider's models before it is saved ----
+    // Takes raw baseUrl + apiKey (nothing is persisted), calls GET {base}/v1/models,
+    // and returns the IDs so the dashboard can auto-fill the opus/sonnet/haiku
+    // slots instead of asking the user to copy-paste them by hand.
+    if (method === 'POST' && resource === 'providers' && id === 'fetch-models' && !action) {
+      const body = await readJson(req);
+      const baseUrl = String(body.baseUrl || '').trim();
+      const apiKey = String(body.apiKey || '').trim();
+      if (!/^https?:\/\//.test(baseUrl)) return send(res, 400, { error: 'baseUrl must start with http:// or https://' });
+      if (!apiKey) return send(res, 400, { error: 'apiKey is required' });
+      const target = {
+        baseUrl,
+        apiKey,
+        authStyle: ['anthropic', 'bearer', 'auto'].includes(body.authStyle) ? body.authStyle : 'auto',
+      };
+      let resp2;
+      try {
+        resp2 = await fetchModels(target);
+      } catch (e) {
+        return send(res, 200, { models: [], error: `could not reach ${baseUrl} — ${e.message}` });
+      }
+      if (resp2.status === 401 || resp2.status === 403) {
+        return send(res, 200, { models: [], error: `authentication failed (${resp2.status}) — check the API key` });
+      }
+      if (resp2.status === 404 || resp2.status === 405) {
+        return send(res, 200, { models: [], error: 'this provider does not expose a model list — enter the model IDs manually' });
+      }
+      if (!resp2.ok) {
+        return send(res, 200, { models: [], error: `provider returned HTTP ${resp2.status}` });
+      }
+      try {
+        const data = await resp2.json();
+        const ids = [...new Set((data.data || data.models || [])
+          .map((m) => m && (m.id || m.name))
+          .filter((x) => typeof x === 'string' && x))].sort();
+        if (!ids.length) return send(res, 200, { models: [], error: 'model list came back empty — enter the model IDs manually' });
+        return send(res, 200, { models: ids });
+      } catch {
+        return send(res, 200, { models: [], error: 'model list is not valid JSON — enter the model IDs manually' });
+      }
     }
 
     // ---- provider CRUD ----

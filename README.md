@@ -60,6 +60,7 @@ proxy with automatic failover, auto-recovery, live usage analytics — and
 | 🆘 **Built-in Help** | Troubleshooting view in the dashboard — claude-mem capture sync, stale proxy after updates, env-var conflicts, cooldowns, and more |
 | 📤 **Shareable stats card** | Build a pretty usage card in the dashboard — pick period, stats, and theme — export or share it as a PNG |
 | 🧭 **Provider discovery** | Curated catalog with one-click setup, plus community-maintained remote catalogs |
+| ⟳ **Model auto-fetch** | Enter a base URL + API key and the dashboard pulls the provider's model list for you — no copy-pasting model IDs |
 
 ---
 
@@ -185,7 +186,7 @@ Or as a plugin: the `SessionStart` hook auto-starts the proxy, and `/switchx-ins
 
 ## Use
 
-- **Dashboard:** http://127.0.0.1:8787 — add/edit/delete providers, reorder priority (▲▼), test connectivity (including a check that your configured model IDs actually exist on the provider), watch status and the event log live, check estimated costs, and edit per-model prices in the Pricing view. The Traffic flow bubbles on the Overview page are draggable just for fun. The **Share stats** button on the Overview exports your usage as a shareable PNG card.
+- **Dashboard:** http://127.0.0.1:8787 — add/edit/delete providers as large status cards, reorder priority (▲▼), test connectivity (including a check that your configured model IDs actually exist on the provider), fetch a provider's model list straight from its API, watch status and the event log live, check estimated costs, and edit per-model prices in the Pricing view. The Traffic flow bubbles on the Overview page are draggable just for fun. The **Share stats** button on the Overview exports your usage as a shareable PNG card.
 - **Commands:** `/switchx` (status), `/switchx-add` (add provider), `/switchx-install` (run installer).
 - **Config lives in** `~/.claude/switchx/config.json` (providers + keys + stats). Server log: `~/.claude/switchx/server.log`.
 
