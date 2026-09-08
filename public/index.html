@@ -640,11 +640,17 @@
 
   /* ---- shared card bits (discover catalog cards) ---- */
   .avatar {
-    width: 36px; height: 36px; border-radius: 11px; flex-shrink: 0;
+    width: 36px; height: 36px; border-radius: 11px; flex-shrink: 0; position: relative;
     display: grid; place-items: center; font-weight: 700; font-size: 15px; color: #fff;
     background: linear-gradient(100deg, #a855f7, var(--accent), var(--accent-2));
     background-size: 200% 200%;
     box-shadow: 0 4px 14px rgba(110,121,244,0.3);
+  }
+  /* favicon layer: sits on top of the initials, which remain the fallback
+     when the site has no icon or the fetch fails (onerror removes the img) */
+  .avatar .fav {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    border-radius: 11px; object-fit: cover; background: var(--surface);
   }
   .spacer { flex: 1; }
 
@@ -2756,10 +2762,17 @@ function renderCatalog() {
   $('catgrid').innerHTML = list.length
     ? list.map((c) => {
       const added = addedHosts.has(normUrl(c.baseUrl));
+      // favicon from the provider's site (Google's favicon service); the
+      // initials stay underneath as the no-icon/offline fallback
+      let host = null;
+      try { host = new URL(c.website || c.baseUrl).hostname; } catch { /* no usable URL */ }
+      const avatar = `<span class="avatar">${escapeHtml(initials(c.name))}${host
+        ? `<img class="fav" src="https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64" alt="" loading="lazy" onerror="this.remove()">`
+        : ''}</span>`;
       return `
     <div class="card catcard">
       <div class="top">
-        <span class="avatar">${escapeHtml(initials(c.name))}</span>
+        ${avatar}
         <span class="name">${escapeHtml(c.name)}</span>
         <span class="spacer"></span>
         ${c.freeTier ? '<span class="pill ok"><i class="dot dot-up"></i>FREE</span>' : ''}
