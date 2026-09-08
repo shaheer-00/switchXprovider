@@ -668,7 +668,7 @@
   .chip.active { background: rgba(110,121,244,0.15); color: var(--text); border-color: rgba(110,121,244,0.55); }
 
   /* ---- discover: featured hero row + catalog cards ---- */
-  .heroGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--sp-3); margin-bottom: var(--sp-4); }
+  .heroGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--sp-3); margin: var(--sp-4) 0; }
   .herocard {
     display: flex; flex-direction: column; gap: 11px; padding: 18px;
     border-color: rgba(110,121,244,0.35);
@@ -680,7 +680,7 @@
     color: var(--muted); font-size: 13px; flex: 1;
     display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
   }
-  .catgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--sp-3); }
+  .catgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--sp-3); margin-top: var(--sp-4); }
   .catcard { display: flex; flex-direction: column; gap: 9px; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
   .catcard:hover { border-color: rgba(110,121,244,0.45); box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
   .catcard .top { display: flex; align-items: center; gap: 11px; cursor: pointer; }
