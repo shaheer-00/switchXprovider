@@ -692,14 +692,8 @@
   .subline .pricenote { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .catcard .desc {
     color: var(--muted); font-size: 12.5px; flex: 1;
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
   }
-  .catcard.open .desc { -webkit-line-clamp: unset; }
-  .catcard .chev { color: var(--dim); font-size: 11px; transition: transform 0.25s ease; flex-shrink: 0; }
-  .catcard.open .chev { transform: rotate(180deg); }
-  /* expandable details: collapsed by default, slides open on card click */
-  .catcard .more { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
-  .catcard.open .more { max-height: 320px; }
+  /* all details visible by default — no expand/collapse */
   .catcard .pricenote { color: var(--dim); font-size: 11.5px; font-family: var(--mono); }
   .catcard .tag { font-family: var(--mono); font-size: 11px; color: var(--dim); }
   .catcard .facts { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -2998,9 +2992,7 @@ window.setCatFilter = (f) => {
   renderCatalog();
 };
 
-// expand/collapse a catalog card's details in place (no re-render — the
-// max-height transition would restart from zero if the DOM were rebuilt)
-window.toggleCatCard = (el) => el.classList.toggle('open');
+// cards show all details by default — no expand/collapse toggle
 
 function renderCatalog() {
   if (!catalog) return;
@@ -3064,13 +3056,13 @@ function renderCatalog() {
       .join('');
     return `
     <div class="card catcard">
-      <div class="top" onclick="toggleCatCard(this.closest('.catcard'))">
+      <div class="top">
         ${avatar}
         <div style="min-width:0;flex:1">
           <div class="name">${escapeHtml(c.name)}</div>
           <div class="subline">${rate}<span class="pricenote">${escapeHtml(c.pricing || '')}</span></div>
         </div>
-        ${pills}<span class="chev">▾</span>
+        ${pills}
       </div>
       <div class="desc">${escapeHtml(c.description || '')}</div>
       <div class="more">
