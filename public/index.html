@@ -12,7 +12,7 @@
     --border: #1f1f23;
     --text: #ececf1;
     --muted: #8e8e96;
-    --dim: #5c5c64;
+    --dim: #6b6b74;
     --accent: #6e79f4;
     --accent-2: #22d3ee;
     --green: #34d399;
@@ -108,13 +108,15 @@
 
   /* ---- glowy panel ---- */
   .panelcard {
-    background: var(--panel); backdrop-filter: blur(12px);
-    border: 1px solid var(--border); border-radius: var(--r);
+    background: var(--surface); backdrop-filter: blur(12px);
+    border: 1px solid var(--border); border-radius: var(--r-lg);
     padding: 20px; margin-bottom: 22px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
   }
   .panelcard h2 { font-size: 14.5px; margin: 0 0 4px; letter-spacing: -0.01em; }
-  .panelcard .hint { color: var(--muted); font-size: 12.5px; margin-bottom: 14px; }
+  /* one shared hint treatment for every card family (.card rides the
+     component layer below) */
+  .panelcard .hint, .card .hint { color: var(--muted); font-size: 12.5px; margin-bottom: 14px; }
 
   /* ---- hero (overview) ---- */
   /* .hero-left stays display:none — it hosts the legacy IDs (heroActive,
@@ -236,7 +238,7 @@
   }
   .wizcard {
     width: min(640px, calc(100vw - 40px)); max-height: calc(100vh - 80px);
-    background: var(--surface-2); border: 1px solid var(--border-hi); border-radius: 16px;
+    background: var(--surface-2); border: 1px solid rgba(110,121,244,0.45); border-radius: 16px;
     box-shadow: 0 30px 80px rgba(0,0,0,0.6); padding: 26px 30px 20px;
     display: flex; flex-direction: column; position: relative; overflow-y: auto;
   }
@@ -247,7 +249,7 @@
   }
   .wizsteps { display: flex; gap: 6px; margin-bottom: 18px; }
   .wizsteps i { flex: 1; height: 4px; border-radius: 2px; background: rgba(130,150,200,0.15); }
-  .wizsteps i.on { background: var(--grad); box-shadow: 0 0 8px rgba(110,121,244,0.5); }
+  .wizsteps i.on { background: linear-gradient(100deg, var(--accent), var(--accent-2)); box-shadow: 0 0 8px rgba(110,121,244,0.5); }
   .wizbody h2 { margin: 0 0 6px; font-size: 21px; letter-spacing: -0.02em; }
   .wizbody p { color: var(--muted); font-size: 13.5px; line-height: 1.55; margin: 0 0 14px; }
   .wizbody .big { font-size: 15px; }
@@ -270,22 +272,14 @@
   .wiztest { margin-top: 4px; font-size: 13px; min-height: 20px; }
 
   /* ---- share widget ---- */
-  .sharebtn {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: var(--panel); color: var(--muted);
-    border: 1px solid var(--border); border-radius: 999px;
-    padding: 4px 12px; font-size: 12px; font-weight: 600; cursor: pointer;
-    transition: border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
-  }
-  .sharebtn:hover { border-color: var(--acc1); color: var(--text); box-shadow: 0 4px 22px rgba(99,102,241,0.25); }
-  .sharebtn svg { width: 13px; height: 13px; }
+  .btn.sharebtn { border-radius: 999px; padding: 4px 12px; }
   .share {
-    position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
-    background: rgba(5,7,14,0.72); backdrop-filter: blur(6px); padding: 24px;
+    position: fixed; inset: 0; z-index: 100; display: grid; place-items: center;
+    background: rgba(0,0,0,.6); backdrop-filter: blur(4px); padding: 24px;
   }
   .sharecard {
     width: min(980px, 100%); max-height: calc(100vh - 48px); overflow: auto;
-    background: var(--bg2); border: 1px solid var(--border); border-radius: 18px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
     box-shadow: 0 30px 80px rgba(0,0,0,0.55); padding: 22px;
   }
   .sharehead { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
@@ -302,49 +296,46 @@
   .shlabel { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); margin: 14px 0 6px; font-weight: 600; }
   .shlabel:first-child { margin-top: 0; }
   .shchips { display: flex; flex-wrap: wrap; gap: 6px; }
+  /* period chips — pill rows, .on = accent border */
   .shchip {
-    background: var(--panel); border: 1px solid var(--border); color: var(--muted);
-    border-radius: 999px; padding: 5px 12px; font-size: 12px; font-weight: 600; cursor: pointer;
-    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--muted);
+    border-radius: 999px; padding: 3px 12px; font: 600 12px var(--sans); cursor: pointer;
+    transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
   }
-  .shchip:hover { border-color: var(--acc1); color: var(--text); }
-  .shchip.on { border-color: var(--acc1); color: var(--text); background: rgba(99,102,241,0.13); }
+  .shchip:hover { border-color: var(--accent); color: var(--text); }
+  .shchip.on { border-color: var(--accent); color: var(--text); background: rgba(110,121,244,.13); }
+  /* toggles — custom checkbox rows on surface-2 */
   .shtog {
-    display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 10px;
-    border: 1px solid transparent; cursor: pointer; user-select: none;
+    display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: var(--r-md);
+    border: 1px solid var(--border); background: var(--surface-2); cursor: pointer; user-select: none;
+    transition: border-color 150ms ease;
   }
-  .shtog:hover { background: rgba(99,102,241,0.06); }
+  .shtog + .shtog { margin-top: 6px; }
+  .shtog:hover { border-color: rgba(110,121,244,.45); }
   .shtog .box {
-    width: 16px; height: 16px; border-radius: 5px; border: 1.5px solid var(--border-hi);
-    display: grid; place-items: center; flex: none; transition: background 0.15s ease, border-color 0.15s ease;
+    width: 16px; height: 16px; border-radius: 5px; border: 1.5px solid var(--dim);
+    display: grid; place-items: center; flex: none; transition: background 150ms ease, border-color 150ms ease;
   }
-  .shtog.on .box { background: var(--acc1); border-color: var(--acc1); }
+  .shtog.on .box { background: var(--accent); border-color: var(--accent); }
   .shtog .box svg { width: 10px; height: 10px; opacity: 0; }
   .shtog.on .box svg { opacity: 1; }
   .shtog .t { font-size: 13px; color: var(--muted); }
   .shtog.on .t { color: var(--text); }
+  /* theme swatches keep their per-theme color dots */
   .shthemes { display: flex; flex-wrap: wrap; gap: 8px; }
   .shtheme {
-    border: 1px solid var(--border); border-radius: 10px; padding: 7px 10px 8px; cursor: pointer;
-    background: var(--panel); text-align: center; transition: border-color 0.15s ease, transform 0.15s ease;
+    border: 1px solid var(--border); border-radius: var(--r-md); padding: 7px 10px 8px; cursor: pointer;
+    background: var(--surface-2); text-align: center; transition: border-color 150ms ease, transform 150ms ease;
   }
   .shtheme:hover { transform: translateY(-2px); }
-  .shtheme.on { border-color: var(--acc1); box-shadow: 0 0 0 3px rgba(99,102,241,0.18); }
+  .shtheme.on { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(110,121,244,.18); }
   .shtheme .sw { display: flex; gap: 3px; margin-bottom: 5px; }
   .shtheme .sw i { width: 14px; height: 14px; border-radius: 4px; display: block; }
   .shtheme .nm { font-size: 10.5px; color: var(--muted); font-weight: 600; }
   .shtheme.on .nm { color: var(--text); }
+  /* export = .btn-primary, share = .btn-secondary (markup rides .btn) */
   .shareactions { display: flex; gap: 10px; margin-top: 18px; }
-  .shbtn {
-    flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-    border-radius: 10px; padding: 10px 14px; font-size: 13px; font-weight: 700; cursor: pointer;
-    border: 1px solid var(--border); background: var(--panel); color: var(--text);
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
-  }
-  .shbtn:hover { border-color: var(--border-hi); }
-  .shbtn.primary { border: none; background: var(--grad); color: #fff; }
-  .shbtn.primary:hover { box-shadow: 0 6px 24px rgba(99,102,241,0.4); }
-  .shbtn svg { width: 14px; height: 14px; }
+  .shareactions .btn { flex: 1; }
 
   /* ---- update-available popup ---- */
   .upd {
@@ -352,7 +343,7 @@
     background: rgba(5,7,14,0.72); backdrop-filter: blur(6px); padding: 24px;
   }
   .updcard {
-    width: min(430px, 100%); background: var(--bg2); border: 1px solid var(--border);
+    width: min(430px, 100%); background: var(--surface); border: 1px solid var(--border);
     border-radius: 18px; box-shadow: 0 30px 80px rgba(0,0,0,0.55); padding: 26px;
     text-align: center;
   }
@@ -365,9 +356,8 @@
   .updhead h2 { margin: 0; font-size: 19px; letter-spacing: -0.02em; }
   .updcard p { color: var(--muted); font-size: 13.5px; line-height: 1.6; margin: 0 0 18px; }
   .updcard p b { color: var(--text); }
-  .updcard .ver { font-family: var(--mono); color: var(--acc2); }
+  .updcard .ver { font-family: var(--mono); color: var(--accent-2); }
   .updactions { display: flex; gap: 10px; }
-  .updactions .shbtn { flex: 1; }
 
   /* ---- pricing view ---- */
   .peleft { text-align: left; width: min(560px, 100%); }
@@ -423,11 +413,13 @@
   #recalcAsk p { color: var(--muted); font-size: 13.5px; line-height: 1.6; margin: 0 0 18px; }
   #recalcAsk p b { color: var(--text); }
   #unpricedCard h2, #priceEdit h2, #recalcAsk h2 { font-size: 15px; margin: 0 0 4px; letter-spacing: -0.01em; }
-  #unpricedCard .hint, #priceEdit .hint { color: var(--muted); font-size: 12.5px; margin-bottom: 14px; }
   .updactions .btn { flex: 1; }
 
   /* ---- help view (doc layout: main + sticky anchor nav) ---- */
-  html { scroll-behavior: smooth; }
+  /* smooth anchor scrolling only while the Help view is on screen — html is
+     the scroll container, so plain `#view-help { … }` scoping would not work;
+     :has() gates it on the view actually being active */
+  html:has(#view-help.active) { scroll-behavior: smooth; }
   .helpwrap { display: grid; grid-template-columns: 1fr 160px; gap: var(--sp-6); align-items: start; }
   .helpnav { position: sticky; top: var(--sp-6); display: flex; flex-direction: column; gap: 2px; }
   .helpnav a {
@@ -606,7 +598,7 @@
     font-size: 13px; font-family: var(--mono);
     transition: border-color 0.15s, box-shadow 0.15s;
   }
-  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--acc1); box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
   .checkrow { display: flex; align-items: center; gap: 9px; }
   .checkrow input { width: auto; }
   .formactions { display: flex; gap: 10px; margin-top: 15px; }
@@ -616,15 +608,11 @@
     border-radius: 10px; padding: 7px 14px; font-size: 12.5px; cursor: pointer;
     transition: all 0.15s ease; backdrop-filter: blur(6px);
   }
-  button:hover { border-color: var(--acc1); box-shadow: 0 4px 18px rgba(99,102,241,0.18); }
+  button:hover { border-color: var(--accent); box-shadow: 0 4px 18px rgba(99,102,241,0.18); }
   button:active { transform: scale(0.97); }
-  button.primary {
-    background: var(--grad); border: none; color: #fff; font-weight: 600;
-    box-shadow: 0 4px 20px rgba(99,102,241,0.35);
-  }
-  button.primary:hover { box-shadow: 0 6px 26px rgba(99,102,241,0.5); }
-  button.danger { border-color: rgba(248,113,113,0.3); color: var(--red); background: transparent; }
-  button.danger:hover { border-color: var(--red); background: rgba(248,113,113,0.08); box-shadow: none; }
+  /* renderSettings assigns bare 'primary'/'danger' classNames (JS untouchable):
+     both spellings render identically to .btn-primary/.btn-danger via the
+     component layer below — no per-element overrides here. */
   button:disabled { opacity: 0.35; cursor: default; box-shadow: none; }
 
   /* ---- events timeline ---- */
@@ -656,7 +644,6 @@
     color: var(--dim); margin: var(--sp-6) 0 var(--sp-2);
   }
   .grouplbl.danger { color: var(--red); }
-  .card .hint { color: var(--muted); font-size: 12.5px; margin-bottom: 14px; }
   #view-settings .card h2 { font-size: 15px; margin: 0 0 4px; letter-spacing: -0.01em; }
   .setrow { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 13px 0; border-bottom: 1px solid var(--border); }
   .setrow:last-child { border-bottom: none; }
@@ -702,17 +689,10 @@
   .offrow .offinfo .mono { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 3px; word-break: break-all; }
   .offrow .btn { white-space: nowrap; }
 
-  .toast {
-    position: fixed; bottom: 22px; right: 22px; background: #10152a;
-    border: 1px solid var(--border-hi); border-radius: 12px; padding: 11px 17px;
-    font-size: 13px; display: none; max-width: 400px; z-index: 50;
-    box-shadow: 0 12px 40px rgba(99,102,241,0.25);
-    animation: reqin 0.3s ease;
-  }
-  .toast.error { border-color: rgba(248,113,113,0.5); box-shadow: 0 12px 40px rgba(248,113,113,0.2); }
+  /* toasts ride the component layer below (single .toast rule there) */
 
   /* skeleton shimmer for first paint */
-  .skel { border-radius: var(--r); background: linear-gradient(100deg, rgba(30,37,60,0.3) 40%, rgba(50,60,95,0.45) 50%, rgba(30,37,60,0.3) 60%); background-size: 250% 100%; animation: shimmer 1.4s linear infinite; }
+  .skel { border-radius: var(--r-lg); background: linear-gradient(100deg, rgba(30,37,60,0.3) 40%, rgba(50,60,95,0.45) 50%, rgba(30,37,60,0.3) 60%); background-size: 250% 100%; animation: shimmer 1.4s linear infinite; }
   @keyframes shimmer { to { background-position: -150% 0; } }
 
   /* ---- sparklines ---- */
@@ -747,11 +727,13 @@
   .latrow:last-child { margin-bottom: 0; }
   .latrow .lname { font-size: 12px; width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 0; }
   .latrow .ltrack { display: block; flex: 1; height: 6px; background: rgba(255,255,255,0.04); border-radius: 999px; overflow: hidden; }
-  .latrow .lfill { display: block; height: 100%; background: var(--grad); border-radius: 999px; transition: width 0.8s ease; box-shadow: 0 0 8px rgba(99,102,241,0.4); }
+  .latrow .lfill { display: block; height: 100%; background: linear-gradient(100deg, var(--accent), var(--accent-2)); border-radius: 999px; transition: width 0.8s ease; box-shadow: 0 0 8px rgba(99,102,241,0.4); }
   .latrow .lms { font-family: var(--mono); font-size: 10.5px; color: var(--muted); width: 52px; text-align: right; flex-shrink: 0; }
 
   /* ---- search ---- */
   .searchbar { position: relative; margin-bottom: 14px; }
+  /* searchbar inside a viewhead .actions row — no bottom margin, fixed width */
+  .searchbar.inhead { margin: 0; width: 280px; }
   .searchbar input { padding-left: 36px; }
   .searchbar .sic {
     position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
@@ -791,20 +773,24 @@
      The old table.tbl override set was folded into this .tbl treatment in
      Task 4 (usage/pricing/events tables); all tables render on tokens now. */
   /* ---- buttons ---- */
-  .btn, .shbtn, button.primary {
+  .btn, button.primary {
     display: inline-flex; align-items: center; gap: 6px;
     font: 600 12.5px var(--sans); border-radius: var(--r-sm);
     padding: 7px 14px; cursor: pointer; border: 1px solid transparent;
     transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
   }
+  .btn svg { width: 14px; height: 14px; flex: none; }
+  /* `button.primary` / `button.danger`: bare classNames assigned by
+     renderSettings (JS untouchable) — aliased onto the component buttons so
+     both spellings render identically */
   .btn-primary, button.primary { background: var(--accent); color: #fff; }
-  .btn-primary:hover { background: #7d87f6; }
+  .btn-primary:hover, button.primary:hover { background: #7d87f6; }
   .btn-secondary { background: var(--surface); border-color: var(--border); color: var(--text); }
   .btn-secondary:hover { background: var(--surface-2); }
   .btn-ghost { background: none; color: var(--muted); }
   .btn-ghost:hover { color: var(--text); background: var(--surface-2); }
-  .btn-danger { background: none; color: var(--red); border-color: transparent; }
-  .btn-danger:hover { background: rgba(248,113,113,.08); }
+  .btn-danger, button.danger { background: none; color: var(--red); border-color: transparent; }
+  .btn-danger:hover, button.danger:hover { background: rgba(248,113,113,.08); }
 
   /* ---- cards & stats ---- */
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--sp-4); }
@@ -835,6 +821,10 @@
 
   /* ---- pills, inputs, toasts, modals, empty states ---- */
   .pill { display: inline-flex; align-items: center; gap: 5px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; font-size: 11px; color: var(--muted); }
+  /* keyboard focus ring — outlines already follow each element's own
+     border-radius, so no radius override is needed here (the literal
+     border-radius in the plan would square pill buttons while tabbing) */
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .input, input, select, textarea {
     background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
     border-radius: var(--r-sm); padding: 7px 10px; font: 13px var(--sans); width: 100%;
@@ -842,41 +832,25 @@
   /* the width:100% above must not hit checkboxes (provider form #f_enabled etc.) */
   input[type="checkbox"] { width: auto; accent-color: var(--accent); }
   input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
-  .toast { position: fixed; right: var(--sp-4); bottom: var(--sp-4); background: var(--surface-2); border: 1px solid var(--border); border-left: 2px solid var(--accent); border-radius: var(--r-sm); padding: 10px 14px; font-size: 13px; z-index: 200; }
-  .toast.err { border-left-color: var(--red); }
-  /* the dashboard JS toggles the `error` class, not `err` — alias it */
-  .toast.error { border-left-color: var(--red); }
+  .toast {
+    position: fixed; right: var(--sp-4); bottom: var(--sp-4); background: var(--surface-2);
+    border: 1px solid var(--border); border-left: 2px solid var(--accent); border-radius: var(--r-sm);
+    padding: 10px 14px; font-size: 13px; z-index: 200; display: none; max-width: 400px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.4); animation: reqin 0.3s ease;
+  }
+  /* one rule, both spellings — the JS toggles `error`, the component layer
+     originally shipped `err` */
+  .toast.err, .toast.error { border-left-color: var(--red); }
   .modal { position: fixed; inset: 0; background: rgba(0,0,0,.6); backdrop-filter: blur(4px); display: grid; place-items: center; z-index: 100; }
   .modal .card { box-shadow: 0 8px 32px rgba(0,0,0,.5); }
   .empty { text-align: center; color: var(--dim); padding: var(--sp-6); }
   .mono { font-family: var(--mono); }
 
-  /* ---- BRIDGE (delete per-view as restyled; all gone by Task 6) ---- */
-  /* Old token names still referenced by retained per-view CSS (cards, tables,
-     forms, wizard, share, toasts) and by inline styles inside JS template
-     strings — mapped onto the new token set. Per-view component rules keep
-     their old class names (.stat, .card, .prow, .formcard, .skel, …) and pick
-     up the new look through these aliases; each restyled view drops its rules
-     and the aliases shrink until Task 6 deletes this block entirely.
-     Task 3 (overview + providers) dropped --acc3 — the last consumer was the
-     overview stat glowcorner, which now inlines the purple.
-     Task 4 (usage/pricing/events) retokenized its per-view rules and deleted
-     the legacy table.tbl set.
-     Task 5 (discover/settings/help) retokenized its per-view rules and the
-     wizard visuals, dropping --grad3 (last consumers: discover avatar,
-     wizcard top-line) and --panel-solid (last consumers: wizlaunch, wizcard);
-     every remaining alias is consumed by share, the update popup, the shared
-     panelcard/form/button rules, or inline JS template styles — none is
-     orphaned. */
-  :root {
-    --acc1: var(--accent);
-    --acc2: var(--accent-2);
-    --grad: linear-gradient(100deg, var(--accent), var(--accent-2));
-    --panel: var(--surface);
-    --bg2: var(--surface);
-    --border-hi: rgba(110, 121, 244, 0.45);
-    --r: var(--r-lg);
-  }
+  /* Task 1's token-alias bridge (--acc1/--acc2/--grad/--panel/--bg2/
+     --border-hi/--r) was deleted here in Task 6: the share popup + update
+     popup restyle, the toast fold, and the retokenized form/button/wizard
+     rules removed the last consumers. Every rule and template string now
+     references the real tokens directly. */
 </style>
 </head>
 <body>
@@ -1065,7 +1039,7 @@
         </div>
         <div class="widget">
           <div class="wtitle">Failovers</div>
-          <div class="bignum" id="wFailovers" style="background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent">0</div>
+          <div class="bignum" id="wFailovers" style="background:linear-gradient(100deg, var(--accent), var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent">0</div>
           <div class="wsub">automatic provider switches — your session never noticed</div>
         </div>
         <div class="widget">
@@ -1502,7 +1476,7 @@
         <h1>Events</h1>
         <span class="sub">failovers, recoveries, cooldowns, config changes</span>
         <div class="actions">
-          <div class="searchbar" style="margin:0;width:280px">
+          <div class="searchbar inhead">
             <span class="sic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
             <input id="evSearch" placeholder="filter events by text — e.g. a provider name, &quot;down&quot;, &quot;recovered&quot;…" oninput="renderEvents()">
           </div>
@@ -1532,7 +1506,7 @@
     <div class="sharehead">
       <h2>Share your stats</h2>
       <span class="sub">pick what shows on the card — the preview is exactly what exports</span>
-      <button class="shbtn x" style="flex:none;width:34px;height:34px;padding:0" onclick="closeShare()" title="Close">
+      <button class="btn btn-ghost x" style="flex:none;width:34px;height:34px;padding:0" onclick="closeShare()" title="Close">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </div>
@@ -1546,11 +1520,11 @@
         <div class="shlabel">Theme</div>
         <div class="shthemes" id="shareThemes"></div>
         <div class="shareactions">
-          <button class="shbtn primary" onclick="shareDownload()">
+          <button class="btn btn-primary" onclick="shareDownload()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
             Download PNG
           </button>
-          <button class="shbtn" id="shareNativeBtn" onclick="shareNative()" hidden>
+          <button class="btn btn-secondary" id="shareNativeBtn" onclick="shareNative()" hidden>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
             Share
           </button>
@@ -1572,8 +1546,8 @@
       Update &amp; restart to switch over now — takes a few seconds.
     </p>
     <div class="updactions">
-      <button class="shbtn" onclick="dismissUpdate()">Later</button>
-      <button class="shbtn primary" id="updGo" onclick="runUpdate()">Update &amp; restart</button>
+      <button class="btn btn-secondary" onclick="dismissUpdate()">Later</button>
+      <button class="btn btn-primary" id="updGo" onclick="runUpdate()">Update &amp; restart</button>
     </div>
   </div>
 </div>
@@ -1960,7 +1934,7 @@ function renderProviders() {
         <th></th><th>provider</th><th>models</th><th>key</th>
         <th class="num">latency</th><th class="num">success</th><th></th>
       </tr></thead><tbody>${list.map(providerCard).join('')}</tbody></table>`
-    : `<div class="card empty">${statusState.providers.length ? 'No providers match your filter.' : `No providers yet — add one below, or prefill from the <a href="#" onclick="gotoView('discover');return false" style="color:var(--acc2)">Discover</a> catalog.<br><br>
+    : `<div class="card empty">${statusState.providers.length ? 'No providers match your filter.' : `No providers yet — add one below, or prefill from the <a href="#" onclick="gotoView('discover');return false" style="color:var(--accent-2)">Discover</a> catalog.<br><br>
        <b style="color:var(--amber)">Important:</b> add at least one provider with an API key and enable it <i>before</i> running
        <span style="font-family:var(--mono)">scripts/install.mjs</span> — once settings.json points here, Claude Code has no API
        except through the providers configured on this page. The installer refuses to continue until that's done.`}</div>`;
@@ -1975,8 +1949,12 @@ function renderEvents() {
   const all = statusState.events || [];
   const q = ($('evSearch').value || '').toLowerCase().trim();
   const list = q ? all.filter((e) => String(e.msg || '').toLowerCase().includes(q)) : all;
+  // type-marker order: all-down/recovered (green) → down/cooldown (amber) →
+  // state reset (green — it's a recovery) → failed/error (red). A "down"
+  // event whose detail text contains "failed" must land amber, not red, so
+  // the down check runs before the error check.
   $('events').innerHTML = list.length
-    ? list.slice(0, 300).map((e) => `<li class="${/failed|broke|all providers down/i.test(e.msg) ? 'ev-err' : /down|cooldown/i.test(e.msg) ? 'ev-down' : /recovered|passed/i.test(e.msg) ? 'ev-ok' : ''}"><b>${fmtAgo(e.ts)}</b> ${escapeHtml(e.msg)}</li>`).join('')
+    ? list.slice(0, 300).map((e) => `<li class="${/all providers down|recovered|passed/i.test(e.msg) ? 'ev-ok' : /down|cooldown/i.test(e.msg) ? 'ev-down' : /state reset/i.test(e.msg) ? 'ev-ok' : /failed|broke|error/i.test(e.msg) ? 'ev-err' : ''}"><b>${fmtAgo(e.ts)}</b> ${escapeHtml(e.msg)}</li>`).join('')
     : `<li class="empty">${all.length ? 'No events match your filter.' : 'no events yet'}</li>`;
   $('navEvents').textContent = all.length ? (all.length > 99 ? '99+' : all.length) : '';
   $('clearEventsBtn').disabled = !all.length;
@@ -2191,7 +2169,7 @@ window.wizGo = (d) => {
 
 function wizWelcome() {
   $('wizBody').innerHTML = `
-    <h2>Welcome to switch<span style="background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent">X</span>provider</h2>
+    <h2>Welcome to switch<span style="background:linear-gradient(100deg, var(--accent), var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent">X</span>provider</h2>
     <p class="big">A local API router for Claude Code — <b>traffic goes to whichever provider is alive</b>, and fails over automatically when one dies.</p>
     <p>You'll set up <b>one provider</b> to start (you can add more any time — more providers = better failover).
     Then choose whether Claude Code routes through switchX right away, or stays on your Claude plan and you flip the switch when you hit your usage limit.</p>
@@ -2239,7 +2217,7 @@ function wizKey() {
   const models = c?.models || {};
   $('wizBody').innerHTML = `
     <h2>${c ? escapeHtml(name) : 'Your provider'}</h2>
-    ${c ? `<p>${escapeHtml(c.description || '')} Sign up: <a href="${escapeHtml(c.website || '#')}" target="_blank" rel="noopener" style="color:var(--acc2)">${escapeHtml((c.website || '').replace(/^https?:\/\//, ''))} ↗</a>${c.freeTier ? ' — check the daily login reward while you\'re there.' : ''}</p>` : '<p>Fill in the details of your Anthropic-compatible endpoint.</p>'}
+    ${c ? `<p>${escapeHtml(c.description || '')} Sign up: <a href="${escapeHtml(c.website || '#')}" target="_blank" rel="noopener" style="color:var(--accent-2)">${escapeHtml((c.website || '').replace(/^https?:\/\//, ''))} ↗</a>${c.freeTier ? ' — check the daily login reward while you\'re there.' : ''}</p>` : '<p>Fill in the details of your Anthropic-compatible endpoint.</p>'}
     <div class="wizform">
       ${c ? '' : `
       <label>Provider name</label>
