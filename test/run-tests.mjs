@@ -10,6 +10,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { normalizeModelName, aliasSuggestions, recalcCosts } from '../server/lib/pricing.mjs';
+import { sessionFromMetadata, projectDisplayName } from '../server/lib/chaptions.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -562,6 +563,33 @@ async function main() {
   assert(resp.ok, 'alias removed');
   pr = await (await fetch(`${proxyUrl}/api/pricing`)).json();
   assert(!pr.aliases['imp-sonnet-free'], 'alias gone');
+
+  // --- 11c. Chaptions: session parsing, aggregation, unattributed, AI analysis ---
+  console.log('\n— chaptions —');
+  assert(sessionFromMetadata({ metadata: { user_id: 'user_abc123_account_def456_session_11111111-2222-3333-4444-555555555555' } }) === '11111111-2222-3333-4444-555555555555', 'session uuid extracted from metadata.user_id');
+  assert(sessionFromMetadata({ metadata: { user_id: JSON.stringify({ device_id: 'abc', account_uuid: '', session_id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' }) } }) === 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', 'session uuid extracted from JSON-string user_id');
+  assert(sessionFromMetadata({ metadata: { user_id: 'user_nosession' } }) === null, 'no session → null');
+  assert(sessionFromMetadata({}) === null, 'no metadata → null');
+  assert(typeof projectDisplayName('F--Claude-vibeXcode-Skills-switchXprovider') === 'string' && projectDisplayName('F--Claude-vibeXcode-Skills-switchXprovider').length > 0, 'display name derived from encoded dir');
+
+  let ch = await (await fetch(`${proxyUrl}/api/chaptions`)).json();
+  assert(Array.isArray(ch.projects) && typeof ch.totals.tokens === 'number', 'chaptions endpoint responds with projects + totals');
+  // fire a request WITH a session id that maps to nothing → unattributed (no crash)
+  resp = await fetch(`${proxyUrl}/v1/messages`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-api-key': 'switchx-local' },
+    body: JSON.stringify({ model: 'switchx:sonnet', max_tokens: 32, metadata: { user_id: 'user_x_account_y_session_99999999-8888-7777-6666-555555555555' }, messages: [{ role: 'user', content: 'hi' }] }),
+  });
+  assert(resp.status === 200, 'request with unknown session id still routes');
+  await sleep(400);
+  ch = await (await fetch(`${proxyUrl}/api/chaptions`)).json();
+  assert(ch.unattributed.tokens >= 10, 'unknown-session request lands in unattributed', JSON.stringify(ch.unattributed));
+  // AI analysis endpoint: runs through the proxy itself → mock provider.
+  // mock returns plain text (not JSON) → raw-text fallback shape.
+  resp = await fetch(`${proxyUrl}/api/chaptions/analyze`, { method: 'POST' });
+  const ana = await resp.json();
+  assert(resp.status === 200 && ana.ok !== undefined, 'analyze endpoint responds');
+  assert(ana.ok === true || typeof ana.error === 'string', 'analyze returns report or clean error', JSON.stringify(ana).slice(0, 120));
 
   // --- 11b. import honors exported priority; PUT keeps the stored API key ---
   console.log('\n— import priority + provider edit keeps key —');

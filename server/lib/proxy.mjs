@@ -10,6 +10,7 @@ import { Readable, Transform } from 'node:stream';
 import { StringDecoder } from 'node:string_decoder';
 import { statsFor, logEvent, persistSoon, recordUsage, pushRequest, countFailover } from './config.mjs';
 import { anthropicToOpenAI, openaiToAnthropicStream } from './translate.mjs';
+import { sessionFromMetadata, sessionProject, projectDisplayName } from './chaptions.mjs';
 
 // Time allowed for upstream to send response headers (streams may run much longer).
 const HEADER_TIMEOUT_MS = 60_000;
@@ -209,6 +210,9 @@ function sanitizeRespHeaders(headers) {
 async function attempt(p, req, rawBody) {
   let body;
   let mappedModel = null;
+  let sessionId = null;
+  let projectName = null;
+  let projectDir = null;
   let protocolOpenai = p.protocol === 'openai';
   let targetPath = null; // protocol-translated requests target a different path
   if (rawBody && rawBody.length && req.method !== 'GET' && req.method !== 'HEAD') {
@@ -219,6 +223,12 @@ async function attempt(p, req, rawBody) {
         if (typeof json.model === 'string') {
           mappedModel = mapModel(p, json.model);
           json.model = mappedModel;
+        }
+        sessionId = sessionFromMetadata(json);
+        if (sessionId) {
+          const proj = sessionProject(sessionId);
+          projectName = proj ? projectDisplayName(proj) : null;
+          projectDir = proj;
         }
         if (protocolOpenai) {
           // Claude Code speaks Anthropic Messages; OpenAI-protocol providers
@@ -260,7 +270,7 @@ async function attempt(p, req, rawBody) {
       }
       return { ok: false, status: resp.status, text, retryAfterSec, ac };
     }
-    return { ok: true, resp, ac, mappedModel, protocolOpenai };
+    return { ok: true, resp, ac, mappedModel, protocolOpenai, sessionId, projectName, projectDir };
   } finally {
     clearTimeout(timer);
   }
@@ -317,6 +327,7 @@ export async function handleProxy(req, res, cfg, rawBody) {
           model: r.mappedModel || '—',
           status: r.resp.status,
           latencyMs: Date.now() - t0,
+          project: r.projectName || null,
           inTok: 0,
           outTok: 0,
         };
@@ -330,7 +341,7 @@ export async function handleProxy(req, res, cfg, rawBody) {
         const tap = usageTap((u) => {
           rec.inTok = u.input + u.cacheRead + u.cacheCreation;
           rec.outTok = u.output;
-          recordUsage(cfg, p.id, p.name, u, r.mappedModel);
+          recordUsage(cfg, p.id, p.name, u, r.mappedModel, r.projectDir, r.projectName);
           pushRequest(cfg, rec);
         });
         // If the client hangs up, stop pulling from upstream — and still

@@ -696,8 +696,7 @@
   button:disabled { opacity: 0.35; cursor: default; box-shadow: none; }
 
   /* ---- events timeline ---- */
-  .events { list-style: none; margin: 0; padding: 0; font-size: 12.5px; }
-  .events li {
+  .events { list-style: none; margin: 0; padding: 0; font-size: 12.5px; }  .events li {
     display: flex; align-items: center; gap: 10px; padding: 7px 2px;
     border-bottom: 1px solid var(--border); color: var(--muted);
   }
@@ -717,6 +716,69 @@
   .events li.empty { display: block; text-align: center; padding: var(--sp-6); }
   .events li.empty::before { display: none; }
   .empty { color: var(--dim); font-style: italic; }
+
+  /* ---- chaptions (per-project analytics) ---- */
+  .chstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--sp-3); margin-bottom: var(--sp-4); }
+  .chpodium { display: flex; align-items: flex-end; justify-content: center; gap: var(--sp-3); margin: var(--sp-4) 0 var(--sp-6); }
+  .chstep {
+    flex: 1; max-width: 260px; border-radius: var(--r-md); padding: var(--sp-3);
+    background: var(--surface); border: 1px solid var(--border);
+    text-align: center; position: relative; overflow: hidden;
+    transition: transform 150ms ease, border-color 150ms ease;
+  }
+  .chstep:hover { transform: translateY(-3px); }
+  .chstep .medal { font-size: 22px; line-height: 1; }
+  .chstep .pname {
+    font-weight: 700; font-size: 13px; margin: 8px 0 4px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .chstep .ptok { font: 700 20px var(--mono); letter-spacing: -0.02em; }
+  .chstep .psub { color: var(--muted); font-size: 11px; font-family: var(--mono); margin-top: 3px; }
+  .chstep.gold { border-color: rgba(251,191,36,0.55); background: linear-gradient(180deg, rgba(251,191,36,0.10), var(--surface) 60%); min-height: 132px; }
+  .chstep.silver { border-color: rgba(200,205,214,0.4); background: linear-gradient(180deg, rgba(200,205,214,0.07), var(--surface) 60%); min-height: 116px; }
+  .chstep.bronze { border-color: rgba(205,127,50,0.45); background: linear-gradient(180deg, rgba(205,127,50,0.08), var(--surface) 60%); min-height: 104px; }
+  .chrow {
+    display: flex; align-items: center; gap: 12px; padding: 10px 2px;
+    border-bottom: 1px solid var(--border); font-size: 13px;
+  }
+  .chrow:last-child { border-bottom: none; }
+  .chrow .rk { font: 700 12px var(--mono); color: var(--dim); width: 26px; flex: none; text-align: right; }
+  .chrow .nm { width: 200px; flex: none; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chrow .barwrap { flex: 1; min-width: 60px; }
+  .chrow .track { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+  .chrow .fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); width: 0; transition: width 500ms ease; }
+  .chrow .spark { width: 90px; height: 26px; flex: none; }
+  .chrow .tk { font: 600 12px var(--mono); color: var(--muted); width: 66px; flex: none; text-align: right; }
+  .chrow .cs { font: 600 12px var(--mono); color: var(--amber); width: 56px; flex: none; text-align: right; }
+  /* AI report rendering — charts, not essays */
+  .chreport-headline { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 10px; }
+  .chreport-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--sp-2); margin: var(--sp-3) 0; }
+  .chreport-stats .st { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 10px 12px; }
+  .chreport-stats .st .l { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--dim); }
+  .chreport-stats .st .v { font: 700 17px var(--mono); margin-top: 3px; }
+  .chreport-insights { margin: var(--sp-3) 0; padding-left: 18px; color: var(--muted); font-size: 13px; }
+  .chreport-insights li { margin: 4px 0; }
+  .chcharts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--sp-3); margin-top: var(--sp-3); }
+  .chchart { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--sp-3); }
+  .chchart .ct { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--dim); margin-bottom: 10px; }
+  .chbar-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 12px; }
+  .chbar-row .bl { width: 110px; flex: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+  .chbar-row .bt { flex: 1; height: 14px; border-radius: 3px; background: rgba(255,255,255,0.04); overflow: hidden; }
+  .chbar-row .bf { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); width: 0; transition: width 500ms ease; }
+  .chbar-row .bv { font: 600 11px var(--mono); color: var(--muted); width: 64px; flex: none; text-align: right; }
+  .chdonut { display: flex; align-items: center; gap: var(--sp-4); }
+  .chdonut .ring {
+    width: 110px; height: 110px; border-radius: 50%; flex: none;
+    background: conic-gradient(var(--accent) 0%, var(--accent-2) 100%);
+    display: grid; place-items: center;
+  }
+  .chdonut .ring::after { content: ''; width: 74px; height: 74px; border-radius: 50%; background: var(--surface-2); }
+  .chdonut .legend { flex: 1; }
+  .chdonut .legend .lr { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin: 4px 0; }
+  .chdonut .legend .lr i { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+  .chloading { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; padding: var(--sp-4) 0; }
+  .chloading .spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border); border-top-color: var(--accent); animation: chspin 0.8s linear infinite; }
+  @keyframes chspin { to { transform: rotate(360deg); } }
 
   /* ---- settings (grouped card sections) ---- */
   .grouplbl {
@@ -981,6 +1043,10 @@
           <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h10M4 10h13M4 15h8M4 20h11"/><circle cx="19.5" cy="15" r="2.5"/></svg></span>
           <span class="lbl">Events</span>
           <span class="navbadge" id="navEvents"></span>
+        </button>
+        <button data-view="chaptions">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
+          <span class="lbl">Chaptions</span>
         </button>
       </div>
       <div class="navgroup">
@@ -1578,6 +1644,28 @@
         <ul class="events" id="events"></ul>
       </div>
     </section>
+
+    <!-- ============ CHAPTIONS ============ -->
+    <section class="view" id="view-chaptions">
+      <div class="viewhead">
+        <h1>Chaptions</h1>
+        <span class="sub">token usage &amp; cost by project</span>
+        <div class="actions">
+          <button class="btn btn-primary" id="chAnalyzeBtn" onclick="chAnalyze()">✨ AI analysis</button>
+        </div>
+      </div>
+      <div class="chstats" id="chStats"></div>
+      <div class="chpodium" id="chPodium"></div>
+      <div class="panelcard">
+        <h2 style="margin-bottom:12px">Project leaderboard</h2>
+        <div id="chRank"></div>
+        <div class="hint" id="chUnattributed" style="margin-top:12px"></div>
+      </div>
+      <div class="panelcard" id="chReportCard" hidden>
+        <h2 style="margin-bottom:12px">AI analysis</h2>
+        <div id="chReport"></div>
+      </div>
+    </section>
   </main>
 </div>
 <!-- first-run setup wizard -->
@@ -2129,6 +2217,117 @@ function renderEvents() {
     : `<li class="empty">${all.length ? 'No events match your filter.' : 'no events yet'}</li>`;
   $('navEvents').textContent = all.length ? (all.length > 99 ? '99+' : all.length) : '';
   $('clearEventsBtn').disabled = !all.length;
+}
+
+/* ---- chaptions rendering (per-project analytics) ---- */
+let chaptions = null;
+
+function chSparkline(days, w = 90, h = 26) {
+  if (!days || !days.length) return '';
+  const max = Math.max(1, ...days.map((d) => d.tokens));
+  const pts = days.map((d, i) => `${(i / Math.max(1, days.length - 1)) * (w - 2) + 1},${h - 1 - (d.tokens / max) * (h - 3)}`).join(' ');
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}"><polyline points="${pts}" fill="none" stroke="var(--accent-2)" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
+}
+
+function renderChaptions() {
+  if (!chaptions) return;
+  const t = chaptions.totals || {};
+  const projects = chaptions.projects || [];
+  // stat tiles
+  $('chStats').innerHTML = `
+    <div class="stat"><div class="statlabel">Tokens all time</div><div class="statnum">${fmtTok(t.tokens)}</div><div class="statdetail">${(t.requests || 0).toLocaleString()} requests</div></div>
+    <div class="stat"><div class="statlabel">Projects tracked</div><div class="statnum">${projects.length}</div><div class="statdetail">ranked by tokens</div></div>
+    <div class="stat"><div class="statlabel">Estimated cost</div><div class="statnum">${fmtCost(t.costUsd)}</div><div class="statdetail">all projects</div></div>`;
+  // podium — top 3
+  const medals = ['🥇', '🥈', '🥉'];
+  const cls = ['gold', 'silver', 'bronze'];
+  $('chPodium').innerHTML = projects.length
+    ? projects.slice(0, 3).map((p, i) => `
+      <div class="chstep ${cls[i]}" title="${escapeHtml(p.dir)}">
+        <div class="medal">${medals[i]}</div>
+        <div class="pname">${escapeHtml(p.name)}</div>
+        <div class="ptok">${fmtTok(p.tokens)}</div>
+        <div class="psub">${Math.round((p.share || 0) * 100)}% · ${fmtCost(p.costUsd)} · ${(p.requests || 0).toLocaleString()} req</div>
+      </div>`).join('')
+    : '<div class="empty" style="padding:var(--sp-6)">No attributed usage yet — use Claude Code through the proxy and your projects will appear here.</div>';
+  // rank list
+  const maxTok = Math.max(1, ...projects.map((p) => p.tokens));
+  $('chRank').innerHTML = projects.length
+    ? projects.map((p, i) => `
+      <div class="chrow">
+        <span class="rk">${i + 1}</span>
+        <span class="nm" title="${escapeHtml(p.dir)}">${escapeHtml(p.name)}</span>
+        <span class="barwrap"><span class="track"><span class="fill" data-w="${Math.round(p.tokens / maxTok * 100)}"></span></span></span>
+        ${chSparkline(p.byDay)}
+        <span class="tk">${fmtTok(p.tokens)}</span>
+        <span class="cs">${fmtCost(p.costUsd)}</span>
+      </div>`).join('')
+    : '<div class="empty">nothing ranked yet</div>';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    document.querySelectorAll('#chRank .fill').forEach((el) => { el.style.width = el.dataset.w + '%'; });
+  }));
+  const un = chaptions.unattributed;
+  $('chUnattributed').textContent = un && un.tokens > 0
+    ? `+ ${fmtTok(un.tokens)} tokens not attributed to a project (${un.note}).`
+    : '';
+}
+
+window.chAnalyze = async () => {
+  const btn = $('chAnalyzeBtn');
+  const card = $('chReportCard');
+  const out = $('chReport');
+  card.hidden = false;
+  btn.disabled = true;
+  out.innerHTML = '<div class="chloading"><span class="spin"></span> analyzing your usage through your own providers…</div>';
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  try {
+    const r = await api('/api/chaptions/analyze', { method: 'POST' });
+    if (!r.ok) { out.innerHTML = `<div class="empty">${escapeHtml(r.error || 'analysis failed')}</div>`; return; }
+    if (!r.report) { out.innerHTML = `<div style="white-space:pre-wrap;font-size:13px;color:var(--muted)">${escapeHtml(r.raw || '')}</div>`; return; }
+    renderChReport(r.report);
+  } catch (e) {
+    out.innerHTML = `<div class="empty">${escapeHtml(e.message)}</div>`;
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+function renderChReport(rep) {
+  const PALETTE = ['#6e79f4', '#22d3ee', '#34d399', '#fbbf24', '#f87171', '#c084fc', '#94a3b8'];
+  let html = '';
+  if (rep.headline) html += `<div class="chreport-headline">${escapeHtml(rep.headline)}</div>`;
+  if (Array.isArray(rep.stats) && rep.stats.length) {
+    html += `<div class="chreport-stats">${rep.stats.map((s) => `<div class="st"><div class="l">${escapeHtml(s.label || '')}</div><div class="v">${escapeHtml(String(s.value ?? ''))}</div></div>`).join('')}</div>`;
+  }
+  if (Array.isArray(rep.insights) && rep.insights.length) {
+    html += `<ul class="chreport-insights">${rep.insights.map((i) => `<li>${escapeHtml(String(i))}</li>`).join('')}</ul>`;
+  }
+  if (Array.isArray(rep.charts) && rep.charts.length) {
+    html += `<div class="chcharts">${rep.charts.map((c) => {
+      const pts = (c.points || []).filter((p) => Number.isFinite(Number(p.value)));
+      const max = Math.max(1, ...pts.map((p) => Number(p.value)));
+      if (c.type === 'donut') {
+        const total = pts.reduce((s, p) => s + Number(p.value), 0) || 1;
+        let acc = 0;
+        const stops = pts.map((p, i) => {
+          const from = (acc / total) * 100; acc += Number(p.value);
+          return `${PALETTE[i % PALETTE.length]} ${from}% ${(acc / total) * 100}%`;
+        }).join(', ');
+        return `<div class="chchart"><div class="ct">${escapeHtml(c.title || '')}</div><div class="chdonut">
+          <div class="ring" style="background:conic-gradient(${stops})"></div>
+          <div class="legend">${pts.map((p, i) => `<div class="lr"><i style="background:${PALETTE[i % PALETTE.length]}"></i>${escapeHtml(String(p.label))} <span class="mono" style="margin-left:auto">${fmtTok(Number(p.value))}</span></div>`).join('')}</div>
+        </div></div>`;
+      }
+      // bar (default)
+      return `<div class="chchart"><div class="ct">${escapeHtml(c.title || '')}</div>
+        ${pts.map((p) => `<div class="chbar-row"><span class="bl" title="${escapeHtml(String(p.label))}">${escapeHtml(String(p.label))}</span><span class="bt"><span class="bf" data-w="${Math.round(Number(p.value) / max * 100)}"></span></span><span class="bv">${fmtTok(Number(p.value))}</span></div>`).join('')}
+      </div>`;
+    }).join('')}</div>`;
+  }
+  $('chReport').innerHTML = html || '<div class="empty">empty report</div>';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    document.querySelectorAll('#chReport .bf').forEach((el) => { el.style.width = el.dataset.w + '%'; });
+  }));
 }
 
 /* ---- usage rendering ---- */
@@ -2811,7 +3010,7 @@ function renderWidgets() {
 }
 
 /* ---- keyboard shortcuts ---- */
-const VIEWS = ['overview', 'usage', 'events', 'providers', 'pricing', 'discover', 'settings', 'help'];
+const VIEWS = ['overview', 'usage', 'events', 'chaptions', 'providers', 'pricing', 'discover', 'settings', 'help'];
 document.addEventListener('keydown', (ev) => {
   if (ev.target.tagName === 'INPUT' || ev.target.tagName === 'SELECT' || ev.target.tagName === 'TEXTAREA') return;
   const n = parseInt(ev.key, 10);
@@ -3414,11 +3613,12 @@ function renderHero() {
 
 async function refresh() {
   try {
-    const [s, u, c, pr] = await Promise.all([api('/api/status'), api('/api/usage'), api('/api/catalog'), api('/api/pricing')]);
+    const [s, u, c, pr, ch] = await Promise.all([api('/api/status'), api('/api/usage'), api('/api/catalog'), api('/api/pricing'), api('/api/chaptions')]);
     statusState = s;
     usage = u;
     catalog = c;
     pricingState = pr;
+    chaptions = ch;
     port = s.port;
     $('ovConn').textContent = `proxy running on http://127.0.0.1:${s.port}`;
     $('sideStatus').textContent = 'running';
@@ -3429,6 +3629,7 @@ async function refresh() {
     renderUsage();
     renderPricing();
     renderCatalog();
+    renderChaptions();
     renderSettings();
     renderHero();
     renderFlow();

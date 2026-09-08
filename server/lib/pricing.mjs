@@ -233,6 +233,20 @@ export function recalcCosts(cfg) {
   }
   usage.totals.costUsd = [...newByModel.values()].reduce((s, c) => s + c, 0) + legacyNew;
 
+  // Chaptions: byProject buckets have no model split — reprice each project
+  // day by its token share of that day's total (approximate by design).
+  const tokAll = (b) => (b.inputTokens || 0) + (b.outputTokens || 0) + (b.cacheReadTokens || 0) + (b.cacheCreationTokens || 0);
+  for (const proj of Object.values(usage.byProject || {})) {
+    let projCost = 0;
+    for (const [day, pd] of Object.entries(proj.byDay || {})) {
+      const d = usage.daily?.[day];
+      const dTok = d ? tokAll(d) : 0;
+      pd.costUsd = dTok > 0 ? (d.costUsd || 0) * (tokAll(pd) / dTok) : 0;
+      projCost += pd.costUsd;
+    }
+    proj.costUsd = projCost;
+  }
+
   return { totalsCostUsd: usage.totals.costUsd };
 }
 

@@ -150,7 +150,7 @@ export function localDayKey(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export function recordUsage(cfg, providerId, providerName, u, model) {
+export function recordUsage(cfg, providerId, providerName, u, model, projectDir = null, projectName = null) {
   if (!u || (!u.input && !u.output && !u.cacheRead && !u.cacheCreation)) return;
   if (!cfg.usage) cfg.usage = { totals: emptyUsage(), byProvider: {}, byModel: {}, daily: {} };
   const day = localDayKey();
@@ -170,6 +170,16 @@ export function recordUsage(cfg, providerId, providerName, u, model) {
     cfg.usage.pmDaily[providerId][model] ??= {};
     cfg.usage.pmDaily[providerId][model][day] ??= emptyUsage();
     bump(cfg.usage.pmDaily[providerId][model][day], u, cost);
+  }
+  // per-project attribution (Chaptions) — only when the request carried a
+  // session id that resolved to a local Claude Code project
+  if (projectDir) {
+    cfg.usage.byProject ??= {};
+    const key = projectDir;
+    cfg.usage.byProject[key] ??= { name: projectName || projectDir, dir: projectDir, ...emptyUsage(), byDay: {} };
+    bump(cfg.usage.byProject[key], u, cost);
+    cfg.usage.byProject[key].byDay[day] ??= emptyUsage();
+    bump(cfg.usage.byProject[key].byDay[day], u, cost);
   }
   persistSoon(cfg);
 }

@@ -352,11 +352,115 @@ export async function handleApi(req, res, pathname, cfg) {
     }
 
     if (method === 'POST' && resource === 'usage' && id === 'reset') {
-      cfg.usage = { totals: emptyUsage(), byProvider: {}, byModel: {}, daily: {} };
+      cfg.usage = { totals: emptyUsage(), byProvider: {}, byModel: {}, byProject: {}, daily: {} };
       cfg.requests = [];
       logEvent(cfg, 'Usage statistics reset');
       persistSoon(cfg, 0);
       return send(res, 200, { ok: true });
+    }
+
+    // ---- Chaptions: per-project usage ----
+    const tokOf = (b) => (b.inputTokens || 0) + (b.cacheReadTokens || 0) + (b.cacheCreationTokens || 0) + (b.outputTokens || 0);
+    if (method === 'GET' && resource === 'chaptions') {
+      const usage = cfg.usage || {};
+      const totals = { ...emptyUsage(), ...(usage.totals || {}) };
+      const projects = Object.values(usage.byProject || {}).map((b) => ({
+        dir: b.dir,
+        name: b.name,
+        tokens: tokOf(b),
+        inputTokens: b.inputTokens || 0,
+        outputTokens: b.outputTokens || 0,
+        cacheReadTokens: b.cacheReadTokens || 0,
+        requests: b.requests || 0,
+        costUsd: b.costUsd || 0,
+        byDay: Object.entries(b.byDay || {}).map(([date, d]) => ({ date, tokens: tokOf(d), requests: d.requests || 0, costUsd: d.costUsd || 0 })),
+      })).sort((a, b) => b.tokens - a.tokens);
+      const attributed = projects.reduce((s, p) => s + p.tokens, 0);
+      const totalTokens = tokOf(totals);
+      for (const p of projects) p.share = totalTokens > 0 ? p.tokens / totalTokens : 0;
+      return send(res, 200, {
+        totals: {
+          tokens: totalTokens,
+          requests: totals.requests || 0,
+          costUsd: totals.costUsd || 0,
+        },
+        projects,
+        unattributed: {
+          tokens: Math.max(0, totalTokens - attributed),
+          // everything recorded before project tracking shipped (or from
+          // non-Claude-Code clients without a session stamp)
+          note: 'recorded before project tracking existed, or from clients without a session id',
+        },
+      });
+    }
+
+    // AI analysis: the proxy calls itself through its own failover routing,
+    // so the analysis runs on whatever provider is healthy — usually free.
+    if (method === 'POST' && resource === 'chaptions' && id === 'analyze') {
+      const usage = cfg.usage || {};
+      const totals = { ...emptyUsage(), ...(usage.totals || {}) };
+      const projects = Object.values(usage.byProject || {})
+        .map((b) => ({ name: b.name, tokens: tokOf(b), costUsd: b.costUsd || 0, requests: b.requests || 0 }))
+        .sort((a, b) => b.tokens - a.tokens);
+      if (!projects.length) {
+        return send(res, 200, { ok: false, error: 'No attributed usage yet — make some requests from Claude Code first.' });
+      }
+      const stats = {
+        totals: { tokens: tokOf(totals), requests: totals.requests || 0, costUsd: totals.costUsd || 0 },
+        projects: projects.slice(0, 10),
+        topModels: Object.entries(usage.byModel || {})
+          .map(([model, b]) => ({ model, tokens: tokOf(b), requests: b.requests || 0 }))
+          .sort((a, b) => b.tokens - a.tokens).slice(0, 8),
+        topProviders: Object.entries(usage.byProvider || {})
+          .map(([id, b]) => ({ provider: b.name, tokens: tokOf(b), requests: b.requests || 0, costUsd: b.costUsd || 0 }))
+          .sort((a, b) => b.tokens - a.tokens).slice(0, 6),
+        daily: Object.entries(usage.daily || {})
+          .map(([date, b]) => ({ date, tokens: tokOf(b), requests: b.requests || 0 }))
+          .sort((a, b) => a.date < b.date ? -1 : 1).slice(-14),
+      };
+      const prompt = `You analyze a developer's local LLM proxy usage. Given this JSON of per-project token usage, model and provider breakdowns, and a 14-day daily series, produce a SHORT visual report.
+
+Return ONLY valid JSON (no markdown fences, no prose outside JSON) with this exact shape:
+{
+  "headline": "one short sentence (max 12 words)",
+  "insights": ["max 4 bullets, each max 12 words"],
+  "stats": [{"label": "short label", "value": "formatted value"}],
+  "charts": [
+    {"type": "bar", "title": "short title", "points": [{"label": "name", "value": 123}]},
+    {"type": "donut", "title": "short title", "points": [{"label": "name", "value": 123}]}
+  ]
+}
+Rules: 2-3 charts max (e.g. projects by tokens, models donut). Numbers in charts must be raw values from the data, not invented. Keep every string short — this renders as graphs, not an essay.
+
+Usage data:
+${JSON.stringify(stats)}`;
+      try {
+        const ac = new AbortController();
+        const timer = setTimeout(() => ac.abort(), 60_000);
+        const r = await fetch(`http://127.0.0.1:${cfg.port}/v1/messages`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-api-key': 'switchx-local' },
+          body: JSON.stringify({
+            model: 'switchx:sonnet',
+            max_tokens: 1500,
+            messages: [{ role: 'user', content: prompt }],
+          }),
+          signal: ac.signal,
+        });
+        clearTimeout(timer);
+        const j = await r.json().catch(() => null);
+        const text = (j?.content || []).filter((b) => b?.type === 'text').map((b) => b.text).join('');
+        if (!text) return send(res, 200, { ok: false, error: `Analysis provider returned no text (status ${r.status}).` });
+        // models sometimes wrap JSON in fences — strip before parsing
+        const stripped = text.replace(/^```(?:json)?\s*/m, '').replace(/```\s*$/m, '').trim();
+        let report = null;
+        try { report = JSON.parse(stripped); } catch { /* not JSON — raw text fallback */ }
+        return send(res, 200, report && report.charts
+          ? { ok: true, report, raw: null }
+          : { ok: true, report: null, raw: text });
+      } catch (e) {
+        return send(res, 200, { ok: false, error: `Analysis call failed: ${e.message}` });
+      }
     }
 
     // ---- pricing ----
