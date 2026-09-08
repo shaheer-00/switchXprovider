@@ -650,38 +650,65 @@
      when the site has no icon or the fetch fails (onerror removes the img) */
   .avatar .fav {
     position: absolute; inset: 0; width: 100%; height: 100%;
-    border-radius: 11px; object-fit: cover; background: var(--surface);
+    border-radius: inherit; object-fit: cover; background: var(--surface);
   }
   .spacer { flex: 1; }
 
-  /* ---- discover catalog (card grid on components) ---- */
-  .catgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--sp-3); }
+  /* ---- discover: filter bar ---- */
+  .catbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: var(--sp-3); }
+  .catbar .spacer { flex: 1; }
+  .catbar select { width: auto; padding: 6px 10px; font-size: 12px; }
+  .chips { display: flex; gap: 7px; flex-wrap: wrap; }
+  .chip {
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--muted);
+    border-radius: 999px; padding: 5px 13px; font-size: 12px; cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+  }
+  .chip:hover { color: var(--text); border-color: rgba(110,121,244,0.4); }
+  .chip.active { background: rgba(110,121,244,0.15); color: var(--text); border-color: rgba(110,121,244,0.55); }
+
+  /* ---- discover: featured hero row + catalog cards ---- */
+  .heroGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--sp-3); margin-bottom: var(--sp-4); }
+  .herocard {
+    display: flex; flex-direction: column; gap: 11px; padding: 18px;
+    border-color: rgba(110,121,244,0.35);
+    background: linear-gradient(160deg, rgba(110,121,244,0.09), var(--surface) 45%);
+  }
+  .herocard .top { display: flex; align-items: center; gap: 12px; }
+  .herocard .name { font-weight: 600; font-size: 18px; }
+  .herocard .desc {
+    color: var(--muted); font-size: 13px; flex: 1;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .catgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--sp-3); }
   .catcard { display: flex; flex-direction: column; gap: 9px; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
   .catcard:hover { border-color: rgba(110,121,244,0.45); box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
-  .catcard .top { display: flex; align-items: center; gap: 11px; }
-  .catcard .top .name { font-weight: 600; font-size: 15px; }
-  .catcard .desc { color: var(--muted); font-size: 12.5px; flex: 1; }
-  .catcard .meta { display: flex; align-items: center; gap: 10px; }
+  .catcard .top { display: flex; align-items: center; gap: 11px; cursor: pointer; }
+  .catcard .top .name { font-weight: 600; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .catcard .avatar, .herocard .avatar { width: 44px; height: 44px; border-radius: 12px; }
+  .herocard .avatar { width: 48px; height: 48px; border-radius: 13px; }
+  .subline { display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: 12px; margin-top: 1px; min-width: 0; }
+  .subline .rate { color: var(--amber); font-weight: 600; font-size: 12.5px; }
+  .subline .pricenote { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .catcard .desc {
+    color: var(--muted); font-size: 12.5px; flex: 1;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .catcard.open .desc { -webkit-line-clamp: unset; }
+  .catcard .chev { color: var(--dim); font-size: 11px; transition: transform 0.25s ease; flex-shrink: 0; }
+  .catcard.open .chev { transform: rotate(180deg); }
+  /* expandable details: collapsed by default, slides open on card click */
+  .catcard .more { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+  .catcard.open .more { max-height: 320px; }
   .catcard .pricenote { color: var(--dim); font-size: 11.5px; font-family: var(--mono); }
   .catcard .tag { font-family: var(--mono); font-size: 11px; color: var(--dim); }
   .catcard .facts { display: flex; flex-wrap: wrap; gap: 6px; }
+  .catcard .mrow { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; }
+  .catcard .mrow .tag { color: var(--muted); }
   .catcard .urls { display: flex; gap: 14px; font-size: 12px; }
   .catcard .urls a { color: var(--accent-2); text-decoration: none; }
   .catcard .urls a:hover { text-decoration: underline; }
   .catcard .dot { margin: 0; }
-  /* rating: 5-dot row — the JS overlay clips the accent dots at the rating
-     percentage; empty dots come from the base layer (border token) */
-  .stars {
-    position: relative; display: inline-block; width: 60px; height: 8px; flex-shrink: 0;
-    font-size: 0; letter-spacing: 0;
-    background-image: radial-gradient(circle 3px at 5px 50%, var(--border) 98%, transparent 100%);
-    background-size: 12px 100%; background-repeat: repeat-x;
-  }
-  .stars .fillstars {
-    position: absolute; left: 0; top: 0; height: 100%; overflow: hidden; white-space: nowrap;
-    background-image: radial-gradient(circle 3px at 5px 50%, var(--accent) 98%, transparent 100%);
-    background-size: 12px 100%; background-repeat: repeat-x;
-  }
 
   /* ---- forms ---- */
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
@@ -1327,6 +1354,21 @@
         <input id="catSearch" placeholder="filter by name, tag, or pricing…" oninput="renderCatalog()">
       </div>
 
+      <div class="catbar" id="catBar">
+        <div class="chips">
+          <button class="chip active" data-f="all" onclick="setCatFilter('all')">All</button>
+          <button class="chip" data-f="free" onclick="setCatFilter('free')">Free tier</button>
+          <button class="chip" data-f="notadded" onclick="setCatFilter('notadded')">Not added</button>
+          <button class="chip" data-f="remote" onclick="setCatFilter('remote')">Remote</button>
+        </div>
+        <span class="spacer"></span>
+        <select id="catSort" onchange="renderCatalog()" title="Sort providers">
+          <option value="rating">Top rated</option>
+          <option value="name">Name A–Z</option>
+          <option value="free">Free tier first</option>
+        </select>
+      </div>
+
       <div class="card" style="padding:10px var(--sp-4);margin-bottom:var(--sp-3)">
         <div class="hint" style="margin:0">
           Sign-up links are affiliate links — they support development at no extra cost to you.
@@ -1356,6 +1398,7 @@
         <div class="hint" id="catalogMeta" style="margin-top:10px"></div>
       </div>
 
+      <div class="heroGrid" id="heroGrid" style="display:none"></div>
       <div class="catgrid" id="catgrid"></div>
     </section>
 
@@ -2737,10 +2780,17 @@ function wizDone_() {
 window.wizClose = () => { wizManual = false; wizFinishMark(); $('wiz').hidden = true; refresh(); };
 
 /* ---- discover view ---- */
-function stars(rating) {
-  const pct = Math.max(0, Math.min(5, rating || 0)) / 5 * 100;
-  return `<span class="stars" title="${rating}/5">★★★★★<span class="fillstars" style="width:${pct}%">★★★★★</span></span>`;
-}
+let catFilter = 'all';
+
+window.setCatFilter = (f) => {
+  catFilter = f;
+  document.querySelectorAll('#catBar .chip').forEach((b) => b.classList.toggle('active', b.dataset.f === f));
+  renderCatalog();
+};
+
+// expand/collapse a catalog card's details in place (no re-render — the
+// max-height transition would restart from zero if the DOM were rebuilt)
+window.toggleCatCard = (el) => el.classList.toggle('open');
 
 function renderCatalog() {
   if (!catalog) return;
@@ -2755,49 +2805,88 @@ function renderCatalog() {
     catch { return String(u).toLowerCase(); }
   };
   const addedHosts = new Set((statusState.providers || []).map((p) => normUrl(p.baseUrl)));
-  const list = (catalog.providers || []).filter((c) => {
-    if (!q) return true;
-    return (c.name + ' ' + (c.description || '') + ' ' + (c.tags || []).join(' ') + ' ' + (c.pricing || '')).toLowerCase().includes(q);
-  });
-  $('catgrid').innerHTML = list.length
-    ? list.map((c) => {
-      const added = addedHosts.has(normUrl(c.baseUrl));
-      // favicon from the provider's site (Google's favicon service); the
-      // initials stay underneath as the no-icon/offline fallback
-      let host = null;
-      try { host = new URL(c.website || c.baseUrl).hostname; } catch { /* no usable URL */ }
-      const avatar = `<span class="avatar">${escapeHtml(initials(c.name))}${host
-        ? `<img class="fav" src="https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64" alt="" loading="lazy" onerror="this.remove()">`
-        : ''}</span>`;
+  const matches = (c) => {
+    if (q && !(c.name + ' ' + (c.description || '') + ' ' + (c.tags || []).join(' ') + ' ' + (c.pricing || '')).toLowerCase().includes(q)) return false;
+    if (catFilter === 'free') return !!c.freeTier;
+    if (catFilter === 'notadded') return !addedHosts.has(normUrl(c.baseUrl));
+    if (catFilter === 'remote') return c.source === 'remote';
+    return true;
+  };
+  const sortMode = $('catSort')?.value || 'rating';
+  const cmp = {
+    rating: (a, b) => (b.rating || 0) - (a.rating || 0),
+    name: (a, b) => a.name.localeCompare(b.name),
+    free: (a, b) => ((b.freeTier ? 1 : 0) - (a.freeTier ? 1 : 0)) || (b.rating || 0) - (a.rating || 0),
+  }[sortMode] || ((a, b) => (b.rating || 0) - (a.rating || 0));
+  const list = (catalog.providers || []).filter(matches).sort(cmp);
+
+  const catCard = (c, hero = false) => {
+    const added = addedHosts.has(normUrl(c.baseUrl));
+    // favicon from the provider's site (Google's favicon service); the
+    // initials stay underneath as the no-icon/offline fallback
+    let host = null;
+    try { host = new URL(c.website || c.baseUrl).hostname; } catch { /* no usable URL */ }
+    const avatar = `<span class="avatar">${escapeHtml(initials(c.name))}${host
+      ? `<img class="fav" src="https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64" alt="" loading="lazy" onerror="this.remove()">`
+      : ''}</span>`;
+    const pills = `${c.freeTier ? '<span class="pill ok"><i class="dot dot-up"></i>FREE</span>' : ''}${added
+      ? '<span class="pill added" title="You already have this provider configured — you can add it again with a different API key (e.g. a second account); there is no limit."><i class="dot dot-off"></i>ADDED</span>' : ''}`;
+    const rate = `<span class="rate">★ ${(Number(c.rating) || 0).toFixed(1)}</span>`;
+    const setup = `<button class="btn btn-primary" onclick='prefillFromCatalog(${JSON.stringify(c).replace(/'/g, "&#39;")})'>${added ? 'Add again' : 'Set up'}</button>`;
+    if (hero) {
       return `
+      <div class="card herocard">
+        <div class="top">
+          ${avatar}
+          <div style="min-width:0;flex:1">
+            <div class="name">${escapeHtml(c.name)}</div>
+            <div class="subline">${rate}<span class="pricenote">${escapeHtml(c.pricing || '')}</span></div>
+          </div>
+          <span class="spacer"></span>${pills}
+        </div>
+        <div class="desc">${escapeHtml(c.description || '')}</div>
+        <div class="formactions" style="margin:0">${setup}</div>
+      </div>`;
+    }
+    const modelChips = Object.entries(c.models || {})
+      .filter(([, id]) => id)
+      .map(([slot, id]) => `<span class="tag">${escapeHtml(slot)} → ${escapeHtml(id)}</span>`)
+      .join('');
+    return `
     <div class="card catcard">
-      <div class="top">
+      <div class="top" onclick="toggleCatCard(this.closest('.catcard'))">
         ${avatar}
-        <span class="name">${escapeHtml(c.name)}</span>
-        <span class="spacer"></span>
-        ${c.freeTier ? '<span class="pill ok"><i class="dot dot-up"></i>FREE</span>' : ''}
-        ${added ? '<span class="pill added" title="You already have this provider configured — you can add it again with a different API key (e.g. a second account); there is no limit."><i class="dot dot-off"></i>ADDED</span>' : ''}
+        <div style="min-width:0;flex:1">
+          <div class="name">${escapeHtml(c.name)}</div>
+          <div class="subline">${rate}<span class="pricenote">${escapeHtml(c.pricing || '')}</span></div>
+        </div>
+        ${pills}<span class="chev">▾</span>
       </div>
       <div class="desc">${escapeHtml(c.description || '')}</div>
-      <div class="meta">
-        ${stars(c.rating)}
-        <span class="spacer"></span>
-        ${c.pricing ? `<span class="pricenote">${escapeHtml(c.pricing)}</span>` : ''}
+      <div class="more">
+        ${modelChips ? `<div class="mrow">${modelChips}</div>` : ''}
+        <div class="facts">
+          ${(c.tags || []).map((t) => `<span class="tag">#${escapeHtml(t)}</span>`).join('')}
+          ${c.source === 'remote' ? '<span class="tag">remote</span>' : ''}
+        </div>
+        <div class="urls">
+          ${c.website ? `<a href="${escapeHtml(c.website)}" target="_blank" rel="noopener">${/sign-up|register|invite/.test(c.website) ? 'sign up ↗' : 'website ↗'}</a>` : ''}
+          ${c.docsUrl ? `<a href="${escapeHtml(c.docsUrl)}" target="_blank" rel="noopener">docs ↗</a>` : ''}
+        </div>
       </div>
-      <div class="facts">
-        ${(c.tags || []).map((t) => `<span class="tag">#${escapeHtml(t)}</span>`).join('')}
-        ${c.source === 'remote' ? '<span class="tag">remote</span>' : ''}
-      </div>
-      <div class="urls">
-        ${c.website ? `<a href="${escapeHtml(c.website)}" target="_blank" rel="noopener">${/sign-up|register|invite/.test(c.website) ? 'sign up ↗' : 'website ↗'}</a>` : ''}
-        ${c.docsUrl ? `<a href="${escapeHtml(c.docsUrl)}" target="_blank" rel="noopener">docs ↗</a>` : ''}
-      </div>
-      <div class="formactions" style="margin:0">
-        <button class="btn btn-primary" onclick='prefillFromCatalog(${JSON.stringify(c).replace(/'/g, "&#39;")})'>${added ? 'Add again' : 'Set up'}</button>
-      </div>
-    </div>
-  `;}).join('')
-    : '<div class="card empty">No catalog entries match your filter.</div>';
+      <div class="formactions" style="margin:0">${setup}</div>
+    </div>`;
+  };
+
+  // hero row only on the unfiltered default view — searching or filtering
+  // means the user is hunting for something specific, hierarchy is noise
+  const heroes = !q && catFilter === 'all' && list.length > 3 ? list.slice(0, 3) : [];
+  $('heroGrid').innerHTML = heroes.map((c) => catCard(c, true)).join('');
+  $('heroGrid').style.display = heroes.length ? '' : 'none';
+  const rest = heroes.length ? list.slice(3) : list;
+  $('catgrid').innerHTML = rest.length
+    ? rest.map((c) => catCard(c)).join('')
+    : `<div class="card empty">${q ? 'No providers match your search.' : catFilter === 'all' ? 'No catalog entries.' : 'No providers match this filter.'}</div>`;
 }
 
 window.prefillFromCatalog = (c) => {
