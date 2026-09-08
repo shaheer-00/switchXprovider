@@ -186,6 +186,40 @@
       "rating": 3.5,
       "tags": ["gateway", "anthropic-compatible", "multi-model"],
       "models": {}
+    },
+    {
+      "id": "openrouter",
+      "name": "OpenRouter",
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "authStyle": "auto",
+      "description": "The big model aggregator — hundreds of models behind one key, incl. a rotating pool of :free models (NVIDIA Nemotron Ultra, Ling, and more; the free pool changes, check the site). Anthropic endpoint supported.",
+      "website": "https://openrouter.ai/models?q=free",
+      "pricing": "free :free models + per-token",
+      "freeTier": true,
+      "rating": 4.5,
+      "tags": ["gateway", "aggregator", "free-models"],
+      "models": {
+        "opus": "nvidia/nemotron-3-ultra-550b-a55b:free",
+        "sonnet": "nvidia/nemotron-3.5-lightning:free",
+        "haiku": "inclusionai/ling-3.0-flash-sante:free"
+      }
+    },
+    {
+      "id": "opencode",
+      "name": "OpenCode Zen",
+      "baseUrl": "https://opencode.ai/zen",
+      "authStyle": "auto",
+      "description": "Gateway from the OpenCode project — Claude, GPT, Gemini, GLM, DeepSeek and more behind one key, with free models (Nemotron, DeepSeek, MiMo free tiers). Anthropic endpoint supported.",
+      "website": "https://opencode.ai/zen",
+      "pricing": "free models + pay per request",
+      "freeTier": true,
+      "rating": 4,
+      "tags": ["gateway", "multi-model", "free-models"],
+      "models": {
+        "opus": "nemotron-3-ultra-free",
+        "sonnet": "deepseek-v4-flash-free",
+        "haiku": "mimo-v2.5-free"
+      }
     }
   ]
 }

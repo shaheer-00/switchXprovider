@@ -101,6 +101,9 @@ The plugin ships with a curated catalog in which **every provider has a free tie
 | **OrcaRouter** | 200+ models behind one API — free Claude Opus/Sonnet slots + free auto-router model |
 | **KiraAI** | Free daily quota — GLM-5.3, MiMo, Qwen, Kira free models |
 | **TokenRouter** | ⚠ Limited-time free GLM-5.3 — promo may end without notice |
+| **VyceAI** | Free tier — Claude/GPT/DeepSeek/Gemini proxy, one key |
+| **OpenRouter** | Rotating pool of `:free` models (Nemotron Ultra, Ling, …) — the big aggregator |
+| **OpenCode Zen** | Free Nemotron/DeepSeek/MiMo tiers — Claude, GPT, Gemini behind one key |
 
 Combine them with daily-login rewards (most gateways hand out free credits or tokens for a daily check-in — sign out and back in **every day** to claim) and failover, and you have a zero-cost coding pipeline with redundancy. **More free providers are being added to the catalog continually** — and you can plug in any community-maintained catalog via Settings → Remote catalog.
 
