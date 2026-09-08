@@ -9,7 +9,7 @@
       "name": "switchXprovider",
       "source": "./",
       "description": "Local multi-provider proxy for Claude Code — automatic failover, priority routing, auto-recovery, usage analytics, and a built-in provider catalog.",
-      "version": "0.7.0",
+      "version": "0.7.1",
       "author": {
         "name": "shaheer-00",
         "url": "https://github.com/shaheer-00"
