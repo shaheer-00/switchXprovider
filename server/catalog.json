@@ -156,6 +156,23 @@
         "sonnet": "glm-5.3-flash-free",
         "haiku": "mimo-v2.5-free"
       }
+    },
+    {
+      "id": "tokenrouter",
+      "name": "TokenRouter",
+      "baseUrl": "https://api.tokenrouter.com",
+      "authStyle": "auto",
+      "description": "Router with a free z-ai/glm-5.3-free model. ⚠ LIMITED-TIME free offering — the free tier may end without notice; treat it as a bonus lane, not a backbone. Anthropic endpoint supported.",
+      "website": "https://www.tokenrouter.com/models/z-ai/glm-5.3-free/",
+      "pricing": "free promo + per-token",
+      "freeTier": true,
+      "rating": 3,
+      "tags": ["gateway", "free-models", "promo"],
+      "models": {
+        "opus": "z-ai/glm-5.3-free",
+        "sonnet": "z-ai/glm-5.3-free",
+        "haiku": "z-ai/glm-5.3-free"
+      }
     }
   ]
 }
