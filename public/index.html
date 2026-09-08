@@ -762,27 +762,48 @@
   .chstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--sp-3); margin-bottom: var(--sp-4); }
   .chpodium { display: flex; align-items: flex-end; justify-content: center; gap: var(--sp-3); margin: var(--sp-4) 0 var(--sp-6); }
   .chstep {
-    flex: 1; max-width: 260px; border-radius: var(--r-md); padding: var(--sp-3);
+    flex: 1; max-width: 280px; border-radius: var(--r-md); padding: var(--sp-4);
     background: var(--surface); border: 1px solid var(--border);
     text-align: center; position: relative; overflow: hidden;
     transition: transform 150ms ease, border-color 150ms ease;
   }
   .chstep:hover { transform: translateY(-3px); }
-  .chstep .medal { font-size: 22px; line-height: 1; }
+  .chstep .medal { font-size: 28px; line-height: 1; }
   .chstep .pname {
-    font-weight: 700; font-size: 13px; margin: 8px 0 4px;
+    font-weight: 700; font-size: 16px; margin: 10px 0 5px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .chstep .ptok { font: 700 20px var(--mono); letter-spacing: -0.02em; }
-  .chstep .psub { color: var(--muted); font-size: 11px; font-family: var(--mono); margin-top: 3px; }
-  .chstep.gold { border-color: rgba(251,191,36,0.55); background: linear-gradient(180deg, rgba(251,191,36,0.10), var(--surface) 60%); min-height: 132px; }
-  .chstep.silver { border-color: rgba(200,205,214,0.4); background: linear-gradient(180deg, rgba(200,205,214,0.07), var(--surface) 60%); min-height: 116px; }
-  .chstep.bronze { border-color: rgba(205,127,50,0.45); background: linear-gradient(180deg, rgba(205,127,50,0.08), var(--surface) 60%); min-height: 104px; }
+  .chstep .ptok { font: 700 26px var(--mono); letter-spacing: -0.02em; }
+  .chstep .psub { color: var(--muted); font-size: 11px; font-family: var(--mono); margin-top: 4px; }
+  .chstep .pspark { margin-top: 8px; }
+  .chstep.gold { border-color: rgba(251,191,36,0.55); background: linear-gradient(180deg, rgba(251,191,36,0.10), var(--surface) 60%); min-height: 168px; }
+  .chstep.silver { border-color: rgba(200,205,214,0.4); background: linear-gradient(180deg, rgba(200,205,214,0.07), var(--surface) 60%); min-height: 148px; }
+  .chstep.bronze { border-color: rgba(205,127,50,0.45); background: linear-gradient(180deg, rgba(205,127,50,0.08), var(--surface) 60%); min-height: 132px; }
+  /* charts row: stacked daily bars + period share donut */
+  .chchartsrow { display: grid; grid-template-columns: 1.7fr 1fr; gap: var(--sp-3); margin-bottom: var(--sp-4); }
+  @media (max-width: 900px) { .chchartsrow { grid-template-columns: 1fr; } }
+  .chpanel { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--sp-3); min-width: 0; }
+  .chpanel .ct { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--dim); margin-bottom: 10px; }
+  .chstack { display: block; width: 100%; max-width: 100%; height: 190px; }
+  .chstack rect { transition: opacity 0.15s ease; }
+  .chstack rect:hover { opacity: 1; }
+  /* leaderboard rows: clickable, expand into a per-project drill-down */
   .chrow {
     display: flex; align-items: center; gap: 12px; padding: 10px 2px;
     border-bottom: 1px solid var(--border); font-size: 13px;
+    cursor: pointer; border-radius: 6px; transition: background 0.15s ease;
   }
-  .chrow:last-child { border-bottom: none; }
+  .chrow:hover { background: var(--surface-2); }
+  .chrow .chev { color: var(--dim); font-size: 11px; transition: transform 0.25s ease; flex: none; }
+  .chrow.open .chev { transform: rotate(180deg); }
+  .chdrill { max-height: 0; overflow: hidden; transition: max-height 0.35s ease; border-bottom: 1px solid var(--border); }
+  .chdrill.open { max-height: 420px; }
+  .chdrill-in { padding: 12px 2px 16px; }
+  .chdrill .dchart { display: block; width: 100%; max-width: 100%; height: 150px; margin-bottom: 10px; }
+  .chdstat { display: flex; flex-wrap: wrap; gap: 10px; }
+  .chdstat .q { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 7px 12px; font-size: 12px; color: var(--muted); }
+  .chdstat .q b { font: 700 13px var(--mono); color: var(--text); margin-left: 7px; }
+  .chdstat .q .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dim); }
   .chrow .rk { font: 700 12px var(--mono); color: var(--dim); width: 26px; flex: none; text-align: right; }
   .chrow .nm { width: 200px; flex: none; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .chrow .barwrap { flex: 1; min-width: 60px; }
@@ -791,6 +812,13 @@
   .chrow .spark { width: 90px; height: 26px; flex: none; }
   .chrow .tk { font: 600 12px var(--mono); color: var(--muted); width: 66px; flex: none; text-align: right; }
   .chrow .cs { font: 600 12px var(--mono); color: var(--amber); width: 56px; flex: none; text-align: right; }
+  /* mobile: podium wraps into a column, leaderboard drops the bar + sparkline */
+  @media (max-width: 700px) {
+    .chpodium { flex-wrap: wrap; }
+    .chstep { flex: 0 0 100%; max-width: 100%; min-height: 0; }
+    .chrow .nm { width: auto; flex: 1; min-width: 0; }
+    .chrow .barwrap, .chrow .spark { display: none; }
+  }
   /* AI report rendering — charts, not essays */
   .chreport-headline { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 10px; }
   .chreport-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--sp-2); margin: var(--sp-3) 0; }
@@ -814,7 +842,7 @@
     display: grid; place-items: center;
   }
   .chdonut .ring::after { content: ''; width: 74px; height: 74px; border-radius: 50%; background: var(--surface-2); }
-  .chdonut .legend { flex: 1; }
+  .chdonut .legend { flex: 1; display: block; min-width: 0; }
   .chdonut .legend .lr { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin: 4px 0; }
   .chdonut .legend .lr i { width: 9px; height: 9px; border-radius: 2px; flex: none; }
   .chloading { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; padding: var(--sp-4) 0; }
@@ -1718,6 +1746,15 @@
         </div>
       </div>
       <div class="chstats" id="chStats"></div>
+      <div class="catbar" id="chPeriodBar">
+        <div class="chips">
+          <button class="chip" data-p="today" onclick="setChPeriod('today')">Today</button>
+          <button class="chip" data-p="7d" onclick="setChPeriod('7d')">7 days</button>
+          <button class="chip" data-p="30d" onclick="setChPeriod('30d')">30 days</button>
+          <button class="chip active" data-p="all" onclick="setChPeriod('all')">All time</button>
+        </div>
+      </div>
+      <div class="chchartsrow" id="chCharts"></div>
       <div class="chpodium" id="chPodium"></div>
       <div class="panelcard">
         <h2 style="margin-bottom:12px">Project leaderboard</h2>
@@ -2289,54 +2326,192 @@ function renderEvents() {
 
 /* ---- chaptions rendering (per-project analytics) ---- */
 let chaptions = null;
+let chPeriod = 'all'; // today | 7d | 30d | all
+const CH_PERIOD_DAYS = { today: 1, '7d': 7, '30d': 30, all: 0 };
+const CH_PALETTE = ['#6e79f4', '#22d3ee', '#34d399', '#fbbf24', '#f87171', '#c084fc', '#94a3b8', '#f472b6'];
+
+window.setChPeriod = (p) => {
+  chPeriod = p;
+  document.querySelectorAll('#chPeriodBar .chip').forEach((b) => b.classList.toggle('active', b.dataset.p === p));
+  renderChaptions();
+};
+
+// local-date key matching the server's dayKey scheme (api.mjs / config.mjs)
+function chDayKey(offset = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() - offset);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// period slice of a project's daily history: tokens/requests/cost for the
+// active window ('all' returns the all-time aggregates)
+function chWindow(p) {
+  const n = CH_PERIOD_DAYS[chPeriod];
+  const byDay = p.byDay || [];
+  if (!n) return { tokens: p.tokens || 0, requests: p.requests || 0, costUsd: p.costUsd || 0, byDay };
+  const cutoff = chDayKey(n - 1);
+  const win = byDay.filter((d) => d.date >= cutoff);
+  return {
+    tokens: win.reduce((s, d) => s + (d.tokens || 0), 0),
+    requests: win.reduce((s, d) => s + (d.requests || 0), 0),
+    costUsd: win.reduce((s, d) => s + (d.costUsd || 0), 0),
+    byDay: win,
+  };
+}
 
 function chSparkline(days, w = 90, h = 26) {
-  if (!days || !days.length) return '';
-  const max = Math.max(1, ...days.map((d) => d.tokens));
-  const pts = days.map((d, i) => `${(i / Math.max(1, days.length - 1)) * (w - 2) + 1},${h - 1 - (d.tokens / max) * (h - 3)}`).join(' ');
+  const d30 = (days || []).slice(-30);
+  if (!d30.length) return '';
+  const max = Math.max(1, ...d30.map((d) => d.tokens));
+  const pts = d30.map((d, i) => `${(i / Math.max(1, d30.length - 1)) * (w - 2) + 1},${h - 1 - (d.tokens / max) * (h - 3)}`).join(' ');
   return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}"><polyline points="${pts}" fill="none" stroke="var(--accent-2)" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
 }
 
+// stacked daily bars: top 8 projects + "other" over the last 30 days
+function chStackedChart(ranked) {
+  const DAYS = 30;
+  const keys = Array.from({ length: DAYS }, (_, i) => chDayKey(DAYS - 1 - i));
+  const val = (byDay, k) => byDay.find((d) => d.date === k)?.tokens || 0;
+  const top = ranked.slice(0, 8).map((x, i) => ({ name: x.p.name, color: CH_PALETTE[i % CH_PALETTE.length], byDay: x.w.byDay }));
+  const rest = ranked.slice(8);
+  const cols = keys.map((k) => {
+    const parts = top.map((s) => ({ name: s.name, color: s.color, v: val(s.byDay, k) }));
+    const restV = rest.reduce((s, x) => s + val(x.w.byDay, k), 0);
+    if (restV) parts.push({ name: `${rest.length} other projects`, color: 'rgba(148,163,184,0.5)', v: restV });
+    return parts;
+  });
+  const max = Math.max(1, ...cols.map((parts) => parts.reduce((s, q) => s + q.v, 0)));
+  const W = 720, H = 190;
+  const slot = W / DAYS;
+  const bw = Math.max(2, slot - 2);
+  let bars = '';
+  cols.forEach((parts, i) => {
+    let y = H;
+    for (const q of parts) {
+      if (!q.v) continue;
+      const h = (q.v / max) * H;
+      y -= h;
+      bars += `<rect x="${(i * slot + 1).toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${q.color}" opacity="0.8"><title>${keys[i]} · ${escapeHtml(q.name)}: ${fmtTok(q.v)}</title></rect>`;
+    }
+  });
+  return bars
+    ? `<svg class="chstack" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${bars}</svg>`
+    : '<div class="empty" style="padding:var(--sp-4)">no daily history yet</div>';
+}
+
+// period share donut: top 6 + others (conic-gradient ring, same pattern as the AI report)
+function chShareDonut(ranked) {
+  const pts = ranked.slice(0, 6).map((x, i) => ({ label: x.p.name, value: x.w.tokens, color: CH_PALETTE[i % CH_PALETTE.length] }));
+  const othersV = ranked.slice(6).reduce((s, x) => s + x.w.tokens, 0);
+  if (othersV) pts.push({ label: `${ranked.length - 6} others`, value: othersV, color: 'rgba(148,163,184,0.5)' });
+  if (!pts.length || !pts.some((p) => p.value > 0)) return '<div class="empty" style="padding:var(--sp-4)">no usage in this period</div>';
+  const total = pts.reduce((s, p) => s + p.value, 0) || 1;
+  let acc = 0;
+  const stops = pts.map((p) => {
+    const from = (acc / total) * 100; acc += p.value;
+    return `${p.color} ${from}% ${(acc / total) * 100}%`;
+  }).join(', ');
+  return `<div class="chdonut">
+    <div class="ring" style="background:conic-gradient(${stops})"></div>
+    <div class="legend">${pts.map((p) => `<div class="lr"><i style="background:${p.color}"></i>${escapeHtml(p.label)} <span class="mono" style="margin-left:auto">${fmtTok(p.value)} · ${Math.round((p.value / total) * 100)}%</span></div>`).join('')}</div>
+  </div>`;
+}
+
+// per-project daily trend (last 30 days): area + line
+function chTrendChart(byDay) {
+  const DAYS = 30;
+  const keys = Array.from({ length: DAYS }, (_, i) => chDayKey(DAYS - 1 - i));
+  const vals = keys.map((k) => byDay.find((d) => d.date === k)?.tokens || 0);
+  if (!vals.some((v) => v > 0)) return '<div class="empty">no daily history</div>';
+  const max = Math.max(1, ...vals);
+  const W = 720, H = 150;
+  const x = (i) => (i / (DAYS - 1)) * (W - 4) + 2;
+  const y = (v) => H - 2 - (v / max) * (H - 12);
+  const line = vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const area = `2,${H - 2} ${line} ${W - 2},${H - 2}`;
+  return `<svg class="dchart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    <polygon points="${area}" fill="rgba(110,121,244,0.15)"/>
+    <polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>
+    ${vals.map((v, i) => v ? `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3" fill="var(--accent-2)"><title>${keys[i]}: ${fmtTok(v)}</title></circle>` : '').join('')}
+  </svg>`;
+}
+
+window.toggleChRow = (row) => {
+  const drill = row.nextElementSibling;
+  const opening = !row.classList.contains('open');
+  document.querySelectorAll('#chRank .chrow.open').forEach((r) => {
+    r.classList.remove('open');
+    r.nextElementSibling.classList.remove('open');
+  });
+  if (opening) { row.classList.add('open'); drill.classList.add('open'); }
+};
+
 function renderChaptions() {
   if (!chaptions) return;
-  const t = chaptions.totals || {};
   const projects = chaptions.projects || [];
-  // stat tiles
+  const wins = projects.map((p) => ({ p, w: chWindow(p) }));
+  const ranked = wins.filter((x) => x.w.tokens > 0).sort((a, b) => b.w.tokens - a.w.tokens);
+  const periodTotal = ranked.reduce((s, x) => s + x.w.tokens, 0);
+  for (const x of ranked) x.w.share = periodTotal ? x.w.tokens / periodTotal : 0;
+  const periodReq = ranked.reduce((s, x) => s + x.w.requests, 0);
+  const periodCost = ranked.reduce((s, x) => s + x.w.costUsd, 0);
+
+  // stat tiles — period-scoped (cache split is all-time only, kept out of tiles)
   $('chStats').innerHTML = `
-    <div class="stat"><div class="statlabel">Tokens all time</div><div class="statnum">${fmtTok(t.tokens)}</div><div class="statdetail">${(t.requests || 0).toLocaleString()} requests</div></div>
-    <div class="stat"><div class="statlabel">Projects tracked</div><div class="statnum">${projects.length}</div><div class="statdetail">ranked by tokens</div></div>
-    <div class="stat"><div class="statlabel">Estimated cost</div><div class="statnum">${fmtCost(t.costUsd)}</div><div class="statdetail">all projects</div></div>`;
+    <div class="stat"><div class="statlabel">Tokens ${chPeriod === 'all' ? 'all time' : chPeriod === 'today' ? 'today' : 'last ' + chPeriod}</div><div class="statnum">${fmtTok(periodTotal)}</div><div class="statdetail">${periodReq.toLocaleString()} requests</div></div>
+    <div class="stat"><div class="statlabel">Active projects</div><div class="statnum">${ranked.length}</div><div class="statdetail">with usage in period</div></div>
+    <div class="stat"><div class="statlabel">Estimated cost</div><div class="statnum">${fmtCost(periodCost)}</div><div class="statdetail">period spend</div></div>`;
+
+  // charts row: stacked daily bars (fixed 30-day trend) + period share donut
+  $('chCharts').innerHTML = ranked.length ? `
+    <div class="chpanel"><div class="ct">Daily tokens · last 30 days · by project</div>${chStackedChart(ranked)}</div>
+    <div class="chpanel"><div class="ct">Share · ${chPeriod === 'all' ? 'all time' : chPeriod === 'today' ? 'today' : 'last ' + chPeriod}</div>${chShareDonut(ranked)}</div>`
+    : '';
+
   // podium — top 3
   const medals = ['🥇', '🥈', '🥉'];
   const cls = ['gold', 'silver', 'bronze'];
-  $('chPodium').innerHTML = projects.length
-    ? projects.slice(0, 3).map((p, i) => `
-      <div class="chstep ${cls[i]}" title="${escapeHtml(p.dir)}">
+  $('chPodium').innerHTML = ranked.length
+    ? ranked.slice(0, 3).map((x, i) => `
+      <div class="chstep ${cls[i]}" title="${escapeHtml(x.p.dir)}">
         <div class="medal">${medals[i]}</div>
-        <div class="pname">${escapeHtml(p.name)}</div>
-        <div class="ptok">${fmtTok(p.tokens)}</div>
-        <div class="psub">${Math.round((p.share || 0) * 100)}% · ${fmtCost(p.costUsd)} · ${(p.requests || 0).toLocaleString()} req</div>
+        <div class="pname">${escapeHtml(x.p.name)}</div>
+        <div class="ptok">${fmtTok(x.w.tokens)}</div>
+        <div class="psub">${Math.round((x.w.share || 0) * 100)}% · ${fmtCost(x.w.costUsd)} · ${x.w.requests.toLocaleString()} req</div>
+        <div class="pspark">${chSparkline(x.w.byDay, 200, 34)}</div>
       </div>`).join('')
-    : '<div class="empty" style="padding:var(--sp-6)">No attributed usage yet — use Claude Code through the proxy and your projects will appear here.</div>';
-  // rank list
-  const maxTok = Math.max(1, ...projects.map((p) => p.tokens));
-  $('chRank').innerHTML = projects.length
-    ? projects.map((p, i) => `
-      <div class="chrow">
+    : '<div class="empty" style="padding:var(--sp-6)">No attributed usage in this period — use Claude Code through the proxy and your projects will appear here.</div>';
+
+  // leaderboard + per-project drill-down
+  const maxTok = Math.max(1, ...ranked.map((x) => x.w.tokens));
+  $('chRank').innerHTML = ranked.length
+    ? ranked.map((x, i) => `
+      <div class="chrow" onclick="toggleChRow(this)">
         <span class="rk">${i + 1}</span>
-        <span class="nm" title="${escapeHtml(p.dir)}">${escapeHtml(p.name)}</span>
-        <span class="barwrap"><span class="track"><span class="fill" data-w="${Math.round(p.tokens / maxTok * 100)}"></span></span></span>
-        ${chSparkline(p.byDay)}
-        <span class="tk">${fmtTok(p.tokens)}</span>
-        <span class="cs">${fmtCost(p.costUsd)}</span>
-      </div>`).join('')
-    : '<div class="empty">nothing ranked yet</div>';
+        <span class="nm" title="${escapeHtml(x.p.dir)}">${escapeHtml(x.p.name)}</span>
+        <span class="barwrap"><span class="track"><span class="fill" data-w="${Math.round(x.w.tokens / maxTok * 100)}"></span></span></span>
+        ${chSparkline(x.w.byDay)}
+        <span class="tk">${fmtTok(x.w.tokens)}</span>
+        <span class="cs">${fmtCost(x.w.costUsd)}</span>
+        <span class="chev">▾</span>
+      </div>
+      <div class="chdrill"><div class="chdrill-in">
+        ${chTrendChart(x.p.byDay || [])}
+        <div class="chdstat">
+          <span class="q"><span class="lbl">tokens · period</span><b>${fmtTok(x.w.tokens)}</b></span>
+          <span class="q"><span class="lbl">requests · period</span><b>${x.w.requests.toLocaleString()}</b></span>
+          <span class="q"><span class="lbl">cost · period</span><b>${fmtCost(x.w.costUsd)}</b></span>
+          <span class="q"><span class="lbl">split · all time</span><b>in ${fmtTok(x.p.inputTokens || 0)} · out ${fmtTok(x.p.outputTokens || 0)} · cache ${fmtTok(x.p.cacheReadTokens || 0)}</b></span>
+        </div>
+        <div class="hint" style="margin-top:8px">${escapeHtml(x.p.dir)}</div>
+      </div></div>`).join('')
+    : '<div class="empty">nothing ranked in this period</div>';
   requestAnimationFrame(() => requestAnimationFrame(() => {
     document.querySelectorAll('#chRank .fill').forEach((el) => { el.style.width = el.dataset.w + '%'; });
   }));
   const un = chaptions.unattributed;
   $('chUnattributed').textContent = un && un.tokens > 0
-    ? `+ ${fmtTok(un.tokens)} tokens not attributed to a project (${un.note}).`
+    ? `+ ${fmtTok(un.tokens)} tokens not attributed to a project${chPeriod !== 'all' ? ' (all-time figure — no daily history to slice)' : ''} (${un.note}).`
     : '';
 }
 
@@ -2386,9 +2561,10 @@ function renderChReport(rep) {
           <div class="legend">${pts.map((p, i) => `<div class="lr"><i style="background:${PALETTE[i % PALETTE.length]}"></i>${escapeHtml(String(p.label))} <span class="mono" style="margin-left:auto">${fmtTok(Number(p.value))}</span></div>`).join('')}</div>
         </div></div>`;
       }
-      // bar (default)
+      // bar (default) — palette color per point so multi-project bars are
+      // visually distinguishable, matching the donut's coloring
       return `<div class="chchart"><div class="ct">${escapeHtml(c.title || '')}</div>
-        ${pts.map((p) => `<div class="chbar-row"><span class="bl" title="${escapeHtml(String(p.label))}">${escapeHtml(String(p.label))}</span><span class="bt"><span class="bf" data-w="${Math.round(Number(p.value) / max * 100)}"></span></span><span class="bv">${fmtTok(Number(p.value))}</span></div>`).join('')}
+        ${pts.map((p, i) => `<div class="chbar-row"><span class="bl" title="${escapeHtml(String(p.label))}">${escapeHtml(String(p.label))}</span><span class="bt"><span class="bf" data-w="${Math.round(Number(p.value) / max * 100)}" style="background:linear-gradient(90deg, ${PALETTE[i % PALETTE.length]}, ${PALETTE[i % PALETTE.length]}cc)"></span></span><span class="bv">${fmtTok(Number(p.value))}</span></div>`).join('')}
       </div>`;
     }).join('')}</div>`;
   }

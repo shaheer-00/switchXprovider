@@ -61,6 +61,7 @@ proxy with automatic failover, auto-recovery, live usage analytics — and
 | 📤 **Shareable stats card** | Build a pretty usage card in the dashboard — pick period, stats, and theme — export or share it as a PNG |
 | 🧭 **Provider discovery** | Curated catalog with one-click setup, plus community-maintained remote catalogs |
 | ⟳ **Model auto-fetch** | Enter a base URL + API key and the dashboard pulls the provider's model list for you — no copy-pasting model IDs |
+| 🏆 **Chaptions** | Per-project token & cost analytics with period filters (today / 7d / 30d / all-time), a stacked daily-usage chart, share donut, leaderboard with drill-down trends, and AI-generated analysis reports that run through your own providers |
 
 ---
 
