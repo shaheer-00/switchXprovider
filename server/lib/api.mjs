@@ -183,12 +183,15 @@ function normalizePriorities(cfg) {
 // Extract a report object from a model's reply. Handles the clean case, code
 // fences, and — the common small-model failure — a wall of reasoning prose
 // that ends in (or embeds) the JSON object: walk every balanced-brace block
-// and take the first one that parses with a report shape.
+// and take the first one that parses with a report shape. A reply that just
+// echoes the prompt's shape verbatim (lazy models do this) is not a report.
+const TEMPLATE_ECHO = /one short sentence|max 4 bullets|short label|formatted value|short title/;
 function extractReport(text) {
+  const accepts = (r) => r && (r.headline || r.charts) && !TEMPLATE_ECHO.test(JSON.stringify(r));
   const stripped = text.replace(/```(?:json)?\s*/g, '').trim();
   try {
     const r = JSON.parse(stripped);
-    if (r && (r.headline || r.charts)) return r;
+    if (accepts(r)) return r;
   } catch { /* fall through to brace walking */ }
   for (let i = text.indexOf('{'); i !== -1; i = text.indexOf('{', i + 1)) {
     let depth = 0, inStr = false, esc = false;
@@ -203,7 +206,7 @@ function extractReport(text) {
         if (depth === 0) {
           try {
             const r = JSON.parse(text.slice(i, j + 1));
-            if (r && (r.headline || r.charts)) return r;
+            if (accepts(r)) return r;
           } catch { /* not this block */ }
           break;
         }
@@ -463,7 +466,7 @@ Return ONLY valid JSON (no markdown fences, no prose outside JSON) with this exa
     {"type": "donut", "title": "short title", "points": [{"label": "name", "value": 123}]}
   ]
 }
-Rules: 2-3 charts max (e.g. projects by tokens, models donut). Numbers in charts must be raw values from the data, not invented. Keep every string short — this renders as graphs, not an essay. Respond with the JSON object only — no reasoning, no markdown, no prose.
+Rules: 2-3 charts max (e.g. projects by tokens, models donut). Numbers in charts must be raw values from the data, not invented. Keep every string short — this renders as graphs, not an essay. Respond with the JSON object only — no reasoning, no markdown, no prose. Do NOT copy the shape example verbatim — fill every field with real values from the data.
 
 Usage data:
 ${JSON.stringify(stats)}`;

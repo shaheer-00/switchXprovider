@@ -26,6 +26,7 @@ const MOCK_OPENAI = 9907;
 const MOCK_MODELFAIL = 9908;
 const MOCK_RAMBLER = 9909;
 const MOCK_PROSE = 9910;
+const MOCK_TEMPLATE = 9911;
 
 const home = fs.mkdtempSync(path.join(os.tmpdir(), 'switchx-test-'));
 
@@ -72,10 +73,10 @@ async function waitUp(url, timeoutMs = 8000) {
 
 async function main() {
   // --- mock providers ---
-  for (const [port, mode] of [[MOCK_OK, 'ok'], [MOCK_500, 'fail500'], [MOCK_429, 'ratelimit'], [MOCK_400, 'badreq'], [MOCK_KEYONLY, 'keyonly'], [MOCK_BearerONLY, 'beareronly'], [MOCK_OPENAI, 'openai'], [MOCK_MODELFAIL, 'modelfail'], [MOCK_RAMBLER, 'rambler'], [MOCK_PROSE, 'prose']]) {
+  for (const [port, mode] of [[MOCK_OK, 'ok'], [MOCK_500, 'fail500'], [MOCK_429, 'ratelimit'], [MOCK_400, 'badreq'], [MOCK_KEYONLY, 'keyonly'], [MOCK_BearerONLY, 'beareronly'], [MOCK_OPENAI, 'openai'], [MOCK_MODELFAIL, 'modelfail'], [MOCK_RAMBLER, 'rambler'], [MOCK_PROSE, 'prose'], [MOCK_TEMPLATE, 'template']]) {
     children.push(spawn(process.execPath, [path.join(__dirname, 'mock.mjs'), String(port), mode], { stdio: 'ignore' }));
   }
-  for (const port of [MOCK_OK, MOCK_500, MOCK_429, MOCK_400, MOCK_KEYONLY, MOCK_BearerONLY, MOCK_OPENAI, MOCK_MODELFAIL, MOCK_RAMBLER, MOCK_PROSE]) {
+  for (const port of [MOCK_OK, MOCK_500, MOCK_429, MOCK_400, MOCK_KEYONLY, MOCK_BearerONLY, MOCK_OPENAI, MOCK_MODELFAIL, MOCK_RAMBLER, MOCK_PROSE, MOCK_TEMPLATE]) {
     assert(await waitUp(`http://127.0.0.1:${port}/v1/models`), `mock :${port} up`);
   }
 
@@ -492,6 +493,18 @@ async function main() {
   anaR = await resp.json();
   assert(resp.status === 200 && anaR.ok === true && !anaR.report && /Let me think/.test(anaR.raw || ''),
     'prose-only model falls back to raw text after trying every slot', JSON.stringify(anaR).slice(0, 160));
+
+  // template-echo model: returns the JSON shape verbatim, unfilled — that is
+  // not a report and must not render as one
+  resp = await fetch(`${proxyUrl}/api/import`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ providers: [{ name: 'Templater', baseUrl: `http://127.0.0.1:${MOCK_TEMPLATE}`, apiKey: 'k', models: { sonnet: 'template-model' } }] }),
+  });
+  resp = await fetch(`${proxyUrl}/api/chaptions/analyze`, { method: 'POST' });
+  anaR = await resp.json();
+  assert(resp.status === 200 && (anaR.report === null || anaR.report === undefined || anaR.report.headline !== 'one short sentence (max 12 words)'),
+    'template echo is rejected as a report (rotation continues)', JSON.stringify(anaR).slice(0, 160));
 
   // restore a working provider for the sections that follow
   resp = await fetch(`${proxyUrl}/api/import`, {

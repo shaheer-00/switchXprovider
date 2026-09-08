@@ -17,6 +17,9 @@
 //              Verifies the analyze handler's JSON extraction.
 //   prose    — returns prose only, no JSON anywhere: verifies the analyze
 //              handler rotates slots and finally falls back to raw text.
+//   template — returns the prompt's JSON shape verbatim, unfilled (a lazy
+//              model echoing the contract): verifies template echoes are
+//              rejected, not rendered as an "analysis".
 
 import http from 'node:http';
 
@@ -106,6 +109,20 @@ const server = http.createServer((req, res) => {
     if (mode === 'modelfail' && /^dead-/.test(json.model || '')) {
       res.writeHead(400, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ type: 'error', error: { type: 'bad_request', message: 'The requested model is not available.' } }));
+      return;
+    }
+
+    // lazy model that echoes the prompt's JSON shape verbatim, unfilled
+    if (mode === 'template') {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({
+        id: 'msg_template',
+        type: 'message',
+        role: 'assistant',
+        model: json.model,
+        content: [{ type: 'text', text: '{"headline":"one short sentence (max 12 words)","insights":["max 4 bullets, each max 12 words"],"stats":[{"label":"short label","value":"formatted value"}],"charts":[{"type":"bar","title":"short title","points":[{"label":"name","value":123}]},{"type":"donut","title":"short title","points":[{"label":"name","value":123}]}]}' }],
+        usage: { input_tokens: 10, output_tokens: 5 },
+      }));
       return;
     }
 
