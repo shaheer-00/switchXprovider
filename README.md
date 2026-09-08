@@ -6,7 +6,7 @@
 
 A zero-dependency Claude Code plugin that routes your API traffic through a local
 proxy with automatic failover, auto-recovery, live usage analytics — and
-**several free (freemium) providers out of the box**, with more on the way.
+**every provider free out of the box (free models, credits, or daily-login rewards)**, with more on the way.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node >=18](https://img.shields.io/badge/node-%3E%3D18-green.svg)](package.json)
@@ -50,7 +50,7 @@ proxy with automatic failover, auto-recovery, live usage analytics — and
 
 | | |
 |---|---|
-| 🆓 **Free providers included** | Ships with several freemium providers (AgentRouter, Bynara, SeekAi, …) — free models you can use today, and the catalog keeps growing |
+| 🆓 **Free providers included** | Every provider in the shipped catalog has a free tier (free models, credits, or daily-login rewards) — and the catalog keeps growing |
 | 🔀 **Automatic failover** | Provider dies mid-request? Retried on the next one before you notice |
 | 🔁 **Auto-recovery** | Down providers are re-probed every 30s and return to rotation on their own |
 | 🔑 **Your keys, your machine** | Traffic goes straight to the provider — no third party in the path |
@@ -86,13 +86,18 @@ They also compose — run OmniRouter as one provider entry in switchXprovider, a
 
 ## 🆓 Free providers, built in
 
-The plugin ships with a curated catalog in which **several providers are freemium** — they offer free models or free-tier credits you can route through right away:
+The plugin ships with a curated catalog in which **every provider has a free tier** — free models, free credits, or daily-login rewards you can route through right away:
 
 | Provider | Free offering |
 |---|---|
 | **AgentRouter** | Free GLM & DeepSeek models behind one endpoint |
 | **Bynara** | Generous free tier — MiMo, DeepSeek, MiniMax free models; solid last-resort fallback |
 | **SeekAi** | Free models at sign-up |
+| **GoRouter** | Free tier + per-token Claude-family models, incl. thinking variants |
+| **TabiToken** | Free tier — token-based, model IDs from your dashboard |
+| **BlueSminds** | Free tier — Anthropic-compatible (new-api based) |
+| **B.AI** | Free tier — invite-based |
+| **APInex** | Free tier — "one API for every model" |
 
 Combine them with daily-login rewards (most gateways hand out free credits or tokens for a daily check-in — sign out and back in **every day** to claim) and failover, and you have a zero-cost coding pipeline with redundancy. **More free providers are being added to the catalog continually** — and you can plug in any community-maintained catalog via Settings → Remote catalog.
 
@@ -144,7 +149,7 @@ node switchXprovider/server/ensure.mjs
 - **Pricing editor** — the Pricing view lists every model seen in usage, mapped on a provider, or known built-in, with its effective rate and where it comes from (built-in / your override / per-provider). Set a price universally or per provider (e.g. $0 for a free-tier gateway, market rate elsewhere). Models the same under different names across providers (GLM-5.2 / GLM-5.2-Free) are auto-detected and can be aliased to share one price while stats stay separate. Unpriced models are badged instead of silently costing $0. When a price changes, the dashboard asks whether to recalculate past usage with the new price or apply it from now on — recalculation is exact for per-provider/model/day tracked history, and there's a manual *Recalculate costs* button for history recorded before a price existed.
 - **Shareable stats card** — the Overview's *Share stats* button opens a popup where you compose a usage card: pick a time period (today / 7d / 14d / 30d / all-time), toggle which stats show (tokens, estimated cost, daily chart, top provider & model), and choose one of four themes (Midnight, Aurora, Light, Terminal). The live preview is the exported image — download it as a PNG or hand it straight to the OS share sheet where the browser supports it. Rendered entirely in-browser on a canvas, no external services.
 - **Traffic flow playground** — the overview's Traffic flow widget renders your providers as free-floating bubbles around the switchX core. Drag them anywhere (both sides), toss them and watch them bounce off the walls — purely cosmetic, nothing about routing changes. Edges redraw live as bubbles move; the active route keeps its animated gradient. Click a bubble to open that provider in the Providers view.
-- **Provider discovery** — a curated catalog of gateways — **including several freemium providers with free models, and more added over time** — with descriptions, ratings, pricing notes, and one-click prefill of the add-provider form. A remote catalog (same JSON schema, e.g. a raw GitHub file) can be set in Settings and overrides matching entries — useful for community-maintained lists.
+- **Provider discovery** — a curated catalog of gateways — **all with free tiers (free models, credits, or daily-login rewards), and more added over time** — with descriptions, ratings, pricing notes, and one-click prefill of the add-provider form. A remote catalog (same JSON schema, e.g. a raw GitHub file) can be set in Discover → Catalog source and overrides matching entries — useful for community-maintained lists.
 - **Config backup** — export/import the full provider list (including keys) as JSON from the dashboard.
 - **Install status detection** — the dashboard reads `~/.claude/settings.json` and shows whether Claude Code is actually routed through the proxy.
 - **Help & troubleshooting** — a built-in Help view with the common problems and their fixes: claude-mem capture dying after proxy setup (with the credentials-sync hook fix), statusline plugins showing stale mode labels, the proxy serving old code after a plugin update, shell `ANTHROPIC_*` env vars overriding `settings.json`, providers stuck in cooldown, model-name mismatches across providers, $0 cost estimates, and a dead dashboard.
@@ -241,7 +246,7 @@ server/lib/health.mjs        background probes, auto-recovery
 server/lib/api.mjs           management REST API
 server/lib/pricing.mjs       model rate table, aliases, cost recalculation
 server/lib/routing.mjs       flip routing on/off (proxy vs direct Anthropic)
-server/catalog.json          curated provider catalog (freemium gateways)
+server/catalog.json          curated provider catalog (free-tier gateways)
 public/index.html            dashboard (single file, no external assets)
 commands/switchx*.md         slash commands
 scripts/install.mjs          one-time settings.json installer

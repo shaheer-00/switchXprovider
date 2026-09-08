@@ -1172,6 +1172,28 @@
         </div>
       </div>
 
+      <div class="card">
+        <div class="grouplbl" style="padding:0 0 var(--sp-2)">Catalog source</div>
+        <div class="hint">Where Discover gets its provider list. Start with the official source — it's maintained by the plugin author and updated as new providers (including free ones) are vetted.</div>
+
+        <div class="offrow">
+          <div class="offico"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
+          <div class="offinfo">
+            <div class="t">Official switchXprovider catalog <span class="pill ok">✓ recommended</span></div>
+            <div class="d">Curated and vetted by the plugin author — same list shipped in the repo, synced straight from GitHub.</div>
+            <div class="mono">https://raw.githubusercontent.com/shaheer-00/switchXprovider/master/server/catalog.json</div>
+          </div>
+          <button class="btn btn-secondary" onclick="restoreOfficialCatalog()">Restore official catalog</button>
+        </div>
+
+        <div class="hint" style="margin-top:14px">Custom remote catalog — optional. Point at any raw JSON catalog (e.g. your GitHub repo) to extend/override the list. Same schema — see README.</div>
+        <div class="urlbar">
+          <input class="input mono" id="catalogUrl" placeholder="https://raw.githubusercontent.com/you/switchx-catalog/main/catalog.json">
+          <button class="btn btn-primary" onclick="refreshCatalog()">Fetch &amp; apply</button>
+        </div>
+        <div class="hint" id="catalogMeta" style="margin-top:10px"></div>
+      </div>
+
       <div class="catgrid" id="catgrid"></div>
     </section>
 
@@ -1438,28 +1460,6 @@
             <span class="fsub">settings.json backup (made by installer)</span>
           </div>
         </div>
-      </div>
-
-      <div class="grouplbl">Provider catalog</div>
-      <div class="card">
-        <div class="hint">Where Discover gets its provider list. Start with the official source — it's maintained by the plugin author and updated as new providers (including free ones) are vetted.</div>
-
-        <div class="offrow">
-          <div class="offico"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
-          <div class="offinfo">
-            <div class="t">Official switchXprovider catalog <span class="pill ok">✓ recommended</span></div>
-            <div class="d">Curated and vetted by the plugin author — same list shipped in the repo, synced straight from GitHub.</div>
-            <div class="mono">https://raw.githubusercontent.com/shaheer-00/switchXprovider/master/server/catalog.json</div>
-          </div>
-          <button class="btn btn-secondary" onclick="restoreOfficialCatalog()">Restore official catalog</button>
-        </div>
-
-        <div class="hint">Custom remote catalog — optional. Point at any raw JSON catalog (e.g. your GitHub repo) to extend/override the list. Same schema — see README.</div>
-        <div class="urlbar">
-          <input class="input mono" id="catalogUrl" placeholder="https://raw.githubusercontent.com/you/switchx-catalog/main/catalog.json">
-          <button class="btn btn-primary" onclick="refreshCatalog()">Fetch &amp; apply</button>
-        </div>
-        <div class="hint" id="catalogMeta" style="margin-top:10px"></div>
       </div>
 
       <div class="grouplbl danger">Danger zone</div>

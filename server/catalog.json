@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-09-06",
+  "updated": "2026-09-08",
   "note": "Curated provider catalog shipped with the plugin. A remote catalog (same schema, served from a raw GitHub URL) can be added in Settings and overrides entries with matching ids. Model IDs change often — always verify against the provider's docs. Sign-up links support switchXprovider development.",
   "providers": [
     {
@@ -44,8 +44,8 @@
       "authStyle": "auto",
       "description": "Gateway focused on Claude-family models, including thinking variants. Cloudflare-fronted — expects Claude Code-shaped traffic.",
       "website": "https://gorouter.app/sign-up?aff=QFQv",
-      "pricing": "per-token",
-      "freeTier": false,
+      "pricing": "free tier + per-token",
+      "freeTier": true,
       "rating": 3.5,
       "tags": ["gateway", "claude-models", "thinking"],
       "models": {
@@ -78,8 +78,8 @@
       "authStyle": "auto",
       "description": "Token-based gateway behind Cloudflare. Model IDs aren't public — check your dashboard after signing up and fill them in when adding.",
       "website": "https://tabitoken.com/sign-up?aff=7ECT",
-      "pricing": "per-token",
-      "freeTier": false,
+      "pricing": "free tier + per-token",
+      "freeTier": true,
       "rating": 3,
       "tags": ["gateway", "token-based"],
       "models": {}
@@ -91,8 +91,8 @@
       "authStyle": "auto",
       "description": "Anthropic-compatible gateway (new-api based). Model IDs aren't public — check your dashboard after signing up.",
       "website": "https://api.bluesminds.com/sign-up?aff=vB03",
-      "pricing": "per-token",
-      "freeTier": false,
+      "pricing": "free tier + per-token",
+      "freeTier": true,
       "rating": 3,
       "tags": ["gateway", "anthropic-compatible"],
       "models": {}
@@ -104,10 +104,23 @@
       "authStyle": "auto",
       "description": "Anthropic-compatible gateway. Model IDs aren't public — check your dashboard after signing up.",
       "website": "https://chat.b.ai/chat?invite_code=RKJVQJ",
-      "pricing": "varies, check site",
-      "freeTier": false,
+      "pricing": "free tier, check site",
+      "freeTier": true,
       "rating": 3,
       "tags": ["gateway", "invite-based"],
+      "models": {}
+    },
+    {
+      "id": "apinex",
+      "name": "APInex",
+      "baseUrl": "https://apinex.bond",
+      "authStyle": "auto",
+      "description": "Anthropic-compatible gateway — \"one API for every model\". Free tier available. Model IDs aren't public — check your dashboard after signing up.",
+      "website": "https://apinex.bond",
+      "pricing": "free tier",
+      "freeTier": true,
+      "rating": 3.5,
+      "tags": ["gateway", "anthropic-compatible", "multi-model"],
       "models": {}
     }
   ]
