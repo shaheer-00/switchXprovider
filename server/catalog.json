@@ -146,7 +146,7 @@
       "baseUrl": "https://kiraai.vn",
       "authStyle": "auto",
       "description": "Vietnamese gateway with free GLM-5.3, MiMo, Qwen and Kira models (daily free quota), plus paid partner models. Anthropic endpoint supported.",
-      "website": "https://kiraai.vn",
+      "website": "https://kiraai.vn/?ref=pambodenshaheer",
       "pricing": "free daily quota + per-token",
       "freeTier": true,
       "rating": 3.5,
