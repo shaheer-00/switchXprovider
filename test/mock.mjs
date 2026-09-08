@@ -7,6 +7,9 @@
 //   badreq   — 400 on /v1/messages (request error, must NOT trigger failover)
 //   keyonly  — 401 unless x-api-key present (anthropic-style provider)
 //   beareronly — 401 unless Authorization: Bearer present (openrouter-style provider)
+//   openai   — OpenAI-protocol provider: /chat/completions only (JSON + SSE
+//              with tool calls + usage), everything else 404. Verifies the
+//              proxy's Anthropic→OpenAI translation.
 
 import http from 'node:http';
 
@@ -17,6 +20,60 @@ const server = http.createServer((req, res) => {
   let body = '';
   req.on('data', (c) => (body += c));
   req.on('end', () => {
+    if (mode === 'openai') {
+      // OpenAI-protocol provider: /chat/completions + /v1/models (health
+      // probes GET the models list), everything else 404.
+      if (req.method === 'GET' && req.url.includes('/v1/models')) {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ object: 'list', data: [{ id: 'openai-model-x', object: 'model' }] }));
+        return;
+      }
+      if (!req.url.includes('/chat/completions')) {
+        res.writeHead(404, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: { message: `Not found: ${req.url}` } }));
+        return;
+      }
+      const json = JSON.parse(body || '{}');
+      const gotBearer = /^Bearer /.test(req.headers['authorization'] || '');
+      if (!gotBearer) {
+        res.writeHead(401, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: { message: 'Invalid API key.', type: 'authentication_error', code: 'invalid_api_key' } }));
+        return;
+      }
+      if (json.stream) {
+        // SSE: text deltas, then a tool call, then usage in the final chunk.
+        res.writeHead(200, { 'content-type': 'text/event-stream' });
+        const chunk = (o) => res.write(`data: ${JSON.stringify(o)}\n\n`);
+        chunk({ id: 'chatcmpl-mock', object: 'chat.completion.chunk', model: json.model, choices: [{ index: 0, delta: { role: 'assistant', content: 'hello ' }, finish_reason: null }] });
+        chunk({ id: 'chatcmpl-mock', object: 'chat.completion.chunk', model: json.model, choices: [{ index: 0, delta: { content: 'world' }, finish_reason: null }] });
+        chunk({ id: 'chatcmpl-mock', object: 'chat.completion.chunk', model: json.model, choices: [{ index: 0, delta: { tool_calls: [{ index: 0, id: 'call_mock1', type: 'function', function: { name: 'get_weather', arguments: '{"city":"' } }] }, finish_reason: null }] });
+        chunk({ id: 'chatcmpl-mock', object: 'chat.completion.chunk', model: json.model, choices: [{ index: 0, delta: { tool_calls: [{ index: 0, function: { arguments: 'SF"}' } }] }, finish_reason: null }] });
+        chunk({ id: 'chatcmpl-mock', object: 'chat.completion.chunk', model: json.model, choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }] });
+        chunk({ id: 'chatcmpl-mock', object: 'chat.completion.chunk', model: json.model, choices: [], usage: { prompt_tokens: 11, completion_tokens: 7 } });
+        res.write('data: [DONE]\n\n');
+        res.end();
+        return;
+      }
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({
+        id: 'chatcmpl-mock',
+        object: 'chat.completion',
+        model: json.model,
+        choices: [{
+          index: 0,
+          message: {
+            role: 'assistant',
+            content: 'mock openai reply',
+            tool_calls: [{ id: 'call_mock1', type: 'function', function: { name: 'get_weather', arguments: '{"city":"SF"}' } }],
+          },
+          finish_reason: 'tool_calls',
+        }],
+        usage: { prompt_tokens: 11, completion_tokens: 7 },
+        receivedAuth: req.headers['authorization'],
+      }));
+      return;
+    }
+
     if (req.url.includes('/v1/models')) {
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ data: [] }));

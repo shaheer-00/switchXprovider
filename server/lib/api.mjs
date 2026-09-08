@@ -71,6 +71,7 @@ function providerView(cfg, p) {
     baseUrl: p.baseUrl,
     maskedKey: maskKey(p.apiKey),
     authStyle: p.authStyle,
+    protocol: p.protocol || 'anthropic',
     models: p.models || {},
     priority: p.priority,
     enabled: p.enabled,
@@ -197,6 +198,7 @@ function sanitizeProviderInput(body) {
       baseUrl,
       apiKey: String(body.apiKey || '').trim(),
       authStyle: ['anthropic', 'bearer', 'auto'].includes(body.authStyle) ? body.authStyle : 'auto',
+      protocol: body.protocol === 'openai' ? 'openai' : 'anthropic',
       enabled: body.enabled !== false,
       models,
     },
@@ -572,6 +574,7 @@ export async function handleApi(req, res, pathname, cfg) {
           baseUrl: String(p.baseUrl),
           apiKey: String(p.apiKey || ''),
           authStyle: ['anthropic', 'bearer', 'auto'].includes(p.authStyle) ? p.authStyle : 'auto',
+          protocol: p.protocol === 'openai' ? 'openai' : 'anthropic',
           // Honor the exported priority when every entry has a usable one;
           // array position is insertion order, not routing order.
           priority: providers.every((x) => Number.isFinite(parseInt(x.priority, 10)) && parseInt(x.priority, 10) >= 1)

@@ -220,6 +220,42 @@
         "sonnet": "deepseek-v4-flash-free",
         "haiku": "mimo-v2.5-free"
       }
+    },
+    {
+      "id": "googleaistudio",
+      "name": "Google AI Studio",
+      "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
+      "authStyle": "bearer",
+      "protocol": "openai",
+      "description": "Google's Gemini API with a free daily quota (rate-limited, no credit card). OpenAI-protocol endpoint — the proxy translates automatically. Get a key at aistudio.google.com and verify current model IDs there.",
+      "website": "https://aistudio.google.com/",
+      "pricing": "free daily quota + paid tiers",
+      "freeTier": true,
+      "rating": 4,
+      "tags": ["google", "gemini", "free-quota", "openai-protocol"],
+      "models": {
+        "opus": "gemini-3.5-pro",
+        "sonnet": "gemini-3.5-flash",
+        "haiku": "gemini-3.5-flash-lite"
+      }
+    },
+    {
+      "id": "nvidia",
+      "name": "NVIDIA NIM",
+      "baseUrl": "https://integrate.api.nvidia.com/v1",
+      "authStyle": "bearer",
+      "protocol": "openai",
+      "description": "NVIDIA's model catalog (Nemotron and partners) behind one key — free starter credits at sign-up. OpenAI-protocol endpoint — the proxy translates automatically. Verify current model IDs at build.nvidia.com.",
+      "website": "https://build.nvidia.com/explore/discover",
+      "pricing": "free starter credits + per-token",
+      "freeTier": true,
+      "rating": 3.5,
+      "tags": ["nvidia", "nemotron", "openai-protocol"],
+      "models": {
+        "opus": "nvidia/nemotron-3-ultra-1t",
+        "sonnet": "nvidia/nemotron-3.5-lightning",
+        "haiku": "nvidia/nemotron-3.5-lightning"
+      }
     }
   ]
 }

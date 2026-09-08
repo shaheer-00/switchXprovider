@@ -1176,6 +1176,11 @@
                 <option value="anthropic">x-api-key only (Anthropic-compatible)</option>
                 <option value="bearer">Bearer only (OpenRouter etc.)</option>
               </select>
+              <label for="f_protocol">API protocol</label>
+              <select id="f_protocol">
+                <option value="anthropic" selected>Anthropic (/v1/messages)</option>
+                <option value="openai">OpenAI (/chat/completions — Google AI Studio, NVIDIA, Groq, …)</option>
+              </select>
               <div style="color:var(--dim);font-size:11.5px;margin-top:5px">
                 Auto sends both header styles; every provider just reads the one it knows.
               </div>
@@ -2527,6 +2532,7 @@ window.prefillFromCatalog = (c) => {
   $('f_name').value = c.name;
   $('f_baseUrl').value = c.baseUrl;
   $('f_authStyle').value = c.authStyle || 'auto';
+  if ($('f_protocol')) $('f_protocol').value = c.protocol || 'anthropic';
   $('f_opus').value = c.models?.opus || '';
   $('f_sonnet').value = c.models?.sonnet || '';
   $('f_haiku').value = c.models?.haiku || '';
@@ -2572,6 +2578,7 @@ window.edit = (id) => {
   $('f_apiKey').value = '';
   $('keyhint').textContent = '(leave empty to keep current)';
   $('f_authStyle').value = p.authStyle;
+  $('f_protocol').value = p.protocol || 'anthropic';
   $('f_opus').value = p.models.opus || '';
   $('f_sonnet').value = p.models.sonnet || '';
   $('f_haiku').value = p.models.haiku || '';
@@ -2595,6 +2602,7 @@ window.submitForm = async (ev) => {
     baseUrl: $('f_baseUrl').value,
     apiKey: $('f_apiKey').value,
     authStyle: $('f_authStyle').value,
+    protocol: $('f_protocol').value,
     enabled: $('f_enabled').checked,
     models: { opus: $('f_opus').value, sonnet: $('f_sonnet').value, haiku: $('f_haiku').value },
   };

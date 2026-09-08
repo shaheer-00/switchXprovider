@@ -9,6 +9,7 @@
 import { Readable, Transform } from 'node:stream';
 import { StringDecoder } from 'node:string_decoder';
 import { statsFor, logEvent, persistSoon, recordUsage, pushRequest, countFailover } from './config.mjs';
+import { anthropicToOpenAI, openaiToAnthropicStream } from './translate.mjs';
 
 // Time allowed for upstream to send response headers (streams may run much longer).
 const HEADER_TIMEOUT_MS = 60_000;
@@ -100,7 +101,15 @@ function targetUrl(baseUrl, url) {
   return base + path;
 }
 
-function buildHeaders(p, req) {
+function buildHeaders(p, req, protocolOpenai = false) {
+  if (protocolOpenai) {
+    // OpenAI-protocol providers: Bearer auth, no Anthropic headers.
+    return {
+      'content-type': 'application/json',
+      authorization: `Bearer ${p.apiKey}`,
+      'user-agent': req.headers['user-agent'] || 'claude-cli/2.0.14 (external, cli)',
+    };
+  }
   const h = {
     'content-type': req.headers['content-type'] || 'application/json',
     accept: req.headers['accept'] || '*/*',
@@ -200,6 +209,8 @@ function sanitizeRespHeaders(headers) {
 async function attempt(p, req, rawBody) {
   let body;
   let mappedModel = null;
+  let protocolOpenai = p.protocol === 'openai';
+  let targetPath = null; // protocol-translated requests target a different path
   if (rawBody && rawBody.length && req.method !== 'GET' && req.method !== 'HEAD') {
     const ct = String(req.headers['content-type'] || '');
     if (ct.includes('json')) {
@@ -209,7 +220,14 @@ async function attempt(p, req, rawBody) {
           mappedModel = mapModel(p, json.model);
           json.model = mappedModel;
         }
-        body = JSON.stringify(json);
+        if (protocolOpenai) {
+          // Claude Code speaks Anthropic Messages; OpenAI-protocol providers
+          // need the request translated and pointed at /chat/completions.
+          body = JSON.stringify(anthropicToOpenAI(json));
+          targetPath = '/chat/completions';
+        } else {
+          body = JSON.stringify(json);
+        }
       } catch {
         body = rawBody; // not valid JSON — pass through untouched
       }
@@ -221,9 +239,12 @@ async function attempt(p, req, rawBody) {
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), HEADER_TIMEOUT_MS);
   try {
-    const resp = await fetch(targetUrl(p.baseUrl, req.url), {
+    const url = targetPath
+      ? String(p.baseUrl || '').replace(/\/+$/, '') + targetPath
+      : targetUrl(p.baseUrl, req.url);
+    const resp = await fetch(url, {
       method: req.method,
-      headers: buildHeaders(p, req),
+      headers: buildHeaders(p, req, protocolOpenai),
       body,
       signal: ac.signal,
     });
@@ -239,7 +260,7 @@ async function attempt(p, req, rawBody) {
       }
       return { ok: false, status: resp.status, text, retryAfterSec, ac };
     }
-    return { ok: true, resp, ac, mappedModel };
+    return { ok: true, resp, ac, mappedModel, protocolOpenai };
   } finally {
     clearTimeout(timer);
   }
@@ -300,7 +321,12 @@ export async function handleProxy(req, res, cfg, rawBody) {
           outTok: 0,
         };
         res.writeHead(r.resp.status, sanitizeRespHeaders(r.resp.headers));
-        const stream = Readable.fromWeb(r.resp.body);
+        let stream = Readable.fromWeb(r.resp.body);
+        if (r.protocolOpenai) {
+          // Translate the OpenAI body (SSE or JSON — auto-detected) into
+          // Anthropic wire format before it reaches usageTap / Claude Code.
+          stream = stream.pipe(openaiToAnthropicStream(r.mappedModel || ''));
+        }
         const tap = usageTap((u) => {
           rec.inTok = u.input + u.cacheRead + u.cacheCreation;
           rec.outTok = u.output;

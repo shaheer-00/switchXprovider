@@ -21,6 +21,7 @@ const MOCK_429 = 9903;
 const MOCK_400 = 9904;
 const MOCK_KEYONLY = 9905;
 const MOCK_BearerONLY = 9906;
+const MOCK_OPENAI = 9907;
 
 const home = fs.mkdtempSync(path.join(os.tmpdir(), 'switchx-test-'));
 
@@ -67,10 +68,10 @@ async function waitUp(url, timeoutMs = 8000) {
 
 async function main() {
   // --- mock providers ---
-  for (const [port, mode] of [[MOCK_OK, 'ok'], [MOCK_500, 'fail500'], [MOCK_429, 'ratelimit'], [MOCK_400, 'badreq'], [MOCK_KEYONLY, 'keyonly'], [MOCK_BearerONLY, 'beareronly']]) {
+  for (const [port, mode] of [[MOCK_OK, 'ok'], [MOCK_500, 'fail500'], [MOCK_429, 'ratelimit'], [MOCK_400, 'badreq'], [MOCK_KEYONLY, 'keyonly'], [MOCK_BearerONLY, 'beareronly'], [MOCK_OPENAI, 'openai']]) {
     children.push(spawn(process.execPath, [path.join(__dirname, 'mock.mjs'), String(port), mode], { stdio: 'ignore' }));
   }
-  for (const port of [MOCK_OK, MOCK_500, MOCK_429, MOCK_400, MOCK_KEYONLY, MOCK_BearerONLY]) {
+  for (const port of [MOCK_OK, MOCK_500, MOCK_429, MOCK_400, MOCK_KEYONLY, MOCK_BearerONLY, MOCK_OPENAI]) {
     assert(await waitUp(`http://127.0.0.1:${port}/v1/models`), `mock :${port} up`);
   }
 
@@ -244,6 +245,82 @@ async function main() {
 
   // --- 7. /v1 duplication avoided (baseUrl ended with /v1, request went to /v1/messages) ---
   assert(body.id === 'msg_mock', 'request reached mock via /v1-joined URL');
+
+  // --- 7a. OpenAI protocol translation: request, response, tools, usage ---
+  console.log('\n— OpenAI protocol translation —');
+  resp = await fetch(`${proxyUrl}/api/providers`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      name: 'OpenAIProvider', baseUrl: `http://127.0.0.1:${MOCK_OPENAI}/v1`,
+      apiKey: 'openai-key-1', authStyle: 'auto', protocol: 'openai', enabled: true,
+      models: { sonnet: 'openai-model-x' },
+    }),
+  });
+  const oa = await resp.json();
+  assert(resp.status === 201 && oa.id, 'openai-protocol provider added');
+  assert(oa.protocol === 'openai', 'protocol echoed in provider view', JSON.stringify(oa.protocol));
+  for (let i = 0; i < 8; i++) await fetch(`${proxyUrl}/api/providers/${oa.id}/up`, { method: 'POST' });
+  // non-streaming: JSON request (with tools) → translated back to Anthropic shape
+  resp = await fetch(`${proxyUrl}/v1/messages`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-api-key': 'switchx-local' },
+    body: JSON.stringify({
+      model: 'switchx:sonnet', max_tokens: 64,
+      system: 'be brief',
+      messages: [
+        { role: 'user', content: [{ type: 'text', text: 'weather in SF?' }] },
+      ],
+      tools: [{ name: 'get_weather', description: 'get weather', input_schema: { type: 'object', properties: { city: { type: 'string' } } } }],
+    }),
+  });
+  body = await resp.json();
+  assert(resp.status === 200 && body.type === 'message', 'non-streaming response is Anthropic-shaped', `got ${resp.status}`);
+  const tu = (body.content || []).find((b) => b.type === 'tool_use');
+  assert(tu && tu.name === 'get_weather' && tu.input.city === 'SF', 'tool_use block translated back with parsed input', JSON.stringify(tu));
+  assert(body.stop_reason === 'tool_use', 'stop_reason translated (tool_calls → tool_use)', body.stop_reason);
+  assert(body.usage && body.usage.input_tokens === 11 && body.usage.output_tokens === 7, 'usage translated (prompt/completion → input/output)', JSON.stringify(body.usage));
+  // round trip: tool_result back through translation
+  resp = await fetch(`${proxyUrl}/v1/messages`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-api-key': 'switchx-local' },
+    body: JSON.stringify({
+      model: 'switchx:sonnet', max_tokens: 64,
+      messages: [
+        { role: 'user', content: 'weather in SF?' },
+        { role: 'assistant', content: [{ type: 'tool_use', id: 'call_mock1', name: 'get_weather', input: { city: 'SF' } }] },
+        { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'call_mock1', content: 'sunny 22C' }] },
+      ],
+    }),
+  });
+  body = await resp.json();
+  assert(resp.status === 200 && body.type === 'message', 'tool_result round trip succeeds (translated to role:tool)', `got ${resp.status}`);
+  // streaming: OpenAI chunks → Anthropic SSE events
+  resp = await fetch(`${proxyUrl}/v1/messages`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-api-key': 'switchx-local' },
+    body: JSON.stringify({ model: 'switchx:sonnet', max_tokens: 64, stream: true, messages: [{ role: 'user', content: 'hi' }] }),
+  });
+  const oaSseText = await resp.text();
+  assert(resp.status === 200 && oaSseText.includes('event: message_start'), 'SSE translated: message_start present');
+  assert(oaSseText.includes('"text_delta"') && oaSseText.includes('hello '), 'SSE translated: text deltas');
+  assert(oaSseText.includes('"input_json_delta"'), 'SSE translated: tool argument deltas');
+  assert(oaSseText.includes('"stop_reason":"tool_use"'), 'SSE translated: stop_reason in message_delta');
+  assert(oaSseText.includes('event: message_stop'), 'SSE translated: message_stop');
+  // usage recorded through the tap (translated stream feeds usageTap)
+  await sleep(400);
+  const oaUsage = await (await fetch(`${proxyUrl}/api/usage`)).json();
+  const oaProv = (oaUsage.byProvider || []).find((x) => x.name === 'OpenAIProvider');
+  assert(oaProv && oaProv.requests >= 3, 'openai-protocol usage recorded via tap', JSON.stringify(oaProv));
+  // restore: drop the openai provider back down the priority list (disable it)
+  await fetch(`${proxyUrl}/api/providers/${oa.id}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'OpenAIProvider', baseUrl: `http://127.0.0.1:${MOCK_OPENAI}/v1`, apiKey: '', authStyle: 'auto', protocol: 'openai', enabled: false, models: { sonnet: 'openai-model-x' } }),
+  });
+  // restore BearerProvider to priority 1
+  for (let i = 0; i < 8; i++) await fetch(`${proxyUrl}/api/providers/${created.id}/up`, { method: 'POST' });
+
 
   // --- 8. authStyle auto: works with both anthropic-only and bearer-only providers ---
   console.log('\n— authStyle auto —');

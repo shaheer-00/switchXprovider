@@ -104,6 +104,8 @@ The plugin ships with a curated catalog in which **every provider has a free tie
 | **VyceAI** | Free tier — Claude/GPT/DeepSeek/Gemini proxy, one key |
 | **OpenRouter** | Rotating pool of `:free` models (Nemotron Ultra, Ling, …) — the big aggregator |
 | **OpenCode Zen** | Free Nemotron/DeepSeek/MiMo tiers — Claude, GPT, Gemini behind one key |
+| **Google AI Studio** | Free daily Gemini quota (rate-limited) — OpenAI protocol, auto-translated |
+| **NVIDIA NIM** | Free starter credits — Nemotron + partners, OpenAI protocol, auto-translated |
 
 Combine them with daily-login rewards (most gateways hand out free credits or tokens for a daily check-in — sign out and back in **every day** to claim) and failover, and you have a zero-cost coding pipeline with redundancy. **More free providers are being added to the catalog continually** — and you can plug in any community-maintained catalog via Settings → Remote catalog.
 
@@ -196,6 +198,7 @@ In the dashboard or via `POST /api/providers`:
 | `baseUrl` | e.g. `https://api.anthropic.com`, `https://openrouter.ai/api/v1` — `/v1` duplication is handled |
 | `apiKey` | provider key |
 | `authStyle` | `auto` (default — sends both header styles, works everywhere), or force `anthropic` / `bearer` for rare strict providers |
+| `protocol` | `anthropic` (default — `/v1/messages`) or `openai` (`/chat/completions`). OpenAI-protocol providers (Google AI Studio, NVIDIA NIM, Groq, …) are translated automatically — requests, responses, streaming, and tool calls — so Claude Code works unchanged. |
 | `models` | real model IDs for the `opus` / `sonnet` / `haiku` slots — the proxy maps `switchx:sonnet` → your value |
 
 ## How the model mapping works
@@ -248,6 +251,7 @@ server/server.mjs            HTTP server: dashboard / API / proxy routing
 server/ensure.mjs            daemon bootstrap (used by the hook)
 server/lib/config.mjs        config + stats + event log (~/.claude/switchx/)
 server/lib/proxy.mjs         forwarding, model rewrite, failover, cooldowns
+server/lib/translate.mjs     Anthropic ⇄ OpenAI protocol translation (tools + streaming)
 server/lib/health.mjs        background probes, auto-recovery
 server/lib/api.mjs           management REST API
 server/lib/pricing.mjs       model rate table, aliases, cost recalculation
