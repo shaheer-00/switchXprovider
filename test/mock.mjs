@@ -12,6 +12,11 @@
 //              proxy's Anthropic→OpenAI translation.
 //   modelfail — 400 "model not available" for models starting with "dead-"
 //              (a gateway with a broken model channel), 200 otherwise.
+//   rambler  — "thinks out loud" before the answer: /v1/messages returns a
+//              wall of reasoning prose ending in the actual JSON report.
+//              Verifies the analyze handler's JSON extraction.
+//   prose    — returns prose only, no JSON anywhere: verifies the analyze
+//              handler rotates slots and finally falls back to raw text.
 
 import http from 'node:http';
 
@@ -101,6 +106,21 @@ const server = http.createServer((req, res) => {
     if (mode === 'modelfail' && /^dead-/.test(json.model || '')) {
       res.writeHead(400, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ type: 'error', error: { type: 'bad_request', message: 'The requested model is not available.' } }));
+      return;
+    }
+
+    // small model that ignores "JSON only" and narrates its reasoning first
+    if (mode === 'rambler' || mode === 'prose') {
+      const report = mode === 'rambler' ? `\n\n{"headline":"test-proj dominates with 2100 tokens","insights":["glm-5.3 leads model usage"],"stats":[{"label":"Tokens","value":"2.1K"}],"charts":[{"type":"bar","title":"Projects","points":[{"label":"test-proj","value":2100}]}]}` : '';
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({
+        id: 'msg_rambler',
+        type: 'message',
+        role: 'assistant',
+        model: json.model,
+        content: [{ type: 'text', text: `Let me think about this. The user wants JSON. I should list the data: projects, models, providers. The top project is test-proj with 2100 tokens. glm-5.3 leads models. Now I will produce the report carefully, checking the shape requirements first. Here goes:${report}` }],
+        usage: { input_tokens: 10, output_tokens: 5 },
+      }));
       return;
     }
 

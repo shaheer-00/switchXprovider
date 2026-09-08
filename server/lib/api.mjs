@@ -180,6 +180,39 @@ function normalizePriorities(cfg) {
   sorted.forEach((p, i) => (p.priority = i + 1));
 }
 
+// Extract a report object from a model's reply. Handles the clean case, code
+// fences, and — the common small-model failure — a wall of reasoning prose
+// that ends in (or embeds) the JSON object: walk every balanced-brace block
+// and take the first one that parses with a report shape.
+function extractReport(text) {
+  const stripped = text.replace(/```(?:json)?\s*/g, '').trim();
+  try {
+    const r = JSON.parse(stripped);
+    if (r && (r.headline || r.charts)) return r;
+  } catch { /* fall through to brace walking */ }
+  for (let i = text.indexOf('{'); i !== -1; i = text.indexOf('{', i + 1)) {
+    let depth = 0, inStr = false, esc = false;
+    for (let j = i; j < text.length; j++) {
+      const c = text[j];
+      if (esc) { esc = false; continue; }
+      if (c === '\\') { esc = true; continue; }
+      if (c === '"') inStr = !inStr;
+      else if (!inStr && c === '{') depth++;
+      else if (!inStr && c === '}') {
+        depth--;
+        if (depth === 0) {
+          try {
+            const r = JSON.parse(text.slice(i, j + 1));
+            if (r && (r.headline || r.charts)) return r;
+          } catch { /* not this block */ }
+          break;
+        }
+      }
+    }
+  }
+  return null;
+}
+
 function sanitizeProviderInput(body) {
   const errors = [];
   const name = String(body.name || '').trim();
@@ -430,15 +463,17 @@ Return ONLY valid JSON (no markdown fences, no prose outside JSON) with this exa
     {"type": "donut", "title": "short title", "points": [{"label": "name", "value": 123}]}
   ]
 }
-Rules: 2-3 charts max (e.g. projects by tokens, models donut). Numbers in charts must be raw values from the data, not invented. Keep every string short — this renders as graphs, not an essay.
+Rules: 2-3 charts max (e.g. projects by tokens, models donut). Numbers in charts must be raw values from the data, not invented. Keep every string short — this renders as graphs, not an essay. Respond with the JSON object only — no reasoning, no markdown, no prose.
 
 Usage data:
 ${JSON.stringify(stats)}`;
       // A provider can 400 a single model slot ("model not available" from a
       // dead upstream channel) — the proxy correctly passes 400s through
       // without failover, so the analysis call itself rotates across the
-      // sonnet → opus → haiku slots until one returns text.
+      // sonnet → opus → haiku slots. A slot that answers with prose instead
+      // of JSON also rotates away; raw prose is the last resort.
       let lastErr = null;
+      let lastRaw = null;
       for (const slotModel of ['switchx:sonnet', 'switchx:opus', 'switchx:haiku']) {
         try {
           const ac = new AbortController();
@@ -457,13 +492,11 @@ ${JSON.stringify(stats)}`;
           const j = await r.json().catch(() => null);
           const text = (j?.content || []).filter((b) => b?.type === 'text').map((b) => b.text).join('');
           if (text) {
-            // models sometimes wrap JSON in fences — strip before parsing
-            const stripped = text.replace(/^```(?:json)?\s*/m, '').replace(/```\s*$/m, '').trim();
-            let report = null;
-            try { report = JSON.parse(stripped); } catch { /* not JSON — raw text fallback */ }
-            return send(res, 200, report && report.charts
-              ? { ok: true, report, raw: null }
-              : { ok: true, report: null, raw: text });
+            const report = extractReport(text);
+            if (report) return send(res, 200, { ok: true, report, raw: null });
+            lastRaw = text;
+            lastErr = `model returned prose instead of JSON (${slotModel})`;
+            continue;
           }
           const why = j?.error?.message ? ` — ${j.error.message}` : '';
           lastErr = `HTTP ${r.status}${why} (${slotModel})`;
@@ -471,6 +504,7 @@ ${JSON.stringify(stats)}`;
           lastErr = `${e.message} (${slotModel})`;
         }
       }
+      if (lastRaw) return send(res, 200, { ok: true, report: null, raw: lastRaw });
       return send(res, 200, {
         ok: false,
         error: `Analysis failed on every model slot (sonnet, opus, haiku). Last error: ${lastErr}. Check the provider's model IDs in the Providers view — the channel may be down upstream.`,

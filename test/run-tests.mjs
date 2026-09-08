@@ -24,6 +24,8 @@ const MOCK_KEYONLY = 9905;
 const MOCK_BearerONLY = 9906;
 const MOCK_OPENAI = 9907;
 const MOCK_MODELFAIL = 9908;
+const MOCK_RAMBLER = 9909;
+const MOCK_PROSE = 9910;
 
 const home = fs.mkdtempSync(path.join(os.tmpdir(), 'switchx-test-'));
 
@@ -70,10 +72,10 @@ async function waitUp(url, timeoutMs = 8000) {
 
 async function main() {
   // --- mock providers ---
-  for (const [port, mode] of [[MOCK_OK, 'ok'], [MOCK_500, 'fail500'], [MOCK_429, 'ratelimit'], [MOCK_400, 'badreq'], [MOCK_KEYONLY, 'keyonly'], [MOCK_BearerONLY, 'beareronly'], [MOCK_OPENAI, 'openai'], [MOCK_MODELFAIL, 'modelfail']]) {
+  for (const [port, mode] of [[MOCK_OK, 'ok'], [MOCK_500, 'fail500'], [MOCK_429, 'ratelimit'], [MOCK_400, 'badreq'], [MOCK_KEYONLY, 'keyonly'], [MOCK_BearerONLY, 'beareronly'], [MOCK_OPENAI, 'openai'], [MOCK_MODELFAIL, 'modelfail'], [MOCK_RAMBLER, 'rambler'], [MOCK_PROSE, 'prose']]) {
     children.push(spawn(process.execPath, [path.join(__dirname, 'mock.mjs'), String(port), mode], { stdio: 'ignore' }));
   }
-  for (const port of [MOCK_OK, MOCK_500, MOCK_429, MOCK_400, MOCK_KEYONLY, MOCK_BearerONLY, MOCK_OPENAI, MOCK_MODELFAIL]) {
+  for (const port of [MOCK_OK, MOCK_500, MOCK_429, MOCK_400, MOCK_KEYONLY, MOCK_BearerONLY, MOCK_OPENAI, MOCK_MODELFAIL, MOCK_RAMBLER, MOCK_PROSE]) {
     assert(await waitUp(`http://127.0.0.1:${port}/v1/models`), `mock :${port} up`);
   }
 
@@ -468,6 +470,29 @@ async function main() {
   anaRetry = await resp.json();
   assert(resp.status === 200 && anaRetry.ok === false, 'all-slots-dead analyze fails cleanly');
   assert(/not available/.test(anaRetry.error || ''), 'error surfaces the provider reason', JSON.stringify(anaRetry).slice(0, 160));
+  // rambler model: reasoning prose followed by the JSON report — extraction
+  // must pull the report out instead of dumping raw prose in the dashboard
+  resp = await fetch(`${proxyUrl}/api/import`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ providers: [{ name: 'Rambler', baseUrl: `http://127.0.0.1:${MOCK_RAMBLER}`, apiKey: 'k', models: { sonnet: 'rambler-model' } }] }),
+  });
+  resp = await fetch(`${proxyUrl}/api/chaptions/analyze`, { method: 'POST' });
+  let anaR = await resp.json();
+  assert(resp.status === 200 && anaR.ok === true && anaR.report && anaR.report.headline === 'test-proj dominates with 2100 tokens',
+    'analyze extracts the JSON report from a rambling model', JSON.stringify(anaR).slice(0, 160));
+  // prose-only model: no JSON anywhere → slot rotation gives up cleanly and
+  // falls back to raw text (still usable, just not graphed)
+  resp = await fetch(`${proxyUrl}/api/import`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ providers: [{ name: 'ProseOnly', baseUrl: `http://127.0.0.1:${MOCK_PROSE}`, apiKey: 'k', models: { sonnet: 'prose-model' } }] }),
+  });
+  resp = await fetch(`${proxyUrl}/api/chaptions/analyze`, { method: 'POST' });
+  anaR = await resp.json();
+  assert(resp.status === 200 && anaR.ok === true && !anaR.report && /Let me think/.test(anaR.raw || ''),
+    'prose-only model falls back to raw text after trying every slot', JSON.stringify(anaR).slice(0, 160));
+
   // restore a working provider for the sections that follow
   resp = await fetch(`${proxyUrl}/api/import`, {
     method: 'POST',
