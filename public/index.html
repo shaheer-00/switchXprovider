@@ -38,9 +38,13 @@
   .app { display: flex; min-height: 100vh; }
   aside {
     width: 220px; flex: none; display: flex; flex-direction: column;
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
     border-right: 1px solid var(--border); background: var(--bg);
-    padding: var(--sp-4) var(--sp-3); gap: var(--sp-4);
+    padding: var(--sp-4) var(--sp-3) 64px; gap: var(--sp-4);
   }
+  /* the extra 64px bottom padding above clears a strip at the foot of the
+     sidebar for the fixed .wizlaunch pill — it must never overlap the
+     sidebottom links above it or main content to the right */
   .brand { display: flex; gap: 10px; align-items: center; padding: 0 var(--sp-2); }
   .brandmark {
     width: 28px; height: 28px; border-radius: var(--r-sm); flex: none;
@@ -223,7 +227,10 @@
      after el.hidden = true. */
   [hidden] { display: none !important; }
   .wizlaunch {
-    position: fixed; top: 14px; right: 18px; z-index: 40;
+    /* docked at the foot of the sidebar (space carved by aside's bottom
+       padding) — the old top:14px/right:18px spot sat on top of every
+       viewhead's action buttons at viewport widths <= ~1420px */
+    position: fixed; left: 18px; bottom: 14px; z-index: 40;
     background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px;
     color: var(--muted); font-size: 12px; font-weight: 600; padding: 7px 14px;
     cursor: pointer; backdrop-filter: blur(8px);
@@ -744,6 +751,9 @@
 
   @media (max-width: 860px) {
     aside { width: 62px; padding: var(--sp-3) var(--sp-2); }
+    /* the 62px collapsed sidebar can't fit the wizlaunch pill — float it
+       bottom-right, stacked above the toast zone */
+    .wizlaunch { left: auto; right: var(--sp-4); bottom: 70px; }
     .brand .t, .brand .s, nav button .lbl, .navlbl, .sidebottom .sideText { display: none; }
     .brand { justify-content: center; }
     nav button { justify-content: center; }
@@ -788,9 +798,11 @@
   .btn-secondary { background: var(--surface); border-color: var(--border); color: var(--text); }
   .btn-secondary:hover { background: var(--surface-2); }
   .btn-ghost { background: none; color: var(--muted); }
-  .btn-ghost:hover { color: var(--text); background: var(--surface-2); }
+  /* border-color/box-shadow: the legacy button:hover below would otherwise
+     bleed an accent border + glow through the ghost/danger hovers */
+  .btn-ghost:hover { color: var(--text); background: var(--surface-2); border-color: transparent; box-shadow: none; }
   .btn-danger, button.danger { background: none; color: var(--red); border-color: transparent; }
-  .btn-danger:hover, button.danger:hover { background: rgba(248,113,113,.08); }
+  .btn-danger:hover, button.danger:hover { background: rgba(248,113,113,.08); border-color: transparent; box-shadow: none; }
 
   /* ---- cards & stats ---- */
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--sp-4); }
@@ -814,6 +826,9 @@
   /* ---- status dots ---- */
   .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 7px; vertical-align: middle; }
   .dot-up { background: var(--green); box-shadow: 0 0 0 0 rgba(52,211,153,.5); animation: dotpulse 2s infinite; }
+  /* dotpulse means "provider alive" — inside pills (Discover's FREE badge)
+     the dot is just a colored swatch, so keep it still */
+  .pill .dot { animation: none; }
   .dot-down { background: var(--red); }
   .dot-cd { background: var(--amber); }
   .dot-off { background: var(--dim); }
