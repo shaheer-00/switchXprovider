@@ -23,6 +23,7 @@ const MOCK_400 = 9904;
 const MOCK_KEYONLY = 9905;
 const MOCK_BearerONLY = 9906;
 const MOCK_OPENAI = 9907;
+const MOCK_MODELFAIL = 9908;
 
 const home = fs.mkdtempSync(path.join(os.tmpdir(), 'switchx-test-'));
 
@@ -69,10 +70,10 @@ async function waitUp(url, timeoutMs = 8000) {
 
 async function main() {
   // --- mock providers ---
-  for (const [port, mode] of [[MOCK_OK, 'ok'], [MOCK_500, 'fail500'], [MOCK_429, 'ratelimit'], [MOCK_400, 'badreq'], [MOCK_KEYONLY, 'keyonly'], [MOCK_BearerONLY, 'beareronly'], [MOCK_OPENAI, 'openai']]) {
+  for (const [port, mode] of [[MOCK_OK, 'ok'], [MOCK_500, 'fail500'], [MOCK_429, 'ratelimit'], [MOCK_400, 'badreq'], [MOCK_KEYONLY, 'keyonly'], [MOCK_BearerONLY, 'beareronly'], [MOCK_OPENAI, 'openai'], [MOCK_MODELFAIL, 'modelfail']]) {
     children.push(spawn(process.execPath, [path.join(__dirname, 'mock.mjs'), String(port), mode], { stdio: 'ignore' }));
   }
-  for (const port of [MOCK_OK, MOCK_500, MOCK_429, MOCK_400, MOCK_KEYONLY, MOCK_BearerONLY, MOCK_OPENAI]) {
+  for (const port of [MOCK_OK, MOCK_500, MOCK_429, MOCK_400, MOCK_KEYONLY, MOCK_BearerONLY, MOCK_OPENAI, MOCK_MODELFAIL]) {
     assert(await waitUp(`http://127.0.0.1:${port}/v1/models`), `mock :${port} up`);
   }
 
@@ -120,7 +121,10 @@ async function main() {
       { id: 'pok', name: 'GoodProvider', baseUrl: `http://127.0.0.1:${MOCK_OK}`, apiKey: 'key-ok', authStyle: 'anthropic', priority: 3, enabled: true, models: { sonnet: 'good-sonnet', opus: 'good-opus' } },
       { id: 'p400', name: 'BadRequest', baseUrl: `http://127.0.0.1:${MOCK_400}`, apiKey: 'key-400', authStyle: 'anthropic', priority: 4, enabled: true, models: { sonnet: 'bad-sonnet' } },
     ],
-    usage: seededUsage,
+    usage: { ...seededUsage, byProject: {
+      // attributed project so /api/chaptions/analyze has data to analyze
+      'F--Claude-test-proj': { dir: 'F:/Claude/test-proj', name: 'test-proj', inputTokens: 1500, outputTokens: 400, cacheReadTokens: 200, requests: 4, costUsd: 0.02, byDay: {} },
+    } },
     stats: {},
     events: [],
   }));
@@ -438,6 +442,39 @@ async function main() {
 
   const st = await (await fetch(`${proxyUrl}/api/status`)).json();
   assert('claudeCode' in st && typeof st.claudeCode.configured === 'boolean', 'status reports Claude Code install state', JSON.stringify(st.claudeCode));
+
+  // --- 9a. analyze retries across model slots; surfaces provider error detail ---
+  // (runs BEFORE the usage reset below — it needs the seeded byProject data)
+  console.log('\n— chaptions analyze slot retry —');
+  // sonnet channel dead (400 = passthrough, no proxy failover) but opus works:
+  // the analyze call itself must rotate sonnet → opus → haiku
+  resp = await fetch(`${proxyUrl}/api/import`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ providers: [{ name: 'DeadChannel', baseUrl: `http://127.0.0.1:${MOCK_MODELFAIL}`, apiKey: 'k', models: { sonnet: 'dead-sonnet', opus: 'good-opus' } }] }),
+  });
+  assert(resp.ok, 'imported dead-channel provider');
+  resp = await fetch(`${proxyUrl}/api/chaptions/analyze`, { method: 'POST' });
+  let anaRetry = await resp.json();
+  assert(resp.status === 200 && anaRetry.ok === true, 'analyze recovers by retrying sonnet → opus when the sonnet channel 400s', JSON.stringify(anaRetry).slice(0, 160));
+  assert(anaRetry.raw || anaRetry.report, 'analysis returned text via the working slot');
+  // all three slots dead → clean failure naming the provider error, not "no text"
+  resp = await fetch(`${proxyUrl}/api/import`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ providers: [{ name: 'AllDead', baseUrl: `http://127.0.0.1:${MOCK_MODELFAIL}`, apiKey: 'k', models: { sonnet: 'dead-sonnet', opus: 'dead-opus', haiku: 'dead-haiku' } }] }),
+  });
+  resp = await fetch(`${proxyUrl}/api/chaptions/analyze`, { method: 'POST' });
+  anaRetry = await resp.json();
+  assert(resp.status === 200 && anaRetry.ok === false, 'all-slots-dead analyze fails cleanly');
+  assert(/not available/.test(anaRetry.error || ''), 'error surfaces the provider reason', JSON.stringify(anaRetry).slice(0, 160));
+  // restore a working provider for the sections that follow
+  resp = await fetch(`${proxyUrl}/api/import`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ providers: [{ name: 'GoodProvider', baseUrl: `http://127.0.0.1:${MOCK_OK}`, apiKey: 'key-ok', models: { sonnet: 'good-sonnet' } }] }),
+  });
+  assert(resp.ok, 'working provider restored');
 
   resp = await fetch(`${proxyUrl}/api/usage/reset`, { method: 'POST' });
   assert(resp.ok, 'usage reset works');

@@ -434,33 +434,47 @@ Rules: 2-3 charts max (e.g. projects by tokens, models donut). Numbers in charts
 
 Usage data:
 ${JSON.stringify(stats)}`;
-      try {
-        const ac = new AbortController();
-        const timer = setTimeout(() => ac.abort(), 60_000);
-        const r = await fetch(`http://127.0.0.1:${cfg.port}/v1/messages`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json', 'x-api-key': 'switchx-local' },
-          body: JSON.stringify({
-            model: 'switchx:sonnet',
-            max_tokens: 1500,
-            messages: [{ role: 'user', content: prompt }],
-          }),
-          signal: ac.signal,
-        });
-        clearTimeout(timer);
-        const j = await r.json().catch(() => null);
-        const text = (j?.content || []).filter((b) => b?.type === 'text').map((b) => b.text).join('');
-        if (!text) return send(res, 200, { ok: false, error: `Analysis provider returned no text (status ${r.status}).` });
-        // models sometimes wrap JSON in fences — strip before parsing
-        const stripped = text.replace(/^```(?:json)?\s*/m, '').replace(/```\s*$/m, '').trim();
-        let report = null;
-        try { report = JSON.parse(stripped); } catch { /* not JSON — raw text fallback */ }
-        return send(res, 200, report && report.charts
-          ? { ok: true, report, raw: null }
-          : { ok: true, report: null, raw: text });
-      } catch (e) {
-        return send(res, 200, { ok: false, error: `Analysis call failed: ${e.message}` });
+      // A provider can 400 a single model slot ("model not available" from a
+      // dead upstream channel) — the proxy correctly passes 400s through
+      // without failover, so the analysis call itself rotates across the
+      // sonnet → opus → haiku slots until one returns text.
+      let lastErr = null;
+      for (const slotModel of ['switchx:sonnet', 'switchx:opus', 'switchx:haiku']) {
+        try {
+          const ac = new AbortController();
+          const timer = setTimeout(() => ac.abort(), 60_000);
+          const r = await fetch(`http://127.0.0.1:${cfg.port}/v1/messages`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'x-api-key': 'switchx-local' },
+            body: JSON.stringify({
+              model: slotModel,
+              max_tokens: 1500,
+              messages: [{ role: 'user', content: prompt }],
+            }),
+            signal: ac.signal,
+          });
+          clearTimeout(timer);
+          const j = await r.json().catch(() => null);
+          const text = (j?.content || []).filter((b) => b?.type === 'text').map((b) => b.text).join('');
+          if (text) {
+            // models sometimes wrap JSON in fences — strip before parsing
+            const stripped = text.replace(/^```(?:json)?\s*/m, '').replace(/```\s*$/m, '').trim();
+            let report = null;
+            try { report = JSON.parse(stripped); } catch { /* not JSON — raw text fallback */ }
+            return send(res, 200, report && report.charts
+              ? { ok: true, report, raw: null }
+              : { ok: true, report: null, raw: text });
+          }
+          const why = j?.error?.message ? ` — ${j.error.message}` : '';
+          lastErr = `HTTP ${r.status}${why} (${slotModel})`;
+        } catch (e) {
+          lastErr = `${e.message} (${slotModel})`;
+        }
       }
+      return send(res, 200, {
+        ok: false,
+        error: `Analysis failed on every model slot (sonnet, opus, haiku). Last error: ${lastErr}. Check the provider's model IDs in the Providers view — the channel may be down upstream.`,
+      });
     }
 
     // ---- pricing ----

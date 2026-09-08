@@ -10,6 +10,8 @@
 //   openai   — OpenAI-protocol provider: /chat/completions only (JSON + SSE
 //              with tool calls + usage), everything else 404. Verifies the
 //              proxy's Anthropic→OpenAI translation.
+//   modelfail — 400 "model not available" for models starting with "dead-"
+//              (a gateway with a broken model channel), 200 otherwise.
 
 import http from 'node:http';
 
@@ -93,6 +95,14 @@ const server = http.createServer((req, res) => {
 
     const auth = req.headers['x-api-key'] || req.headers['authorization'] || '';
     const json = JSON.parse(body || '{}');
+
+    // gateway with a dead model channel: 400 (client-error class → the proxy
+    // passes it through without failover) for dead-* models only
+    if (mode === 'modelfail' && /^dead-/.test(json.model || '')) {
+      res.writeHead(400, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ type: 'error', error: { type: 'bad_request', message: 'The requested model is not available.' } }));
+      return;
+    }
 
     if (mode === 'ok' && json.stream) {
       // SSE with realistic usage events: message_start carries input tokens,
