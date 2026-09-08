@@ -845,9 +845,43 @@
   .chdonut .legend { flex: 1; display: block; min-width: 0; }
   .chdonut .legend .lr { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin: 4px 0; }
   .chdonut .legend .lr i { width: 9px; height: 9px; border-radius: 2px; flex: none; }
-  .chloading { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; padding: var(--sp-4) 0; }
-  .chloading .spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border); border-top-color: var(--accent); animation: chspin 0.8s linear infinite; }
-  @keyframes chspin { to { transform: rotate(360deg); } }
+  .chloading { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: var(--sp-6) 0; }
+  /* z.ai-style thinking mark: breathing gradient orb, rotating arc, pulsing glow */
+  .ai-orb { position: relative; width: 46px; height: 46px; flex: none; }
+  .ai-orb i {
+    position: absolute; inset: 5px; border-radius: 50%;
+    background: radial-gradient(circle at 32% 30%, #a855f7, var(--accent) 45%, var(--accent-2) 95%);
+    animation: orb-breathe 2.2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  }
+  .ai-orb::before {
+    content: ''; position: absolute; inset: 0; border-radius: 50%;
+    background: conic-gradient(from 0deg, transparent 0 30%, rgba(34, 211, 238, 0.85) 50%, transparent 70% 100%);
+    -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+    mask: radial-gradient(closest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+    animation: orb-arc 1.6s linear infinite;
+  }
+  .ai-orb::after {
+    content: ''; position: absolute; inset: -10px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(110, 121, 244, 0.35), transparent 70%);
+    animation: orb-glow 2.2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  }
+  @keyframes orb-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+  @keyframes orb-arc { to { transform: rotate(360deg); } }
+  @keyframes orb-glow { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+  .shimmer {
+    font-size: 13px; color: transparent;
+    background: linear-gradient(90deg, var(--dim) 25%, var(--text) 50%, var(--dim) 75%);
+    background-size: 200% 100%;
+    -webkit-background-clip: text; background-clip: text;
+    animation: shimmer 2s linear infinite;
+  }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+  @media (prefers-reduced-motion: reduce) {
+    .ai-orb i, .ai-orb::before, .shimmer { animation: none; }
+    .ai-orb i { transform: none; }
+    .shimmer { background: none; color: var(--muted); }
+    .ai-orb::after { animation: orb-glow 2.8s ease-in-out infinite; } /* opacity pulse only — no movement */
+  }
 
   /* ---- settings (grouped card sections) ---- */
   .grouplbl {
@@ -2521,7 +2555,7 @@ window.chAnalyze = async () => {
   const out = $('chReport');
   card.hidden = false;
   btn.disabled = true;
-  out.innerHTML = '<div class="chloading"><span class="spin"></span> analyzing your usage through your own providers…</div>';
+  out.innerHTML = '<div class="chloading"><span class="ai-orb"><i></i></span><span class="shimmer">analyzing your usage through your own providers…</span></div>';
   card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   try {
     const r = await api('/api/chaptions/analyze', { method: 'POST' });
