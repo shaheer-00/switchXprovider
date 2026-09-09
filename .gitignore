@@ -5,3 +5,4 @@ node_modules/
 Thumbs.db
 /overview.png
 .gstack/
+*.png
