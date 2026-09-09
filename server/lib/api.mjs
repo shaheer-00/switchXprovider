@@ -756,7 +756,14 @@ ${JSON.stringify(stats)}`;
     if (method === 'POST' && resource === 'providers' && id === 'fetch-models' && !action) {
       const body = await readJson(req);
       const baseUrl = String(body.baseUrl || '').trim();
-      const apiKey = String(body.apiKey || '').trim();
+      let apiKey = String(body.apiKey || '').trim();
+      // Editing an existing provider: the form leaves the key blank (it's
+      // stored server-side, never sent to the client), so fall back to the
+      // saved key when a providerId is supplied.
+      if (!apiKey && body.providerId) {
+        const existing = cfg.providers.find((x) => x.id === body.providerId);
+        if (existing) apiKey = existing.apiKey || '';
+      }
       if (!/^https?:\/\//.test(baseUrl)) return send(res, 400, { error: 'baseUrl must start with http:// or https://' });
       if (!apiKey) return send(res, 400, { error: 'apiKey is required' });
       const target = {

@@ -3311,17 +3311,22 @@ function bestModelFor(models, slot) {
 window.fetchProviderModels = async () => {
   const baseUrl = $('f_baseUrl').value.trim();
   const apiKey = $('f_apiKey').value.trim();
+  const editingId = $('f_id').value || '';
   if (!/^https?:\/\//.test(baseUrl)) return toast('Enter the base URL first', true);
-  if (!apiKey) return toast('Enter the API key first — nothing is saved until you click Add', true);
+  // When adding a new provider, the key is required; when editing, the
+  // server uses the stored key via providerId, so the field can be blank.
+  if (!apiKey && !editingId) return toast('Enter the API key first — nothing is saved until you click Add', true);
   const btn = $('fetchModelsBtn');
   btn.disabled = true;
   const orig = btn.textContent;
   btn.textContent = 'fetching…';
   try {
+    const body = { baseUrl, apiKey, authStyle: $('f_authStyle').value };
+    if (editingId) body.providerId = editingId;
     const r = await api('/api/providers/fetch-models', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ baseUrl, apiKey, authStyle: $('f_authStyle').value }),
+      body: JSON.stringify(body),
     });
     if (!r.models?.length) { toast(r.error || 'No models found', true); return; }
     // every slot becomes an autocomplete dropdown of available IDs
