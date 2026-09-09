@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { newId, statsFor, logEvent, persistSoon, emptyUsage, DIR, PROCESS_START } from './config.mjs';
 import { PRICING, effectivePrice, aliasSuggestions, recalcCosts } from './pricing.mjs';
 import { enabledSorted, isDown, COOLDOWNS } from './proxy.mjs';
-import { probe, deepCheck, fetchModels } from './health.mjs';
+import { probe, deepCheck, fetchModels, drain } from './health.mjs';
 import { enableRouting, disableRouting } from './routing.mjs';
 
 const JSON_HDR = { 'content-type': 'application/json', 'cache-control': 'no-store' };
@@ -778,12 +778,15 @@ ${JSON.stringify(stats)}`;
         return send(res, 200, { models: [], error: `could not reach ${baseUrl} — ${e.message}` });
       }
       if (resp2.status === 401 || resp2.status === 403) {
+        drain(resp2);
         return send(res, 200, { models: [], error: `authentication failed (${resp2.status}) — check the API key` });
       }
       if (resp2.status === 404 || resp2.status === 405) {
+        drain(resp2);
         return send(res, 200, { models: [], error: 'this provider does not expose a model list — enter the model IDs manually' });
       }
       if (!resp2.ok) {
+        drain(resp2);
         return send(res, 200, { models: [], error: `provider returned HTTP ${resp2.status}` });
       }
       try {

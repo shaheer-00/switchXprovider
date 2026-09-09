@@ -21,10 +21,21 @@ const CLAUDE_UA = 'claude-cli/2.0.14 (external, cli)';
 export async function probe(p) {
   try {
     const resp = await fetchModels(p);
+    drain(resp);
     return ![401, 402, 403, 429, 500, 502, 503, 504, 529].includes(resp.status);
   } catch {
     return false;
   }
+}
+
+// Consume/discard a response body so the keep-alive socket returns to the
+// undici pool clean. An abandoned (unread) body leaves the socket "dirty";
+// the next request that reuses it dies with an uncaught `TypeError:
+// terminated` — which, for a live SSE stream, kills the Claude Code request
+// mid-body ("AI service stream failed"). Every status-only check on a fetch
+// whose body won't be read must call this.
+export function drain(resp) {
+  try { resp.body?.cancel().catch(() => { /* body already gone */ }); } catch { /* no body */ }
 }
 
 // GET {base}/v1/models with the provider's auth. Exported for the dashboard's
@@ -61,6 +72,7 @@ export async function deepCheck(p) {
   } catch {
     return { ok: false, missing: [] };
   }
+  drain(resp);
   if ([401, 402, 403, 429, 500, 502, 503, 504, 529].includes(resp.status)) {
     return { ok: false, missing: [] };
   }
