@@ -1757,6 +1757,14 @@ try { if (localStorage.getItem('switchx-theme') === 'light') document.documentEl
           <button class="primary" id="routingBtn" onclick="toggleRouting()">…</button>
         </div>
         <div class="hint" id="routingHint" style="margin-top:10px"></div>
+        <div class="setrow">
+          <div class="info">
+            <div class="t">Hide "claude.ai connectors are disabled" warning</div>
+            <div class="d">Claude Code shows a yellow warning at startup while switchX's auth settings take precedence over your claude.ai login — org connectors can't load through the proxy anyway. This opts out of connector loading on purpose, which hides the warning.</div>
+          </div>
+          <button class="btn btn-secondary" id="warningBtn" onclick="toggleWarning()">…</button>
+        </div>
+        <div class="hint" style="margin-top:10px">Restart Claude Code after changing either toggle. Turning routing off restores connectors automatically.</div>
       </div>
 
       <div class="grouplbl">Configuration</div>
@@ -2851,8 +2859,21 @@ function renderSettings() {
       ? 'Changes take effect after you restart Claude Code.'
       : 'Add at least one enabled provider before turning routing on.');
   $('setPort').textContent = `http://127.0.0.1:${port}`;
+  const wbtn = $('warningBtn');
+  wbtn.textContent = cc.warningHidden ? 'Show warning again' : 'Hide warning';
+  wbtn.className = cc.warningHidden ? 'btn' : 'btn btn-secondary';
   if (statusState.catalogUrl) $('catalogUrl').value = statusState.catalogUrl;
 }
+
+window.toggleWarning = async () => {
+  const cc = statusState.claudeCode || {};
+  const hiding = !cc.warningHidden;
+  try {
+    const r = await api('/api/warning', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ hidden: hiding }) });
+    toast(r.warningHidden ? 'Warning hidden — restart Claude Code to apply' : 'Warning restored — restart Claude Code to apply');
+    refresh();
+  } catch (e) { toast(e.message, true); }
+};
 
 window.toggleRouting = async () => {
   const cc = statusState.claudeCode || {};

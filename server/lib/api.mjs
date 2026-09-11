@@ -10,7 +10,7 @@ import { newId, statsFor, logEvent, persistSoon, emptyUsage, DIR, PROCESS_START 
 import { PRICING, effectivePrice, aliasSuggestions, recalcCosts } from './pricing.mjs';
 import { enabledSorted, isDown, COOLDOWNS } from './proxy.mjs';
 import { probe, deepCheck, fetchModels, drain } from './health.mjs';
-import { enableRouting, disableRouting } from './routing.mjs';
+import { enableRouting, disableRouting, setWarningHidden } from './routing.mjs';
 
 const JSON_HDR = { 'content-type': 'application/json', 'cache-control': 'no-store' };
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -167,9 +167,10 @@ function claudeCodeStatus(cfg) {
       configured: env.ANTHROPIC_BASE_URL === `http://127.0.0.1:${cfg.port}`,
       baseUrl: env.ANTHROPIC_BASE_URL || null,
       models: env.ANTHROPIC_DEFAULT_SONNET_MODEL || null,
+      warningHidden: env.ENABLE_CLAUDEAI_MCP_SERVERS === '0',
     };
   } catch {
-    return { configured: false, baseUrl: null, models: null };
+    return { configured: false, baseUrl: null, models: null, warningHidden: false };
   }
 }
 
@@ -662,6 +663,14 @@ ${JSON.stringify(stats)}`;
       const result = enabled
         ? enableRouting(cfg.port, (msg) => logEvent(cfg, msg))
         : disableRouting(cfg.port, (msg) => logEvent(cfg, msg));
+      return send(res, 200, { ok: true, ...result, ...claudeCodeStatus(cfg) });
+    }
+
+    // ---- hide Claude Code's "claude.ai connectors are disabled" startup warning ----
+    if (method === 'POST' && resource === 'warning') {
+      const body = await readJson(req);
+      const hidden = body.hidden === true;
+      const result = setWarningHidden(hidden, (msg) => logEvent(cfg, msg));
       return send(res, 200, { ok: true, ...result, ...claudeCodeStatus(cfg) });
     }
 

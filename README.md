@@ -8,12 +8,16 @@ A zero-dependency Claude Code plugin that routes your API traffic through a loca
 proxy with automatic failover, auto-recovery, live usage analytics — and
 **every provider free out of the box (free models, credits, or daily-login rewards)**, with more on the way.
 
+Works with any Anthropic- or OpenAI-compatible endpoint — GLM, DeepSeek, Kimi, Gemini,
+OpenRouter, gateways, or your own server — so you can use any LLM (or free models) in
+Claude Code without forking it or routing through a middleman.
+
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node >=18](https://img.shields.io/badge/node-%3E%3D18-green.svg)](package.json)
 [![Zero dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](package.json)
 [![Buy me a coffee](https://img.shields.io/badge/%E2%98%95-buy%20me%20a%20coffee-FFDD00)](https://buymeacoffee.com/shaheer0.0)
 
-*An alternative to OmniRouter — your keys, your machine, no middleman.*
+*An alternative to OmniRouter — your keys, your machine, no middleman. An alternative to OpenClaude — no fork, keep the real Claude Code.*
 
 </div>
 
@@ -40,9 +44,9 @@ proxy with automatic failover, auto-recovery, live usage analytics — and
 |---|---|
 | ![Pricing](docs/screenshots/pricing.png) | ![Settings](docs/screenshots/settings.png) |
 
-| Help — common issues and fixes |
-|---|
-| ![Help](docs/screenshots/help.png) |
+| Help — common issues and fixes | Chaptions — per-project analytics |
+|---|---|
+| ![Help](docs/screenshots/help.png) | ![Chaptions](docs/screenshots/chaptions.png) |
 
 </details>
 
@@ -85,6 +89,25 @@ Both projects solve *"never stop coding when a provider dies"* — but with oppo
 **Pick OmniRoute if:** you have no keys at all and want free pooled community tokens, accepting a third party in the path.
 
 They also compose — run OmniRouter as one provider entry in switchXprovider, and its outage fails over to your backup key automatically.
+
+## How it differs from OpenClaude
+
+OpenClaude (the open-source Claude Code fork) and switchXprovider both free Claude Code from a single provider — but one replaces the tool, the other keeps it. **switchXprovider routes the real, official Claude Code to any LLM provider through a local proxy. Your plugins, skills, MCP servers, keybindings, and settings all keep working untouched.**
+
+| | switchXprovider | OpenClaude |
+|---|:---:|:---:|
+| **Approach** | Proxy plugin inside official Claude Code | Standalone fork — separate CLI, separate config (`~/.openclaude`) |
+| **Your setup** | Keeps every plugin, skill, MCP server, and setting you already have | Fresh tool, fresh config — Claude Code plugins and config don't carry over |
+| **Failover** | Automatic, mid-request, with auto-recovery and learning cooldowns | Manual `/provider` profile switching |
+| **Free providers** | Catalog of free-tier gateways (free models, credits, daily rewards) built in | Bring your own endpoints |
+| **Usage analytics** | Tokens, latency, success rate, estimated cost — per provider / model / day, with shareable PNG cards | — |
+| **Footprint** | 0 dependencies, ~12 files, one Node process | Full CLI + gRPC server + VS Code extension |
+
+**Pick switchXprovider if:** you like Claude Code itself and just want to run it on GLM, DeepSeek, Kimi, Gemini, OpenRouter free models, or any Anthropic/OpenAI-compatible gateway — with automatic failover when one dies.
+
+**Pick OpenClaude if:** you want a fully separate, modified agent CLI and don't mind leaving the official tool and its plugin ecosystem behind.
+
+They solve different problems honestly — but if your search was *"use another provider in Claude Code without forking it"*, you're home.
 
 ## 🆓 Free providers, built in
 

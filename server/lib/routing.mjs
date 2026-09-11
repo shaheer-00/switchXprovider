@@ -21,6 +21,14 @@ const ENV_KEYS = [
   'ANTHROPIC_DEFAULT_HAIKU_MODEL',
 ];
 
+// Setting this env key tells Claude Code you don't want claude.ai org
+// connectors loaded — which hides the startup warning about them being
+// disabled by auth precedence. Connectors can't load through the proxy
+// anyway (the same auth precedence blocks them), so hiding costs nothing.
+// Verified against the Claude Code 2.1.x binary: the warning is only shown
+// for the api_key_precedence eligibility reason, not for an intentional opt-out.
+const CONNECTORS_KEY = 'ENABLE_CLAUDEAI_MCP_SERVERS';
+
 function settingsPath() {
   return path.join(os.homedir(), '.claude', 'settings.json');
 }
@@ -116,10 +124,41 @@ export function disableRouting(port, log) {
   if (!restored) {
     for (const k of ENV_KEYS) delete settings.env[k];
   }
+  // Routing off means claude.ai connectors become loadable again (subscription
+  // auth) — drop the opt-out so they come back instead of staying silently off.
+  delete settings.env[CONNECTORS_KEY];
   if (!Object.keys(settings.env).length) delete settings.env;
   writeSettings(settings);
   log(restored
     ? 'Routing DISABLED — original env settings restored from the installer backup. Restart Claude Code to apply.'
     : 'Routing DISABLED — proxy env keys removed from settings.json. Restart Claude Code to apply.');
   return { enabled: false, restored: restored > 0 };
+}
+
+// ---- Claude Code "claude.ai connectors are disabled" startup warning ----
+// While routed through the proxy, Claude Code warns at startup that its auth
+// env takes precedence over the claude.ai login and org connectors won't
+// load. Setting CONNECTORS_KEY='0' opts out of connector loading on purpose,
+// which hides the warning. See the comment on CONNECTORS_KEY above.
+
+export function warningState() {
+  const settings = readSettings();
+  const env = settings.env || {};
+  return { hidden: env[CONNECTORS_KEY] === '0' };
+}
+
+export function setWarningHidden(hidden, log) {
+  const settings = readSettings();
+  settings.env = { ...(settings.env || {}) };
+  if (hidden) {
+    settings.env[CONNECTORS_KEY] = '0';
+  } else {
+    delete settings.env[CONNECTORS_KEY];
+    if (!Object.keys(settings.env).length) delete settings.env;
+  }
+  writeSettings(settings);
+  log(hidden
+    ? 'Claude Code connectors warning hidden (claude.ai connectors opted out). Restart Claude Code to apply.'
+    : 'Claude Code connectors warning restored. Restart Claude Code to apply.');
+  return { hidden };
 }
