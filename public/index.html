@@ -338,6 +338,42 @@
   .fcard.active { border-color: rgba(110,121,244,0.55); box-shadow: 0 0 18px rgba(110,121,244,0.35); }
   .fcard.dragging { cursor: grabbing; z-index: 9; box-shadow: 0 16px 40px rgba(0,0,0,0.5); scale: 1.04; }
   .fcard .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .fcard .dotwrap { position: relative; width: 9px; height: 9px; flex-shrink: 0; }
+  .fcard .dotwrap .dot { position: absolute; inset: 0; }
+  /* cooldown depletion ring around the status dot */
+  .fcard .cdring {
+    position: absolute; left: -5.5px; top: -5.5px; width: 20px; height: 20px;
+    transform: rotate(-90deg); pointer-events: none; opacity: 0; transition: opacity 0.2s;
+  }
+  .fcard .cdring.on { opacity: 1; }
+  .fcard .cdring circle { fill: none; }
+  .fcard .cdring .bgc { stroke: rgba(248,113,113,0.18); stroke-width: 2; }
+  .fcard .cdring .fgc { stroke: var(--red); stroke-width: 2; stroke-linecap: round; }
+  /* model slot chips (S/O/H) */
+  .fcard .pchips { display: flex; gap: 3px; margin-top: 3px; }
+  .fcard .pchip {
+    font-size: 8.5px; font-family: var(--mono); line-height: 1; color: var(--muted);
+    background: var(--overlay-05); border: 1px solid var(--border);
+    border-radius: 4px; padding: 2px 4px; cursor: default;
+  }
+  /* live tok/s sparkline */
+  .fcard .pspark { margin-top: 4px; height: 14px; }
+  .fcard .pspark canvas { width: 100%; height: 14px; display: block; }
+  /* hover stat card */
+  .fstat {
+    position: absolute; z-index: 30; pointer-events: none;
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-md);
+    box-shadow: 0 12px 36px rgba(0,0,0,0.45);
+    padding: 10px 12px; min-width: 190px; max-width: 250px;
+    font-size: 11px; line-height: 1.7; color: var(--muted);
+  }
+  .fstat .fsname { font-size: 12.5px; font-weight: 700; color: var(--text); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fstat .fsrow { display: flex; justify-content: space-between; gap: 14px; white-space: nowrap; }
+  .fstat .fsrow b { color: var(--text); font-weight: 600; }
+  .fstat .fsmodels { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--border); color: var(--dim); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* traffic particles (svg circles in #flowParticles) */
+  .flowedges .particle { fill: #22d3ee; }
+  .flowedges .particle.warm { fill: #6e79f4; }
   .fcard .pcol { min-width: 0; }
   .fcard .pname { font-size: 12.5px; font-weight: 600; white-space: nowrap; color: var(--text); }
   .fcard .psub { font-size: 10px; color: var(--dim); white-space: nowrap; }
@@ -1305,6 +1341,7 @@ try { if (localStorage.getItem('switchx-theme') === 'light') document.documentEl
                   </linearGradient>
                 </defs>
               </svg>
+              <svg class="flowedges" id="flowParticles" xmlns="http://www.w3.org/2000/svg"></svg>
               <div class="fnode fclient" id="fclient">
                 <div class="t">Claude Code</div>
                 <div class="s">settings.json</div>
@@ -1315,7 +1352,7 @@ try { if (localStorage.getItem('switchx-theme') === 'light') document.documentEl
               </div>
             </div>
           </div>
-          <div class="flowhint">drag the bubbles anywhere — just for fun · click one to open it in <span class="kbd">Providers</span></div>
+          <div class="flowhint">drag the bubbles anywhere — just for fun · hover for stats · click one to open it in <span class="kbd">Providers</span></div>
         </div>
       </div>
 
@@ -2195,12 +2232,57 @@ let flowSig = '';
 let flowSel = null;
 const flowPos = new Map(); // pid → {x, y} bubble position (px, within flowarea)
 
+// live traffic: req + token deltas between 3s refreshes → per-provider rate
+const flowRate = new Map(); // pid → { rps, tps, reqs, toks, ts }
+// rolling per-provider tok/s history for the sparkline
+const flowSpark = new Map(); // pid → number[≤40]
+// cooldown deadlines extrapolated locally so the ring ticks smoothly
+const flowDead = new Map(); // pid → absolute ms timestamp when cooldown ends
+
+function flowMotionOn() {
+  if (document.documentElement.classList.contains('no-motion')) return false;
+  if (document.documentElement.classList.contains('force-motion')) return true;
+  return !matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+// feed live deltas into flowRate/flowSpark on every refresh
+function flowTrackUsage() {
+  const now = Date.now();
+  const byProv = new Map((usage.byProvider || []).map((p) => [p.id, p]));
+  const ids = new Set([...byProv.keys(), ...flowRate.keys()]);
+  for (const id of ids) {
+    const u = byProv.get(id);
+    const toks = u ? (u.inputTokens || 0) + (u.outputTokens || 0) + (u.cacheReadTokens || 0) + (u.cacheCreationTokens || 0) : 0;
+    const reqs = u?.requests || 0;
+    const prev = flowRate.get(id);
+    if (prev) {
+      const dt = Math.max(1, (now - prev.ts) / 1000);
+      const rps = Math.max(0, (reqs - prev.reqs) / dt);
+      const tps = Math.max(0, (toks - prev.toks) / dt);
+      flowRate.set(id, { rps, tps, reqs, toks, ts: now });
+      const hist = flowSpark.get(id) || [];
+      hist.push(tps);
+      if (hist.length > 40) hist.shift();
+      flowSpark.set(id, hist);
+    } else {
+      flowRate.set(id, { rps: 0, tps: 0, reqs, toks, ts: now });
+      flowSpark.set(id, [0]);
+    }
+  }
+}
+
+function flowRps(pid) { return flowRate.get(pid)?.rps || 0; }
+function flowTps(pid) { return flowRate.get(pid)?.tps || 0; }
+
 function renderFlow() {
   const ps = statusState.providers || [];
-  const sig = JSON.stringify(ps.map((p) => [p.name, p.status, p.priority])) + '|' + port;
+  const sig = JSON.stringify(ps.map((p) => [p.name, p.status, p.priority, p.models])) + '|' + port;
   // Skip the rebuild when nothing changed — but never skip if edges failed to
   // draw (e.g. render raced layout at startup).
-  if (sig === flowSig && document.querySelectorAll('.fcard').length && document.querySelectorAll('#flowedges path.edge').length) return;
+  if (sig === flowSig && document.querySelectorAll('.fcard').length && document.querySelectorAll('#flowedges path.edge').length) {
+    updateFlowLive(); // cheap per-refresh updates (rings, sparklines, sub text)
+    return;
+  }
   flowSig = sig;
   $('fcorePort').textContent = `:${port}`;
   const activeId = (ps.find((p) => p.status === 'up') || {}).id;
@@ -2211,12 +2293,32 @@ function renderFlow() {
       ? `back in ~${Math.ceil(p.downForMs / 1000)}s`
       : p.status === 'disabled' ? 'disabled'
       : p.stats?.emaLatencyMs != null ? p.stats.emaLatencyMs + 'ms' : 'ready';
+    // model slot chips — S/O/H with the mapped model as tooltip
+    const chips = Object.entries(p.models || {})
+      .map(([slot, model]) => `<span class="pchip" title="${escapeHtml(slot)} → ${escapeHtml(model || '')}">${slot[0].toUpperCase()}</span>`)
+      .join('');
+    // cooldown ring: extrapolated deadline, circumference 2πr (r=9).
+    // total = the FULL cooldown length (downTotalMs). The deadline itself is
+    // re-synced from each poll's downForMs in updateFlowLive; anchoring total
+    // (instead of resetting it to the shrinking downForMs) is what makes the
+    // ring actually drain instead of staying full forever.
+    const dead = p.status === 'down' && p.downForMs ? Date.now() + p.downForMs : null;
+    if (dead) flowDead.set(p.id, { at: dead, total: p.downTotalMs || p.downForMs }); else flowDead.delete(p.id);
+    const ringPct = dead ? 1 : 0; // first paint full; ticks down in updateFlowLive
     return `
     <div class="fcard ${p.id === activeId ? 'active' : ''}" data-pid="${p.id}">
-      <span class="dot" style="background:${dot}"></span>
+      <span class="dotwrap">
+        <span class="dot" style="background:${dot}"></span>
+        <svg class="cdring ${dead ? 'on' : ''}" viewBox="0 0 20 20" data-pid="${p.id}">
+          <circle class="bgc" cx="10" cy="10" r="9"></circle>
+          <circle class="fgc" cx="10" cy="10" r="9" stroke-dasharray="${(2 * Math.PI * 9).toFixed(1)}" stroke-dashoffset="${(2 * Math.PI * 9 * (1 - ringPct)).toFixed(1)}"></circle>
+        </svg>
+      </span>
       <span class="pcol">
         <div class="pname">${escapeHtml(p.name)}</div>
-        <div class="psub">${escapeHtml(sub)}</div>
+        <div class="psub" data-pid="${p.id}">${escapeHtml(sub)}</div>
+        <div class="pchips">${chips}</div>
+        <div class="pspark"><canvas data-pid="${p.id}" width="110" height="14"></canvas></div>
       </span>
       <span class="prnum">#${i + 1}</span>
     </div>`;
@@ -2225,7 +2327,75 @@ function renderFlow() {
   $('flowarea').querySelectorAll('.fcard').forEach((c) => c.remove());
   $('flowarea').insertAdjacentHTML('beforeend', cards || '<div class="wsub" style="position:absolute;inset:0;display:grid;place-items:center;color:var(--dim)">no providers — add one in Providers</div>');
 
-  requestAnimationFrame(() => { layoutFlowBubbles(); drawFlowEdges(); });
+  requestAnimationFrame(() => { layoutFlowBubbles(); drawFlowEdges(); updateFlowLive(); });
+}
+
+// per-refresh live updates that don't warrant a full card rebuild:
+// cooldown ring depletion, "back in Ns" text, sparklines, edge traffic width
+function updateFlowLive() {
+  const ps = statusState.providers || [];
+  const now = Date.now();
+  for (const p of ps) {
+    if (p.status === 'down' && p.downForMs) {
+      // re-sync the deadline from the fresh poll; keep the ANCHORED total (the
+      // full cooldown length from when it went down) so the ring drains —
+      // re-anchoring total to the shrinking downForMs would keep it full.
+      const prev = flowDead.get(p.id);
+      flowDead.set(p.id, { at: now + p.downForMs, total: prev?.total || p.downTotalMs || p.downForMs });
+    } else if (p.status !== 'down') flowDead.delete(p.id);
+    // stale sig path (no rebuild): refresh the sub text + chips stay
+    const subEl = $('flowarea').querySelector(`.psub[data-pid="${p.id}"]`);
+    if (subEl) {
+      const dl = flowDead.get(p.id);
+      const txt = p.status === 'down' && dl
+        ? `back in ~${Math.ceil((dl.at - now) / 1000)}s`
+        : p.status === 'disabled' ? 'disabled'
+        : flowTps(p.id) > 0.5 ? `${fmtTok(flowTps(p.id))} tok/s`
+        : p.stats?.emaLatencyMs != null ? p.stats.emaLatencyMs + 'ms' : 'ready';
+      if (subEl.textContent !== txt) subEl.textContent = txt;
+    }
+    const ring = $('flowarea').querySelector(`.cdring[data-pid="${p.id}"]`);
+    if (ring) {
+      const dl = flowDead.get(p.id);
+      const fgc = ring.querySelector('.fgc');
+      if (dl && fgc) {
+        ring.classList.add('on');
+        const frac = Math.max(0, Math.min(1, (dl.at - now) / dl.total));
+        fgc.setAttribute('stroke-dashoffset', (2 * Math.PI * 9 * (1 - frac)).toFixed(1));
+      } else {
+        ring.classList.remove('on');
+      }
+    }
+    drawFlowSpark(p.id);
+  }
+  drawFlowEdges(); // edge widths follow traffic share
+}
+
+// rolling tok/s history → mini sparkline on the card's canvas
+function drawFlowSpark(pid) {
+  const cv = $('flowarea').querySelector(`.pspark canvas[data-pid="${pid}"]`);
+  const hist = flowSpark.get(pid);
+  if (!cv || !hist || !hist.length) return;
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  ctx.clearRect(0, 0, W, H);
+  const max = Math.max(1, ...hist);
+  const isDark = document.documentElement.dataset.theme !== 'light';
+  const line = isDark ? '#22d3ee' : '#0891b2';
+  const fill = isDark ? 'rgba(34,211,238,0.12)' : 'rgba(8,145,178,0.12)';
+  ctx.beginPath();
+  const step = W / Math.max(1, hist.length - 1);
+  hist.forEach((v, i) => {
+    const x = i * step, y = H - 2 - (v / max) * (H - 4);
+    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  });
+  ctx.strokeStyle = line;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  // fill under
+  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+  ctx.fillStyle = fill;
+  ctx.fill();
 }
 
 // Seed positions on first layout: spread in a ring around the core on BOTH
@@ -2273,6 +2443,8 @@ function drawFlowEdges() {
   const lx = lb.right - ab.left, ly = lb.top + lb.height / 2 - ab.top;
   const ps = statusState.providers || [];
   const activeId = (ps.find((p) => p.status === 'up') || {}).id;
+  // traffic share → extra stroke width (0 for idle, +2.5 for the busiest)
+  const maxTps = Math.max(0, ...ps.map((p) => flowTps(p.id)));
   let out = `<path class="edge cedge" d="M${lx} ${ly} H${cb.left - ab.left}"/>`;
   area.querySelectorAll('.fcard').forEach((card) => {
     const p = ps.find((x) => x.id === card.dataset.pid);
@@ -2281,13 +2453,101 @@ function drawFlowEdges() {
     if (!rb.width) return;
     const x = rb.left + rb.width / 2 - ab.left, y = rb.top + rb.height / 2 - ab.top;
     const cls = card.dataset.pid === activeId ? 'active' : p.status === 'down' ? 'dead' : p.status === 'disabled' ? 'disabled' : '';
-    out += `<path id="fe-${p.id}" class="edge ${cls} ${flowSel === p.id ? 'hi' : ''}" d="M${cx} ${cy} C ${(cx + x) / 2} ${cy}, ${(cx + x) / 2} ${y}, ${x} ${y}"/>`;
+    const share = maxTps > 0 ? flowTps(p.id) / maxTps : 0;
+    const w = (1.5 + share * 2.5).toFixed(1);
+    out += `<path id="fe-${p.id}" style="stroke-width:${w}" class="edge ${cls} ${flowSel === p.id ? 'hi' : ''}" d="M${cx} ${cy} C ${(cx + x) / 2} ${cy}, ${(cx + x) / 2} ${y}, ${x} ${y}"/>`;
   });
   const grad = svg.querySelector('#edgeGrad');
   if (grad) { grad.setAttribute('x1', cx); grad.setAttribute('x2', ab.width); }
   svg.querySelectorAll('path.edge').forEach((p) => p.remove());
   svg.insertAdjacentHTML('beforeend', out);
+  syncFlowParticles();
 }
+
+/* ---- traffic particles: dots gliding core → provider along the bezier ----
+   Spawn rate ∝ provider rps (min trickle on the active edge so the flow is
+   never fully static). Motion-preference aware; skipped while dragging. */
+const flowParticles = []; // { pid, el, t, speed }
+let flowDragActive = false;
+let flowParticlesRaf = null;
+
+function edgePathFor(pid) {
+  const el = $('fe-' + pid);
+  return el || null;
+}
+
+function syncFlowParticles() {
+  // drop particles whose provider/edge vanished
+  for (let i = flowParticles.length - 1; i >= 0; i--) {
+    if (!edgePathFor(flowParticles[i].pid)) {
+      flowParticles[i].el.remove();
+      flowParticles.splice(i, 1);
+    }
+  }
+}
+
+function spawnFlowParticle(pid) {
+  const svg = $('flowParticles');
+  const path = edgePathFor(pid);
+  if (!svg || !path) return;
+  const el = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  el.setAttribute('r', 2.5);
+  el.setAttribute('class', 'particle');
+  svg.appendChild(el);
+  flowParticles.push({ pid, el, t: 0, speed: 0.35 + Math.random() * 0.25 });
+}
+
+let flowParticleAcc = 0;
+let flowParticleLastTs = 0;
+function flowParticleTick(ts) {
+  flowParticlesRaf = requestAnimationFrame(flowParticleTick);
+  const svg = $('flowParticles');
+  const area = $('flowarea');
+  if (!svg || !area) return;
+  const ab = area.getBoundingClientRect();
+  if (!ab.width) return;
+  svg.setAttribute('viewBox', `0 0 ${ab.width} ${ab.height}`);
+
+  const ps = statusState.providers || [];
+  // delta-time: rAF runs at wildly different rates (144Hz displays, throttled
+  // background tabs) — a fixed /60 step would speed up or crawl.
+  const dt = Math.min(0.1, (ts - flowParticleLastTs) / 1000 || 0.016);
+  flowParticleLastTs = ts;
+  if (!flowDragActive && flowMotionOn()) {
+    // spawn: one particle per ~0.8 rps, plus a slow trickle on the active edge
+    flowParticleAcc += dt;
+    const activeId = (ps.find((p) => p.status === 'up') || {}).id;
+    for (const p of ps) {
+      const rps = flowRps(p.id);
+      const isTrickle = p.id === activeId && !rps;
+      const rate = rps > 0 ? Math.min(4, rps) / 0.8 : isTrickle ? 0.4 : 0;
+      const want = rate * flowParticleAcc;
+      if (want >= 1) {
+        spawnFlowParticle(p.id);
+        flowParticleAcc = 0;
+        break; // at most one per frame — keeps it calm
+      }
+    }
+    // hard cap
+    while (flowParticles.length > 24) flowParticles.shift().el.remove();
+  }
+
+  for (let i = flowParticles.length - 1; i >= 0; i--) {
+    const pt = flowParticles[i];
+    const path = edgePathFor(pt.pid);
+    if (!path) { pt.el.remove(); flowParticles.splice(i, 1); continue; }
+    pt.t += pt.speed * dt;
+    if (pt.t >= 1) { pt.el.remove(); flowParticles.splice(i, 1); continue; }
+    try {
+      const len = path.getTotalLength();
+      const pos = path.getPointAtLength(pt.t * len);
+      pt.el.setAttribute('cx', pos.x);
+      pt.el.setAttribute('cy', pos.y);
+      pt.el.setAttribute('opacity', Math.sin(Math.PI * pt.t) * 0.9); // fade in/out
+    } catch { /* path mid-rebuild — drop silently */ }
+  }
+}
+flowParticlesRaf = requestAnimationFrame(flowParticleTick);
 
 function applyFlowSel() {
   document.querySelectorAll('.fcard').forEach((n) => {
@@ -2321,6 +2581,7 @@ window.flowOpen = (id) => {
     const card = ev.target.closest('.fcard');
     if (!card || ev.button !== 0) return;
     ev.preventDefault();
+    flowDragActive = true;
     const cb = card.getBoundingClientRect();
     const ab = area.getBoundingClientRect();
     drag = {
@@ -2353,6 +2614,7 @@ window.flowOpen = (id) => {
     if (!drag) return;
     const { card, vx, vy, w, h, moved } = drag;
     drag = null;
+    flowDragActive = false;
     card.classList.remove('dragging');
     if (moved) suppressClick = true;
     // remember position
@@ -2385,11 +2647,42 @@ window.flowOpen = (id) => {
     if (card && !drag) flowOpen(card.dataset.pid);
   }, true);
 
+  /* hover stat card — merged provider status + usage totals */
+  let fstat = null;
+  const showFstat = (pid, card) => {
+    const p = (statusState.providers || []).find((x) => x.id === pid);
+    if (!p) return;
+    const u = (usage.byProvider || []).find((x) => x.id === pid);
+    const s = p.stats || {};
+    const tok = u ? (u.inputTokens || 0) + (u.outputTokens || 0) + (u.cacheReadTokens || 0) + (u.cacheCreationTokens || 0) : 0;
+    const rate = s.requests ? Math.round((s.successes / s.requests) * 100) : null;
+    const lat = s.emaLatencyMs != null ? (s.emaLatencyMs >= 1000 ? (s.emaLatencyMs / 1000).toFixed(1) + 's' : Math.round(s.emaLatencyMs) + 'ms') : null;
+    const models = Object.entries(p.models || {}).map(([slot, m]) => `${slot}: ${m}`).join(' · ');
+    if (!fstat) { fstat = document.createElement('div'); fstat.className = 'fstat'; $('flowarea').appendChild(fstat); }
+    fstat.innerHTML = `
+      <div class="fsname">${escapeHtml(p.name)} <span style="color:var(--dim);font-weight:400">#${p.priority}</span></div>
+      <div class="fsrow"><span>status</span><b>${p.status}${p.statusDetail ? ' — ' + escapeHtml(p.statusDetail.detail || p.statusDetail.kind || '') : ''}</b></div>
+      <div class="fsrow"><span>requests</span><b>${s.requests || 0}${rate != null ? ` · ${rate}% ok` : ''}</b></div>
+      <div class="fsrow"><span>latency</span><b>${lat || '—'}</b></div>
+      <div class="fsrow"><span>tokens</span><b>${tok ? fmtTok(tok) : '—'}${u?.costUsd ? ' · ' + fmtCost(u.costUsd) : ''}</b></div>
+      ${models ? `<div class="fsmodels">${escapeHtml(models)}</div>` : ''}`;
+    fstat.hidden = false;
+    // place beside the card, clamped to the area
+    const ab = area.getBoundingClientRect(), cb2 = card.getBoundingClientRect();
+    const x = Math.max(4, Math.min(ab.width - (fstat.offsetWidth || 200) - 4, cb2.right - ab.left + 8));
+    const y = Math.max(4, Math.min(ab.height - (fstat.offsetHeight || 100) - 4, cb2.top - ab.top));
+    fstat.style.left = x + 'px';
+    fstat.style.top = y + 'px';
+  };
+  const hideFstat = () => { if (fstat) fstat.hidden = true; };
+
   area.addEventListener('mouseover', (ev) => {
     const card = ev.target.closest('.fcard');
     flowSel = card ? card.dataset.pid : null;
     applyFlowSel();
+    if (card && !drag) showFstat(card.dataset.pid, card); else hideFstat();
   });
+  area.addEventListener('mouseleave', hideFstat);
 
   if (window.ResizeObserver) new ResizeObserver(() => { layoutFlowBubbles(); drawFlowEdges(); }).observe(area);
   window.addEventListener('resize', drawFlowEdges);
@@ -4221,6 +4514,7 @@ async function refresh() {
     pricingState = pr;
     chaptions = ch;
     port = s.port;
+    flowTrackUsage();
     $('ovConn').textContent = `proxy running on http://127.0.0.1:${s.port}`;
     $('sideStatus').textContent = 'running';
     $('sideDot').className = 'pulse ok';
