@@ -257,3 +257,91 @@ export function fmtCost(n) {
   if (n < 1)    return '¢' + (n * 100).toFixed(0);
   return '$' + n.toFixed(2);
 }
+
+// ---- auto-fill: match unpriced models against a models.dev rate catalog ----
+//
+// The catalog shape is { <providerId>: { models: { <modelId>: { cost: {
+// input, output, cache_read?, cache_write? } } } } } with per-1M rates.
+// Matching is by normalized base name (normalizeModelName + vendor-prefix
+// stripping) across every provider's entries. Same model listed with
+// conflicting rates by different providers → ambiguous, never guessed.
+
+// In-memory catalog cache: url → { data, at }. 24h TTL, one entry — the
+// models.dev blob is ~1MB and refetching it per click would be rude.
+const CATALOG_TTL_MS = 24 * 60 * 60 * 1000;
+let catalogCache = null;
+
+export async function fetchRateCatalog(url) {
+  if (catalogCache && catalogCache.url === url && Date.now() - catalogCache.at < CATALOG_TTL_MS) {
+    return catalogCache.data;
+  }
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), 15_000);
+  try {
+    const resp = await fetch(url, { headers: { 'user-agent': 'switchxprovider-pricing/1' }, signal: ac.signal });
+    if (!resp.ok) throw new Error(`catalog URL returned ${resp.status}`);
+    const data = await resp.json();
+    if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('rate catalog is not an object');
+    catalogCache = { url, data, at: Date.now() };
+    return data;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Flatten a models.dev-shaped catalog into base-name → Set(rate cards).
+// Vendor prefixes ("z-ai/", "anthropic/") are stripped so gateway model IDs
+// ("glm-5.2") match vendored slugs ("z-ai/glm-5.2"). Candidates are keyed by
+// provider-qualified id — the same model id listed by two providers with
+// different rates must show up as two candidates (ambiguity check).
+function catalogByBase(data) {
+  const byBase = new Map();
+  for (const [prov, models] of Object.entries(data)) {
+    for (const [id, entry] of Object.entries(models?.models || {})) {
+      const base = normalizeModelName(String(id).replace(/^[\w.-]+\//, ''));
+      if (!base) continue;
+      const c = entry?.cost;
+      if (!c || !Number.isFinite(c.input) || !Number.isFinite(c.output)) continue; // no usable rate
+      const card = {
+        input: c.input, output: c.output,
+        cacheRead: Number.isFinite(c.cache_read) ? c.cache_read : 0,
+        cacheCreate: Number.isFinite(c.cache_write) ? c.cache_write : 0,
+      };
+      if (!byBase.has(base)) byBase.set(base, new Map());
+      byBase.get(base).set(`${prov}/${id}`, card);
+    }
+  }
+  return byBase;
+}
+
+// Match unpriced models against the catalog. Returns per-model outcome:
+//   { model, price, matched } for exact-agreement matches
+//   { model, reason } for ambiguous (conflicting rates) or unmatched
+export function matchAutoPricing(unpricedModels, data, pricing = {}) {
+  const byBase = catalogByBase(data);
+  const matched = [];
+  const ambiguous = [];
+  const unmatched = [];
+  for (const model of unpricedModels) {
+    // respect existing aliases: "glm-5.2-free" → "glm-5.2" matches via the alias
+    const viaAlias = (pricing.aliases || {})[model];
+    const candidates = new Map();
+    for (const name of [model, viaAlias].filter(Boolean)) {
+      const base = normalizeModelName(String(name).replace(/^[\w.-]+\//, ''));
+      for (const [id, card] of byBase.get(base) || []) candidates.set(id, card);
+    }
+    if (!candidates.size) {
+      unmatched.push({ model });
+      continue;
+    }
+    const distinct = new Map(); // rate-card JSON → card, to detect agreement
+    for (const card of candidates.values()) distinct.set(JSON.stringify(card), card);
+    if (distinct.size > 1) {
+      ambiguous.push({ model, candidates: [...candidates.keys()] });
+    } else {
+      const [id, card] = [...candidates.entries()][0];
+      matched.push({ model, price: card, matched: id });
+    }
+  }
+  return { matched, ambiguous, unmatched };
+}

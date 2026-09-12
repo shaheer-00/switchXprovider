@@ -524,6 +524,7 @@
   .pprow .pv { font-family: var(--mono); font-size: 12px; color: var(--muted); flex: 1; }
   /* price-source pill variants (markup: component .pill + .mono + source) */
   .pill.user { color: var(--accent-2); border-color: rgba(34,211,238,0.4); background: rgba(34,211,238,0.07); }
+  .pill.auto { color: #a3e635; border-color: rgba(163,230,53,0.4); background: rgba(163,230,53,0.07); }
   .pill.builtin { color: var(--dim); }
   .pill.provider { color: #c084fc; border-color: rgba(192,132,252,0.4); background: rgba(192,132,252,0.07); }
   .pill.none { color: var(--amber); border-color: rgba(251,191,36,0.4); background: rgba(251,191,36,0.07); }
@@ -1578,8 +1579,18 @@ try { if (localStorage.getItem('switchx-theme') === 'light') document.documentEl
       </div>
 
       <div class="card" id="unpricedCard" hidden>
-        <h2>⚠ Unpriced models</h2>
-        <div class="hint">these count as $0 in every cost total until you set a price</div>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+          <div>
+            <h2>⚠ Unpriced models</h2>
+            <div class="hint">these count as $0 in every cost total until you set a price</div>
+          </div>
+          <button class="btn btn-secondary" id="autoFillBtn" onclick="doAutoFill()" style="flex:none"
+                  title="Look up market rates from models.dev — matches by model name; models with conflicting or missing rates are left for you to set manually">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            Auto-fill prices
+          </button>
+        </div>
+        <div class="hint" id="autoFillNote" hidden></div>
         <div id="unpricedList"></div>
       </div>
 
@@ -4092,6 +4103,36 @@ window.doRecalc = async () => {
     await refresh();
   } catch (e) {
     toast(e.message, true);
+  }
+};
+
+// Auto-fill: fetch the models.dev rate catalog server-side, match unpriced
+// models by name, write the hits as editable overrides (source "auto").
+// Ambiguous/unmatched models stay unpriced — the summary says which and why.
+window.doAutoFill = async () => {
+  const btn = $('autoFillBtn');
+  btn.disabled = true;
+  try {
+    const r = await api('/api/pricing/auto-fill', { method: 'POST' });
+    const parts = [];
+    if (r.matched?.length) parts.push(`${r.matched.length} priced`);
+    if (r.ambiguous?.length) parts.push(`${r.ambiguous.length} ambiguous (conflicting rates)`);
+    if (r.unmatched?.length) parts.push(`${r.unmatched.length} not found`);
+    const note = $('autoFillNote');
+    note.hidden = false;
+    note.textContent = parts.length
+      ? `Auto-fill: ${parts.join(' · ')}${r.matched?.length ? ' — new prices apply from now on; recalculate to reprice history' : ''}`
+      : 'Auto-fill: no unpriced models to look up';
+    if (r.matched?.length) {
+      toast(`auto-filled ${r.matched.length} model${r.matched.length > 1 ? 's' : ''}`);
+      await refresh();
+    } else {
+      toast('nothing to auto-fill');
+    }
+  } catch (e) {
+    toast(e.message, true);
+  } finally {
+    btn.disabled = false;
   }
 };
 

@@ -20,11 +20,16 @@
 //   template — returns the prompt's JSON shape verbatim, unfilled (a lazy
 //              model echoing the contract): verifies template echoes are
 //              rejected, not rendered as an "analysis".
+//   modelsdev — serves a models.dev-shaped /api.json rate catalog for the
+//              pricing auto-fill tests. The imp-sonnet input rate increments
+//              by 1 on every fetch so the tests can tell a cached response
+//              from a fresh one.
 
 import http from 'node:http';
 
 const [, , portArg, mode = 'ok'] = process.argv;
 const port = parseInt(portArg, 10);
+let modelsdevHits = 0;
 
 const server = http.createServer((req, res) => {
   let body = '';
@@ -80,6 +85,23 @@ const server = http.createServer((req, res) => {
         }],
         usage: { prompt_tokens: 11, completion_tokens: 7 },
         receivedAuth: req.headers['authorization'],
+      }));
+      return;
+    }
+
+    // models.dev-shaped rate catalog: keyed by provider → models → cost
+    // (per-1M input/output/cache_read/cache_write). Includes an exact match
+    // for imp-sonnet (input increments per fetch — cache probe), a builtin-
+    // priced model (glm-5.2 — auto-fill must skip it), and one model listed
+    // with conflicting rates by two providers (kira-sonnet-v4 — ambiguous).
+    if (mode === 'modelsdev' && req.url.includes('/api.json')) {
+      modelsdevHits++;
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({
+        anthropic: { models: { 'imp-sonnet': { cost: { input: 1 + modelsdevHits, output: 10, cache_read: 0.2, cache_write: 2.5 } } } },
+        'z-ai': { models: { 'glm-5.2': { cost: { input: 1.4, output: 4.4, cache_read: 0.26 } } } },
+        kira: { models: { 'kira-sonnet-v4': { cost: { input: 1, output: 4 } } } },
+        kira2: { models: { 'kira-sonnet-v4': { cost: { input: 5, output: 20 } } } },
       }));
       return;
     }

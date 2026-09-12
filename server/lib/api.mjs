@@ -7,7 +7,7 @@ import os from 'node:os';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { newId, statsFor, logEvent, persistSoon, emptyUsage, DIR, PROCESS_START } from './config.mjs';
-import { PRICING, effectivePrice, aliasSuggestions, recalcCosts } from './pricing.mjs';
+import { PRICING, effectivePrice, aliasSuggestions, recalcCosts, fetchRateCatalog, matchAutoPricing } from './pricing.mjs';
 import { enabledSorted, isDown, COOLDOWNS } from './proxy.mjs';
 import { probe, deepCheck, fetchModels, drain } from './health.mjs';
 import { enableRouting, disableRouting, setWarningHidden } from './routing.mjs';
@@ -26,6 +26,9 @@ const UPDATE_MARKER_PATH = path.join(DIR, 'update-available.json');
 // "Restore official" syncs the local cache to it so users always get the maintained list.
 const OFFICIAL_CATALOG_URL =
   'https://raw.githubusercontent.com/shaheer-00/switchXprovider/master/server/catalog.json';
+// models.dev public rate catalog — aggregated official + gateway per-1M rates
+// used by the pricing auto-fill. Community-maintained; matches are editable.
+const MODELS_DEV_URL = 'https://models.dev/api.json';
 
 function send(res, status, obj) {
   res.writeHead(status, JSON_HDR);
@@ -529,6 +532,8 @@ ${JSON.stringify(stats)}`;
       for (const m of Object.keys(PRICING)) if (!seen.has(m)) seen.set(m, null);
       const models = [...seen.entries()].map(([model, u]) => {
         const { price, source } = effectivePrice(model, undefined, cfg.pricing);
+        // auto-filled overrides report as "auto" until the user edits them
+        const shownSource = source === 'user' && cfg.pricing?.autoFilled?.[model] ? 'auto' : source;
         const provs = Object.entries(providerOverrides)
           .filter(([k]) => k.endsWith(' ' + model))
           .map(([k, p]) => {
@@ -541,7 +546,8 @@ ${JSON.stringify(stats)}`;
           requests: u?.requests || 0,
           costUsd: u?.costUsd || 0,
           price,
-          source: price ? source : provs.length ? 'provider' : 'none',
+          price,
+          source: price ? shownSource : provs.length ? 'provider' : 'none',
           unpriced: !price && !provs.length,
           providers: provs,
         };
@@ -571,6 +577,7 @@ ${JSON.stringify(stats)}`;
       } else {
         cfg.pricing.overrides ??= {};
         cfg.pricing.overrides[model] = p;
+        delete cfg.pricing.autoFilled?.[model]; // manual edit replaces the auto marker
       }
       logEvent(cfg, `Price set for ${model}${body.providerId ? ' (per-provider)' : ''}`);
       persistSoon(cfg, 0);
@@ -586,6 +593,7 @@ ${JSON.stringify(stats)}`;
         delete cfg.pricing.providerOverrides?.[`${body.providerId} ${model}`];
       } else {
         delete cfg.pricing.overrides?.[model];
+        delete cfg.pricing.autoFilled?.[model];
       }
       logEvent(cfg, `Price removed for ${model}${body.providerId ? ' (per-provider)' : ''}`);
       persistSoon(cfg, 0);
@@ -617,6 +625,48 @@ ${JSON.stringify(stats)}`;
       logEvent(cfg, 'Usage costs recalculated with current prices');
       persistSoon(cfg, 0);
       return send(res, 200, { ok: true, ...result });
+    }
+
+    // ---- pricing auto-fill: look up unpriced models in a remote rate catalog ----
+    // Fetches a models.dev-shaped catalog ({provider: {models: {id: {cost}}}},
+    // per-1M rates), matches every currently-unpriced model by normalized
+    // name, and writes the matches into cfg.pricing.overrides. Conflicting
+    // rates across providers are reported as ambiguous — never guessed.
+    if (method === 'POST' && resource === 'pricing' && id === 'auto-fill') {
+      const body = await readJson(req);
+      const url = String(body.url || MODELS_DEV_URL).trim();
+      if (!/^https?:\/\//.test(url)) return send(res, 400, { error: 'url must start with http:// or https://' });
+      // same unpriced set the dashboard badge shows: no universal price, no
+      // per-provider override, not builtin
+      const unpricedModels = [...new Set([
+        ...Object.keys(cfg.usage?.byModel || {}),
+        ...cfg.providers.flatMap((p) => Object.values(p.models || {})),
+      ])].filter((m) => m && !effectivePrice(m, undefined, cfg.pricing).price
+        && !Object.keys(cfg.pricing?.providerOverrides || {}).some((k) => k.endsWith(' ' + m)));
+      if (!unpricedModels.length) return send(res, 200, { ok: true, matched: [], ambiguous: [], unmatched: [] });
+      let catalog;
+      try {
+        catalog = await fetchRateCatalog(url);
+      } catch (e) {
+        return send(res, 502, { error: `pricing catalog unreachable: ${e.message}` });
+      }
+      const { matched, ambiguous, unmatched } = matchAutoPricing(unpricedModels, catalog, cfg.pricing);
+      cfg.pricing ??= {};
+      cfg.pricing.overrides ??= {};
+      cfg.pricing.autoFilled ??= {};
+      for (const { model, price, matched: matchedId } of matched) {
+        cfg.pricing.overrides[model] = price;
+        cfg.pricing.autoFilled[model] = matchedId;
+      }
+      // manual edits clear the auto marker; removals do too
+      for (const model of Object.keys(cfg.pricing.autoFilled)) {
+        if (!cfg.pricing.overrides[model]) delete cfg.pricing.autoFilled[model];
+      }
+      if (matched.length) {
+        logEvent(cfg, `Auto-filled prices for ${matched.length} model${matched.length > 1 ? 's' : ''} from ${new URL(url).host}`);
+        persistSoon(cfg, 0);
+      }
+      return send(res, 200, { ok: true, matched, ambiguous, unmatched });
     }
 
     // ---- update lifecycle ----

@@ -27,6 +27,7 @@ const MOCK_MODELFAIL = 9908;
 const MOCK_RAMBLER = 9909;
 const MOCK_PROSE = 9910;
 const MOCK_TEMPLATE = 9911;
+const MOCK_MODELSDEV = 9912;
 
 const home = fs.mkdtempSync(path.join(os.tmpdir(), 'switchx-test-'));
 
@@ -73,10 +74,10 @@ async function waitUp(url, timeoutMs = 8000) {
 
 async function main() {
   // --- mock providers ---
-  for (const [port, mode] of [[MOCK_OK, 'ok'], [MOCK_500, 'fail500'], [MOCK_429, 'ratelimit'], [MOCK_400, 'badreq'], [MOCK_KEYONLY, 'keyonly'], [MOCK_BearerONLY, 'beareronly'], [MOCK_OPENAI, 'openai'], [MOCK_MODELFAIL, 'modelfail'], [MOCK_RAMBLER, 'rambler'], [MOCK_PROSE, 'prose'], [MOCK_TEMPLATE, 'template']]) {
+  for (const [port, mode] of [[MOCK_OK, 'ok'], [MOCK_500, 'fail500'], [MOCK_429, 'ratelimit'], [MOCK_400, 'badreq'], [MOCK_KEYONLY, 'keyonly'], [MOCK_BearerONLY, 'beareronly'], [MOCK_OPENAI, 'openai'], [MOCK_MODELFAIL, 'modelfail'], [MOCK_RAMBLER, 'rambler'], [MOCK_PROSE, 'prose'], [MOCK_TEMPLATE, 'template'], [MOCK_MODELSDEV, 'modelsdev']]) {
     children.push(spawn(process.execPath, [path.join(__dirname, 'mock.mjs'), String(port), mode], { stdio: 'ignore' }));
   }
-  for (const port of [MOCK_OK, MOCK_500, MOCK_429, MOCK_400, MOCK_KEYONLY, MOCK_BearerONLY, MOCK_OPENAI, MOCK_MODELFAIL, MOCK_RAMBLER, MOCK_PROSE, MOCK_TEMPLATE]) {
+  for (const port of [MOCK_OK, MOCK_500, MOCK_429, MOCK_400, MOCK_KEYONLY, MOCK_BearerONLY, MOCK_OPENAI, MOCK_MODELFAIL, MOCK_RAMBLER, MOCK_PROSE, MOCK_TEMPLATE, MOCK_MODELSDEV]) {
     assert(await waitUp(`http://127.0.0.1:${port}/v1/models`), `mock :${port} up`);
   }
 
@@ -687,6 +688,101 @@ async function main() {
   assert(resp.ok, 'alias removed');
   pr = await (await fetch(`${proxyUrl}/api/pricing`)).json();
   assert(!pr.aliases['imp-sonnet-free'], 'alias gone');
+
+  // --- 11a. pricing auto-fill from a models.dev-shaped rate catalog ---
+  console.log('\n— pricing auto-fill —');
+  // three unpriced models in play: imp-sonnet (matchable), kira-sonnet-v4
+  // (conflicting rates across providers), glm-5.2 (builtin-priced — skipped)
+  resp = await fetch(`${proxyUrl}/api/import`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ providers: [{ name: 'AutoFillSrc', baseUrl: `http://127.0.0.1:${MOCK_MODELSDEV}`, apiKey: 'k', models: { sonnet: 'imp-sonnet', opus: 'kira-sonnet-v4', haiku: 'glm-5.2' } }] }),
+  });
+  assert(resp.ok, 'auto-fill test provider imported');
+  pr = await (await fetch(`${proxyUrl}/api/pricing`)).json();
+  assert(pr.models.find((m) => m.model === 'imp-sonnet')?.source === 'none', 'imp-sonnet unpriced before auto-fill');
+  assert(pr.models.find((m) => m.model === 'kira-sonnet-v4')?.source === 'none', 'kira-sonnet-v4 unpriced before auto-fill');
+
+  resp = await fetch(`${proxyUrl}/api/pricing/auto-fill`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ url: `http://127.0.0.1:${MOCK_MODELSDEV}/api.json` }),
+  });
+  const af = await resp.json();
+  const afMatched = af.matched || [];
+  const afAmbiguous = af.ambiguous || [];
+  assert(resp.ok && af.ok, 'auto-fill runs against custom source', JSON.stringify(af).slice(0, 160));
+  const afImp = afMatched.find((x) => x.model === 'imp-sonnet');
+  // first fetch → mock input rate is 2
+  assert(afImp && afImp.price.input === 2 && afImp.price.output === 10 && afImp.price.cacheRead === 0.2 && afImp.price.cacheCreate === 2.5,
+    'imp-sonnet auto-filled with full rate card', JSON.stringify(afImp));
+  assert(afImp && afImp.matched === 'anthropic/imp-sonnet', 'matched remote id reported');
+  assert(!afMatched.some((x) => x.model === 'kira-sonnet-v4') && afAmbiguous.some((x) => x.model === 'kira-sonnet-v4'),
+    'conflicting rates across providers → ambiguous, never guessed', JSON.stringify(af.ambiguous));
+  assert(!afMatched.some((x) => x.model === 'glm-5.2'), 'builtin-priced model not touched by auto-fill');
+
+  pr = await (await fetch(`${proxyUrl}/api/pricing`)).json();
+  const prAuto = pr.models.find((m) => m.model === 'imp-sonnet');
+  assert(prAuto.source === 'auto' && prAuto.price?.input === 2, 'auto-filled price listed with source "auto"', JSON.stringify(prAuto));
+  assert(pr.models.find((m) => m.model === 'kira-sonnet-v4')?.source === 'none', 'ambiguous model stays unpriced');
+
+  // auto-filled price drives live cost: mock usage 10 in / 5 out
+  const afCost0 = (await (await fetch(`${proxyUrl}/api/usage`)).json()).byModel.find((m) => m.model === 'imp-sonnet')?.costUsd || 0;
+  await fetch(`${proxyUrl}/v1/messages`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-api-key': 'switchx-local' },
+    body: JSON.stringify({ model: 'switchx:sonnet', max_tokens: 32, messages: [{ role: 'user', content: 'hi' }] }),
+  });
+  await sleep(400);
+  usageNow = await (await fetch(`${proxyUrl}/api/usage`)).json();
+  impU = usageNow.byModel.find((m) => m.model === 'imp-sonnet');
+  assert(Math.abs(impU.costUsd - afCost0 - (10 * 2 + 5 * 10) / 1e6) < 1e-9, 'auto-filled price applied to live traffic', `${impU.costUsd}`);
+
+  // response cache: mock input rate increments per fetch (2 → 3 → …).
+  // Removing the override and re-filling within the TTL must serve the
+  // CACHED catalog — price stays 2, not 3.
+  await fetch(`${proxyUrl}/api/pricing/remove`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ model: 'imp-sonnet' }),
+  });
+  resp = await fetch(`${proxyUrl}/api/pricing/auto-fill`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ url: `http://127.0.0.1:${MOCK_MODELSDEV}/api.json` }),
+  });
+  const af2 = await resp.json();
+  const afImp2 = af2.matched.find((x) => x.model === 'imp-sonnet');
+  assert(afImp2 && afImp2.price.input === 2, 'second auto-fill within TTL uses the cached catalog (rate not refetched)', JSON.stringify(afImp2));
+
+  // manual edit replaces the auto marker (source flips back to "user")
+  resp = await fetch(`${proxyUrl}/api/pricing`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ model: 'imp-sonnet', price: { input: 7, output: 7, cacheRead: 0, cacheCreate: 0 } }),
+  });
+  assert(resp.ok, 'manual price over auto-fill accepted');
+  pr = await (await fetch(`${proxyUrl}/api/pricing`)).json();
+  assert(pr.models.find((m) => m.model === 'imp-sonnet')?.source === 'user', 'manual edit clears the auto marker');
+
+  // unreachable source → 502, nothing written
+  resp = await fetch(`${proxyUrl}/api/pricing/auto-fill`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ url: 'http://127.0.0.1:59999/api.json' }),
+  });
+  assert(resp.status === 502, 'unreachable pricing source → 502', `got ${resp.status}`);
+  pr = await (await fetch(`${proxyUrl}/api/pricing`)).json();
+  assert(pr.models.find((m) => m.model === 'kira-sonnet-v4')?.source === 'none', 'failed auto-fill writes nothing');
+
+  // cleanup: drop the overrides so later sections start from a clean slate
+  for (const model of ['imp-sonnet', 'kira-sonnet-v4', 'glm-5.2']) {
+    await fetch(`${proxyUrl}/api/pricing/remove`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model }),
+    });
+  }
 
   // --- 11c. Chaptions: session parsing, aggregation, unattributed, AI analysis ---
   console.log('\n— chaptions —');
