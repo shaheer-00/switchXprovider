@@ -56,6 +56,7 @@ Claude Code without forking it or routing through a middleman.
 |---|---|
 | 🆓 **Free providers included** | Every provider in the shipped catalog has a free tier (free models, credits, or daily-login rewards) — and the catalog keeps growing |
 | 🔀 **Automatic failover** | Provider dies mid-request? Retried on the next one before you notice |
+| ✂️ **Token saver** | Oversized tool outputs (git diff, grep, error dumps) are compressed before they reach the provider — blank-line collapsing plus head/tail elision with a marker. Never touches prompts, user text, or images; never grows a request. On quota-metered free tiers, saved input tokens are free work |
 | 🔁 **Auto-recovery** | Down providers are re-probed every 30s and return to rotation on their own |
 | 🔑 **Your keys, your machine** | Traffic goes straight to the provider — no third party in the path |
 | 🚀 **Zero dependencies** | One Node process, ~12 files, under 6,000 lines — readable in an afternoon |
@@ -187,6 +188,7 @@ node switchXprovider/server/ensure.mjs
 - **Install status detection** — the dashboard reads `~/.claude/settings.json` and shows whether Claude Code is actually routed through the proxy.
 - **Help & troubleshooting** — a built-in Help view with the common problems and their fixes: claude-mem capture dying after proxy setup (with the credentials-sync hook fix), statusline plugins showing stale mode labels, the proxy serving old code after a plugin update, shell `ANTHROPIC_*` env vars overriding `settings.json`, providers stuck in cooldown, model-name mismatches across providers, $0 cost estimates, and a dead dashboard.
 - **Deadlock protection** — if *every* provider is down, cooldowns reset (at most once a minute) and the request is retried rather than hard-failing; a full outage returns a clear error instead of hammering dead providers on every request.
+- **Token saver** — the proxy shrinks oversized `tool_result` content before forwarding: runs of 3+ blank lines collapse to one, and blocks over the threshold (default 12,000 chars) keep head 70% / tail 30% with an explicit `[switchx elided N chars]` marker so the model knows data was cut. System prompts, user text, tool_use blocks, and images are never touched; a block is never grown; output is deterministic, so prompt-cache prefixes stay valid. On by default — toggle it and set the threshold in Settings, and watch the saved-token counter grow. Free-tier quotas are metered in input tokens: this stretches them.
 
 ## Setup
 
@@ -277,6 +279,7 @@ server/ensure.mjs            daemon bootstrap (used by the hook)
 server/lib/config.mjs        config + stats + event log (~/.claude/switchx/)
 server/lib/proxy.mjs         forwarding, model rewrite, failover, cooldowns
 server/lib/translate.mjs     Anthropic ⇄ OpenAI protocol translation (tools + streaming)
+server/lib/compress.mjs      token saver — tool_result compression before upstream
 server/lib/health.mjs        background probes, auto-recovery
 server/lib/api.mjs           management REST API
 server/lib/pricing.mjs       model rate table, aliases, cost recalculation

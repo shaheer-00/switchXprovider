@@ -278,6 +278,13 @@ export async function handleApi(req, res, pathname, cfg) {
         uptimeSec: Math.round((Date.now() - PROCESS_START) / 1000),
         activeProvider: activeProviderName(cfg),
         cooldowns: COOLDOWNS,
+        compression: {
+          enabled: cfg.compression?.enabled !== false,
+          threshold: cfg.compression?.threshold || 12_000,
+          savedChars: cfg.compression?.savedChars || 0,
+          savedEstTokens: cfg.compression?.savedEstTokens || 0,
+          requests: cfg.compression?.requests || 0,
+        },
         claudeCode: claudeCodeStatus(cfg),
         catalogUrl: cfg.catalogUrl || null,
         providers: enabledSorted(cfg)
@@ -714,6 +721,26 @@ ${JSON.stringify(stats)}`;
         ? enableRouting(cfg.port, (msg) => logEvent(cfg, msg))
         : disableRouting(cfg.port, (msg) => logEvent(cfg, msg));
       return send(res, 200, { ok: true, ...result, ...claudeCodeStatus(cfg) });
+    }
+
+    // Token saver toggle / threshold. Writes the full compression object so
+    // the flat spread in config load() never sees a partial shape.
+    if (method === 'POST' && resource === 'compression') {
+      const body = await readJson(req);
+      const cur = cfg.compression || {};
+      const next = {
+        enabled: typeof body.enabled === 'boolean' ? body.enabled : cur.enabled !== false,
+        threshold: Number.isFinite(body.threshold)
+          ? Math.min(1_000_000, Math.max(1_000, Math.round(body.threshold)))
+          : (cur.threshold || 12_000),
+        savedChars: cur.savedChars || 0,
+        savedEstTokens: cur.savedEstTokens || 0,
+        requests: cur.requests || 0,
+      };
+      cfg.compression = next;
+      persistSoon(cfg, 0);
+      logEvent(cfg, `Token saver ${next.enabled ? 'enabled' : 'disabled'} (threshold ${next.threshold.toLocaleString()} chars)`);
+      return send(res, 200, { ok: true, compression: next });
     }
 
     // ---- hide Claude Code's "claude.ai connectors are disabled" startup warning ----

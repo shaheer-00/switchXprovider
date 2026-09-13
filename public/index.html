@@ -1829,6 +1829,24 @@ try { if (localStorage.getItem('switchx-theme') === 'light') document.documentEl
         </div>
         <div class="setrow">
           <div class="info">
+            <div class="t">Token saver</div>
+            <div class="d">Compresses oversized tool outputs (git diff, grep, error dumps) before they reach the provider — collapses blank-line runs, and keeps head 70% / tail 30% of blocks over the threshold with an elision marker. Never touches system prompts, user text, tool_use blocks, or images. On quota-metered free tiers, saved input tokens are free work.</div>
+            <div class="mono" id="saverStats">…</div>
+          </div>
+          <button class="btn btn-secondary" id="saverBtn" onclick="toggleSaver()">…</button>
+        </div>
+        <div class="setrow">
+          <div class="info">
+            <div class="t">Saver threshold</div>
+            <div class="d">Tool-result blocks over this many characters get elided to head+tail. Below it, only blank-line collapsing applies. 1,000–1,000,000.</div>
+          </div>
+          <div class="urlbar" style="max-width:220px">
+            <input class="input mono" id="saverThreshold" type="number" min="1000" max="1000000" step="500" placeholder="12000">
+            <button class="btn btn-primary" onclick="saveSaverThreshold()">set</button>
+          </div>
+        </div>
+        <div class="setrow">
+          <div class="info">
             <div class="t">Backup / restore</div>
             <div class="d">Export includes API keys — store the file safely.</div>
           </div>
@@ -3166,6 +3184,15 @@ function renderSettings() {
       ? 'Changes take effect after you restart Claude Code.'
       : 'Add at least one enabled provider before turning routing on.');
   $('setPort').textContent = `http://127.0.0.1:${port}`;
+  const comp = statusState.compression || {};
+  const sbtn = $('saverBtn');
+  sbtn.textContent = comp.enabled === false ? 'Enable' : 'Disable';
+  sbtn.className = comp.enabled === false ? 'btn btn-primary' : 'btn btn-secondary';
+  const fmtTok = (n) => Number(n || 0).toLocaleString();
+  $('saverStats').textContent = comp.requests
+    ? `saved ~${fmtTok(comp.savedEstTokens)} tokens across ${fmtTok(comp.requests)} compressed request${comp.requests === 1 ? '' : 's'} · threshold ${fmtTok(comp.threshold)} chars`
+    : `no tool output compressed yet · threshold ${fmtTok(comp.threshold || 12000)} chars`;
+  if (document.activeElement !== $('saverThreshold')) $('saverThreshold').value = comp.threshold || 12000;
   const wbtn = $('warningBtn');
   wbtn.textContent = cc.warningHidden ? 'Show warning again' : 'Hide warning';
   wbtn.className = cc.warningHidden ? 'btn' : 'btn btn-secondary';
@@ -3190,6 +3217,25 @@ window.toggleRouting = async () => {
   try {
     const r = await api('/api/routing', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled: enabling }) });
     toast(r.configured ? 'Routing ON — restart Claude Code to apply' : 'Routing OFF — restart Claude Code to apply');
+    refresh();
+  } catch (e) { toast(e.message, true); }
+};
+
+window.toggleSaver = async () => {
+  const enabling = (statusState.compression || {}).enabled === false;
+  try {
+    const r = await api('/api/compression', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled: enabling }) });
+    toast(r.compression.enabled ? 'Token saver ON' : 'Token saver OFF');
+    refresh();
+  } catch (e) { toast(e.message, true); }
+};
+
+window.saveSaverThreshold = async () => {
+  const v = Number($('saverThreshold').value);
+  if (!Number.isFinite(v)) { toast('enter a number of characters', true); return; }
+  try {
+    const r = await api('/api/compression', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ threshold: v }) });
+    toast(`Threshold set to ${Number(r.compression.threshold).toLocaleString()} chars`);
     refresh();
   } catch (e) { toast(e.message, true); }
 };

@@ -23,6 +23,15 @@ const DEFAULTS = {
   providers: [],
   stats: {},
   events: [],
+  // Token saver — on by default (missing key = enabled). Ops are safe and
+  // never grow the body; see server/lib/compress.mjs.
+  compression: {
+    enabled: true,
+    threshold: 12_000,
+    savedChars: 0,
+    savedEstTokens: 0,
+    requests: 0,
+  },
 };
 
 const TEMPLATES = [

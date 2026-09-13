@@ -11,6 +11,7 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { normalizeModelName, aliasSuggestions, recalcCosts } from '../server/lib/pricing.mjs';
 import { sessionFromMetadata, projectDisplayName } from '../server/lib/chaptions.mjs';
+import { compressBody } from '../server/lib/compress.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -102,6 +103,96 @@ async function main() {
 
   // unit: day key is LOCAL, matching what api.mjs reads (same machine)
   assert(cfgMod.localDayKey() === dkey(0), 'localDayKey matches api.mjs local date scheme', `${cfgMod.localDayKey()} vs ${dkey(0)}`);
+
+  // unit: token saver — compressBody touches ONLY tool_result text
+  console.log('\n— token saver (compressBody) —');
+  const big = 'x'.repeat(20_000);
+  const mkToolResult = (text, extra = {}) => ({
+    role: 'user',
+    content: [{ type: 'tool_result', tool_use_id: 't1', content: [{ type: 'text', text }], ...extra }],
+  });
+  const bigReq = { model: 'switchx:sonnet', system: 'sysprompt', messages: [
+    { role: 'user', content: 'question' },
+    { role: 'assistant', content: [{ type: 'tool_use', id: 't1', name: 'Bash', input: { command: 'git diff' } }] },
+    mkToolResult(big),
+  ]};
+  const r1 = compressBody(structuredClone(bigReq), { enabled: true, threshold: 12_000 });
+  assert(r1.savedChars > 5_000, 'big tool_result compressed', `saved ${r1.savedChars}`);
+  const compressedBlock = r1.body.messages[2].content[0].content[0];
+  assert(compressedBlock.text.length < 12_500, 'result kept near threshold', `len ${compressedBlock.text.length}`);
+  assert(compressedBlock.text.includes('[switchx elided'), 'elision marker present');
+  assert(compressedBlock.text.startsWith('x') && compressedBlock.text.endsWith('x'), 'head and tail preserved');
+  // untouched parts
+  assert(r1.body.system === 'sysprompt' && r1.body.messages[0].content === 'question', 'system + user text untouched');
+  const toolUse = r1.body.messages[1].content[0];
+  assert(toolUse.input.command === 'git diff', 'tool_use input untouched');
+  assert(toolUse.type === 'tool_use' && toolUse.id === 't1', 'tool_use block shape untouched');
+
+  // determinism — same input, same output (prompt-cache friendly)
+  const r1b = compressBody(structuredClone(bigReq), { enabled: true, threshold: 12_000 });
+  assert(JSON.stringify(r1.body) === JSON.stringify(r1b.body), 'compression deterministic');
+
+  // small tool_result below threshold — untouched
+  const smallReq = { model: 'switchx:sonnet', messages: [mkToolResult('short output\nno elision\n')] };
+  const r2 = compressBody(structuredClone(smallReq), { enabled: true, threshold: 12_000 });
+  assert(r2.savedChars === 0, 'below threshold: nothing saved');
+  assert(r2.body.messages[0].content[0].content[0].text === 'short output\nno elision\n', 'small result untouched');
+
+  // whitespace-only collapse (no truncation needed) still saves
+  const wsReq = { messages: [mkToolResult('head\n\n\n\n\n\ntail   \n\n\n\n  ')] };
+  const r3 = compressBody(structuredClone(wsReq), { enabled: true, threshold: 12_000 });
+  assert(r3.savedChars > 0, 'blank-line collapse saves chars', `saved ${r3.savedChars}`);
+  assert(!r3.body.messages[0].content[0].content[0].text.includes('[switchx elided'), 'collapse alone never elides');
+
+  // boundary: exactly at threshold → untouched; threshold+1 → elided
+  const edge = 'y'.repeat(12_000);
+  const rEdge = compressBody({ messages: [mkToolResult(edge)] }, { enabled: true, threshold: 12_000 });
+  assert(rEdge.savedChars === 0, 'exactly-at-threshold untouched');
+  const rOver = compressBody({ messages: [mkToolResult('y'.repeat(12_500))] }, { enabled: true, threshold: 12_000 });
+  assert(rOver.savedChars > 0 && rOver.body.messages[0].content[0].content[0].text.includes('[switchx elided'), 'well-over-threshold elided', `saved ${rOver.savedChars}`);
+  const rTiny = compressBody({ messages: [mkToolResult(edge + 'y')] }, { enabled: true, threshold: 12_000 });
+  assert(rTiny.savedChars === 0 && !rTiny.body.messages[0].content[0].content[0].text.includes('[switchx elided'), 'threshold+1 not worth eliding — never grows the body', `saved ${rTiny.savedChars}`);
+
+  // string-content tool_result (Anthropic allows plain string) — compressed too
+  const strReq = { messages: [{ role: 'user', content: [{ type: 'tool_result', tool_use_id: 't2', content: 'z'.repeat(20_000) }] }] };
+  const r4 = compressBody(structuredClone(strReq), { enabled: true, threshold: 12_000 });
+  assert(r4.savedChars > 5_000, 'string tool_result compressed', `saved ${r4.savedChars}`);
+  assert(r4.body.messages[0].content[0].content.includes('[switchx elided'), 'string content carries marker');
+
+  // is_error tool_result — same treatment (error dumps are often the biggest)
+  const r5 = compressBody(structuredClone({ messages: [mkToolResult('E'.repeat(20_000), { is_error: true })] }), { enabled: true, threshold: 12_000 });
+  assert(r5.savedChars > 5_000, 'is_error result compressed too');
+
+  // images inside tool_result content — never touched
+  const imgB64 = 'a'.repeat(50_000);
+  const imgReq = { messages: [{ role: 'user', content: [
+    { type: 'tool_result', tool_use_id: 't3', content: [
+      { type: 'image', source: { type: 'base64', media_type: 'image/png', data: imgB64 } },
+      { type: 'text', text: 'x'.repeat(20_000) },
+    ] },
+  ] }] };
+  const r6 = compressBody(structuredClone(imgReq), { enabled: true, threshold: 12_000 });
+  assert(r6.body.messages[0].content[0].content[0].source.data === imgB64, 'image blocks untouched');
+  assert(r6.body.messages[0].content[0].content[1].text.includes('[switchx elided'), 'sibling text block still compressed');
+
+  // cache_control markers on blocks survive
+  const ccReq = { messages: [{ role: 'user', content: [
+    { type: 'tool_result', tool_use_id: 't4', content: [{ type: 'text', text: 'q'.repeat(20_000) }], cache_control: { type: 'ephemeral' } },
+  ] }] };
+  const r7 = compressBody(structuredClone(ccReq), { enabled: true, threshold: 12_000 });
+  assert(r7.body.messages[0].content[0].cache_control?.type === 'ephemeral', 'cache_control preserved');
+
+  // disabled → zero-op, body identical
+  const r8 = compressBody(structuredClone(bigReq), { enabled: false, threshold: 12_000 });
+  assert(r8.savedChars === 0 && JSON.stringify(r8.body) === JSON.stringify(bigReq), 'disabled = passthrough');
+
+  // malformed inputs never throw
+  for (const bad of [null, undefined, {}, { messages: null }, { messages: 'nope' }, { messages: [{ content: null }] }, { messages: [{ role: 'user', content: [null, 42, 'str'] }] }]) {
+    let threw = false;
+    try { compressBody(structuredClone(bad), { enabled: true, threshold: 12_000 }); } catch { threw = true; }
+    assert(!threw, `malformed input ${JSON.stringify(bad)?.slice(0, 40)} does not throw`);
+  }
+
   // Multi-day usage history for period-aggregation tests (keys match the API's
   // local-date format exactly — see the dense-series loop in api.mjs).
   const dayBucket = (inputTokens, outputTokens, requests, costUsd, cacheReadTokens = 0, cacheCreationTokens = 0) =>
@@ -404,6 +495,86 @@ async function main() {
     body: JSON.stringify({ baseUrl: 'ftp://nope', apiKey: 'k', authStyle: 'auto' }),
   });
   assert(resp.status === 400, 'fetch-models with non-http baseUrl → 400', `got ${resp.status}`);
+
+  // --- 8b. token saver: live proxy compresses, API toggles ---
+  console.log('\n— token saver (proxy + API) —');
+  // status exposes compression state (on by default)
+  let cst = await (await fetch(`${proxyUrl}/api/status`)).json();
+  assert(cst.compression?.enabled === true && cst.compression.threshold === 12_000, 'status reports compression defaults', JSON.stringify(cst.compression));
+  const savedBefore = cst.compression.savedEstTokens || 0;
+
+  // big tool_result through the real proxy → mock OK provider echoes request body;
+  // the persisted counter must grow
+  await fetch(`${proxyUrl}/v1/messages`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-api-key': 'switchx-local' },
+    body: JSON.stringify({
+      model: 'switchx:sonnet', max_tokens: 32,
+      messages: [
+        { role: 'user', content: 'run this' },
+        { role: 'assistant', content: [{ type: 'tool_use', id: 't1', name: 'Bash', input: { command: 'cat big.txt' } }] },
+        { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: [{ type: 'text', text: 'w'.repeat(40_000) }] }] },
+      ],
+    }),
+  });
+  await sleep(400); // stats persist async
+  cst = await (await fetch(`${proxyUrl}/api/status`)).json();
+  assert(cst.compression.savedEstTokens > savedBefore, 'live request incremented saved-token counter', `${cst.compression.savedEstTokens} vs ${savedBefore}`);
+  assert(cst.compression.requests >= 1, 'compression request counter populated', `${cst.compression.requests}`);
+
+  // threshold clamp + toggle off
+  resp = await fetch(`${proxyUrl}/api/compression`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ enabled: false, threshold: 99 }),
+  });
+  const compOff = await resp.json();
+  assert(resp.ok && compOff.compression.enabled === false, 'compression toggle off accepted');
+  assert(compOff.compression.threshold === 1_000, 'threshold clamped to minimum 1000', `${compOff.compression.threshold}`);
+  // counters preserved across the toggle
+  assert(compOff.compression.savedEstTokens === cst.compression.savedEstTokens, 'saved counters survive toggle');
+
+  // off → proxy stops compressing (counter frozen)
+  const frozenAt = compOff.compression.savedEstTokens;
+  await fetch(`${proxyUrl}/v1/messages`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-api-key': 'switchx-local' },
+    body: JSON.stringify({
+      model: 'switchx:sonnet', max_tokens: 32,
+      messages: [{ role: 'user', content: [{ type: 'tool_result', tool_use_id: 't2', content: [{ type: 'text', text: 'v'.repeat(40_000) }] }] }],
+    }),
+  });
+  await sleep(400);
+  cst = await (await fetch(`${proxyUrl}/api/status`)).json();
+  assert(cst.compression.enabled === false && cst.compression.savedEstTokens === frozenAt, 'disabled proxy compresses nothing', `${cst.compression.savedEstTokens} vs ${frozenAt}`);
+
+  // back on for the rest of the suite
+  resp = await fetch(`${proxyUrl}/api/compression`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ enabled: true }),
+  });
+  assert(resp.ok && (await resp.json()).compression.enabled === true, 'compression re-enabled');
+
+  // failover must not double-count: one request that fails through dead
+  // providers before succeeding counts its saved tokens ONCE
+  {
+    const st = await (await fetch(`${proxyUrl}/api/status`)).json();
+    const before2 = st.compression.savedEstTokens;
+    const bigTool = 'u'.repeat(30_000);
+    const r = await fetch(`${proxyUrl}/v1/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': 'switchx-local' },
+      body: JSON.stringify({
+        model: 'switchx:sonnet', max_tokens: 32,
+        messages: [{ role: 'user', content: [{ type: 'tool_result', tool_use_id: 't9', content: [{ type: 'text', text: bigTool }] }] }],
+      }),
+    });
+    assert(r.ok, 'big tool_result request served (possibly after failover)', `got ${r.status}`);
+    await sleep(500);
+    const st2 = await (await fetch(`${proxyUrl}/api/status`)).json();
+    assert(st2.compression.savedEstTokens > before2, 'failover request still counted once', `${st2.compression.savedEstTokens} vs ${before2}`);
+  }
 
   // --- 9. usage tracking: JSON + streaming responses ---
   console.log('\n— usage tracking —');

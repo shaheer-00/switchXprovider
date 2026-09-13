@@ -10,6 +10,7 @@ import { Readable, Transform } from 'node:stream';
 import { StringDecoder } from 'node:string_decoder';
 import { statsFor, logEvent, persistSoon, recordUsage, pushRequest, countFailover } from './config.mjs';
 import { anthropicToOpenAI, openaiToAnthropicStream } from './translate.mjs';
+import { compressBody } from './compress.mjs';
 import { sessionFromMetadata, sessionProject, projectDisplayName } from './chaptions.mjs';
 
 // Time allowed for upstream to send response headers (streams may run much longer).
@@ -207,7 +208,7 @@ function sanitizeRespHeaders(headers) {
   return h;
 }
 
-async function attempt(p, req, rawBody) {
+async function attempt(p, req, rawBody, cfg) {
   let body;
   let mappedModel = null;
   let sessionId = null;
@@ -215,6 +216,7 @@ async function attempt(p, req, rawBody) {
   let projectDir = null;
   let protocolOpenai = p.protocol === 'openai';
   let targetPath = null; // protocol-translated requests target a different path
+  let savedChars = 0;    // token saver — reported to the caller on success
   if (rawBody && rawBody.length && req.method !== 'GET' && req.method !== 'HEAD') {
     const ct = String(req.headers['content-type'] || '');
     if (ct.includes('json')) {
@@ -223,6 +225,14 @@ async function attempt(p, req, rawBody) {
         if (typeof json.model === 'string') {
           mappedModel = mapModel(p, json.model);
           json.model = mappedModel;
+        }
+        // Token saver — shrink oversized tool_result text before upstream.
+        // Runs before protocol translation (operates on Anthropic shape),
+        // deterministic so failover retries send identical bytes. Counters
+        // are accumulated by the CALLER on success only — attempts that
+        // fail over must not double-count the same request.
+        if (cfg.compression?.enabled !== false) {
+          savedChars = compressBody(json, cfg.compression).savedChars;
         }
         sessionId = sessionFromMetadata(json);
         if (sessionId) {
@@ -270,7 +280,7 @@ async function attempt(p, req, rawBody) {
       }
       return { ok: false, status: resp.status, text, retryAfterSec, ac };
     }
-    return { ok: true, resp, ac, mappedModel, protocolOpenai, sessionId, projectName, projectDir };
+    return { ok: true, resp, ac, mappedModel, protocolOpenai, sessionId, projectName, projectDir, savedChars };
   } finally {
     clearTimeout(timer);
   }
@@ -318,9 +328,17 @@ export async function handleProxy(req, res, cfg, rawBody) {
   for (const p of candidates) {
     const t0 = Date.now();
     try {
-      const r = await attempt(p, req, rawBody);
+      const r = await attempt(p, req, rawBody, cfg);
       if (r.ok) {
         markSuccess(cfg, p, Date.now() - t0);
+        // Token saver counters — once per served request, not per attempt
+        // (failover retries compress the same body again; bytes identical).
+        if (r.savedChars > 0 && cfg.compression) {
+          cfg.compression.savedChars = (cfg.compression.savedChars || 0) + r.savedChars;
+          cfg.compression.savedEstTokens = (cfg.compression.savedEstTokens || 0) + Math.round(r.savedChars / 4);
+          cfg.compression.requests = (cfg.compression.requests || 0) + 1;
+          persistSoon(cfg);
+        }
         const rec = {
           ts: Date.now(),
           provider: p.name,
