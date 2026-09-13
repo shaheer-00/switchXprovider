@@ -781,6 +781,9 @@
   }
   .catgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--sp-3); margin-top: var(--sp-4); }
   .catcard { display: flex; flex-direction: column; gap: 9px; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+  /* dead provider: kept in the catalog but clearly out of service */
+  .card.dead { opacity: 0.55; filter: saturate(0.35); }
+  .card.dead .formactions .btn { pointer-events: none; opacity: 0.5; }
   .catcard:hover { border-color: rgba(110,121,244,0.45); box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
   .catcard .top { display: flex; align-items: center; gap: 11px; cursor: pointer; }
   .catcard .top .name { font-weight: 600; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -3272,7 +3275,7 @@ function wizWelcome() {
 }
 
 function wizPickProvider() {
-  const cats = (catalog?.providers || []).slice(); // catalog already sorted by rating
+  const cats = (catalog?.providers || []).filter((c) => !c.dead); // catalog already sorted by rating
   const free = cats.filter((c) => c.freeTier);
   const rest = cats.filter((c) => !c.freeTier);
   const card = (c) => `
@@ -3461,7 +3464,7 @@ function renderCatalog() {
   const addedHosts = new Set((statusState.providers || []).map((p) => normUrl(p.baseUrl)));
   const matches = (c) => {
     if (q && !(c.name + ' ' + (c.description || '') + ' ' + (c.tags || []).join(' ') + ' ' + (c.pricing || '')).toLowerCase().includes(q)) return false;
-    if (catFilter === 'free') return !!c.freeTier;
+    if (catFilter === 'free') return !!c.freeTier && !c.dead;
     if (catFilter === 'notadded') return !addedHosts.has(normUrl(c.baseUrl));
     if (catFilter === 'remote') return c.source === 'remote';
     return true;
@@ -3472,7 +3475,8 @@ function renderCatalog() {
     name: (a, b) => a.name.localeCompare(b.name),
     free: (a, b) => ((b.freeTier ? 1 : 0) - (a.freeTier ? 1 : 0)) || (b.rating || 0) - (a.rating || 0),
   }[sortMode] || ((a, b) => (b.rating || 0) - (a.rating || 0));
-  const list = (catalog.providers || []).filter(matches).sort(cmp);
+  const list = (catalog.providers || []).filter(matches).sort(cmp)
+    .sort((a, b) => (a.dead ? 1 : 0) - (b.dead ? 1 : 0)); // dead sink to the bottom in every sort mode
 
   const catCard = (c, hero = false) => {
     const added = addedHosts.has(normUrl(c.baseUrl));
@@ -3483,7 +3487,9 @@ function renderCatalog() {
     const avatar = `<span class="avatar">${escapeHtml(initials(c.name))}${host
       ? `<img class="fav" src="https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64" alt="" loading="lazy" onerror="this.remove()">`
       : ''}</span>`;
-    const pills = `${c.freeTier ? '<span class="pill ok"><i class="dot dot-up"></i>FREE</span>' : ''}${added
+    const pills = `${c.dead
+      ? '<span class="pill bad" title="Site is unreachable as of the last catalog update — kept here in case it comes back."><i class="dot dot-off"></i>UNREACHABLE</span>'
+      : c.freeTier ? '<span class="pill ok"><i class="dot dot-up"></i>FREE</span>' : ''}${added
       ? '<span class="pill added" title="You already have this provider configured — you can add it again with a different API key (e.g. a second account); there is no limit."><i class="dot dot-off"></i>ADDED</span>' : ''}`;
     const rate = `<span class="rate">★ ${(Number(c.rating) || 0).toFixed(1)}</span>`;
     const setup = `<button class="btn btn-primary" onclick='prefillFromCatalog(${JSON.stringify(c).replace(/'/g, "&#39;")})'>${added ? 'Add again' : 'Set up'}</button>`;
@@ -3514,7 +3520,7 @@ function renderCatalog() {
       </div>`;
     }
     return `
-    <div class="card catcard">
+    <div class="card catcard${c.dead ? ' dead' : ''}">
       <div class="top">
         ${avatar}
         <div style="min-width:0;flex:1">
