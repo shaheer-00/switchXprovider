@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-09-08",
+  "updated": "2026-09-13",
   "note": "Curated provider catalog shipped with the plugin. A remote catalog (same schema, served from a raw GitHub URL) can be added in Settings and overrides entries with matching ids. Model IDs change often — always verify against the provider's docs. Sign-up links support switchXprovider development.",
   "providers": [
     {
@@ -255,6 +255,42 @@
         "opus": "nvidia/nemotron-3-ultra-1t",
         "sonnet": "nvidia/nemotron-3.5-lightning",
         "haiku": "nvidia/nemotron-3.5-lightning"
+      }
+    },
+    {
+      "id": "llm7",
+      "name": "LLM7",
+      "baseUrl": "https://api.llm7.io/v1",
+      "authStyle": "bearer",
+      "protocol": "openai",
+      "description": "Free gateway with a generous daily quota — 1,000,000 tokens/day on a free token (500,000 anonymous). Free tier covers turbo models only (DeepSeek V4 Flash, Codestral); Claude/GPT/Gemini IDs are pro-tier and need a subscription. OpenAI-protocol endpoint — the proxy translates automatically. Model IDs rotate often — verify at api.llm7.io/v1/models.",
+      "website": "https://dash.llm7.io/?r=2PZ",
+      "pricing": "1M free tokens/day + pro subscription",
+      "freeTier": true,
+      "rating": 4,
+      "tags": ["gateway", "multi-model", "free-quota", "openai-protocol"],
+      "models": {
+        "opus": "DeepSeek-V4-Flash-0731",
+        "sonnet": "DeepSeek-V4-Flash-0731",
+        "haiku": "codestral-latest"
+      }
+    },
+    {
+      "id": "agnesai",
+      "name": "Agnes AI",
+      "baseUrl": "https://apihub.agnes-ai.com/v1",
+      "authStyle": "bearer",
+      "protocol": "openai",
+      "description": "Singapore-based gateway for Agnes' own multimodal model family — text, image and video behind one key. Free tier with request quotas; agnes-2.5-flash (512K context, tools, vision, agent workflows) is the daily driver, pro models need a subscription. OpenAI-protocol endpoint — the proxy translates automatically. Verify quotas in the platform console.",
+      "website": "https://platform.agnes-ai.com/",
+      "pricing": "free tier + subscription plans",
+      "freeTier": true,
+      "rating": 3.5,
+      "tags": ["gateway", "multimodal", "free-quota", "openai-protocol"],
+      "models": {
+        "opus": "agnes-2.5-flash",
+        "sonnet": "agnes-2.5-flash",
+        "haiku": "agnes-1.5-flash"
       }
     }
   ]
