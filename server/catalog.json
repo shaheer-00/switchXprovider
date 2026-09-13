@@ -292,6 +292,24 @@
         "sonnet": "agnes-2.5-flash",
         "haiku": "agnes-1.5-flash"
       }
+    },
+    {
+      "id": "groq",
+      "name": "Groq",
+      "baseUrl": "https://api.groq.com/openai/v1",
+      "authStyle": "bearer",
+      "protocol": "openai",
+      "description": "LPU inference — open models (GPT-OSS, Qwen, Llama) at extreme speed. Free tier needs no credit card: rate-limited (~30 req/min, 1K req/day, 200K tokens/day on chat models), org-level limits. Llama 70B moved to Enterprise-only — GPT-OSS 120B is the workhorse now. OpenAI-protocol endpoint — the proxy translates automatically. Verify live model IDs at console.groq.com.",
+      "website": "https://console.groq.com/",
+      "pricing": "free rate-limited tier + Developer plan (~10x limits)",
+      "freeTier": true,
+      "rating": 4,
+      "tags": ["lpu", "fast-inference", "free-quota", "openai-protocol"],
+      "models": {
+        "opus": "openai/gpt-oss-120b",
+        "sonnet": "openai/gpt-oss-120b",
+        "haiku": "openai/gpt-oss-20b"
+      }
     }
   ]
 }
