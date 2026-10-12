@@ -13,7 +13,11 @@
       "pricing": "free tier + per-token",
       "freeTier": true,
       "rating": 4.5,
-      "tags": ["gateway", "multi-model", "free-models"],
+      "tags": [
+        "gateway",
+        "multi-model",
+        "free-models"
+      ],
       "models": {
         "opus": "glm-5.3",
         "sonnet": "glm-5.3",
@@ -30,7 +34,10 @@
       "pricing": "per-token, free models at sign-up",
       "freeTier": true,
       "rating": 3.5,
-      "tags": ["gateway", "multi-model"],
+      "tags": [
+        "gateway",
+        "multi-model"
+      ],
       "models": {
         "opus": "deepseek-v4-flash",
         "sonnet": "claude-opus-4-8",
@@ -47,7 +54,11 @@
       "pricing": "free tier + per-token",
       "freeTier": true,
       "rating": 3.5,
-      "tags": ["gateway", "claude-models", "thinking"],
+      "tags": [
+        "gateway",
+        "claude-models",
+        "thinking"
+      ],
       "models": {
         "opus": "claude-opus-5",
         "sonnet": "claude-opus-5-thinking",
@@ -64,7 +75,11 @@
       "pricing": "free tier + per-token",
       "freeTier": true,
       "rating": 4,
-      "tags": ["gateway", "free-models", "fallback"],
+      "tags": [
+        "gateway",
+        "free-models",
+        "fallback"
+      ],
       "models": {
         "opus": "mimo-v2.5-free",
         "sonnet": "deepseek-v4-flash-free",
@@ -72,45 +87,50 @@
       }
     },
     {
-      "id": "tabitoken",
-      "name": "TabiToken",
-      "baseUrl": "https://tabitoken.com",
-      "authStyle": "auto",
-      "dead": true,
-      "description": "Token-based gateway behind Cloudflare. Currently unreachable — kept in the catalog in case it returns. Model IDs aren't public — check your dashboard after signing up and fill them in when adding.",
-      "website": "https://tabitoken.com/sign-up?aff=7ECT",
-      "pricing": "free tier + per-token",
+      "id": "xkiro",
+      "name": "xKiro",
+      "baseUrl": "https://api.xkiro.com/v1",
+      "authStyle": "bearer",
+      "protocol": "auto",
+      "description": "Gateway with 55 free models (no card needed) across 16 providers — Claude Haiku, Gemini Flash, DeepSeek, Qwen, MiMo, Mistral, Cohere and more. Supports both OpenAI and Anthropic SDKs. 500K free tokens/day, 1M/day with Telegram verification.",
+      "website": "https://xkiro.com/ref/T2RQHHP",
+      "pricing": "55 free models + per-token paid",
       "freeTier": true,
-      "rating": 3,
-      "tags": ["gateway", "token-based"],
-      "models": {}
+      "rating": 4,
+      "tags": [
+        "gateway",
+        "free-models",
+        "multi-model",
+        "openai-protocol",
+        "anthropic-protocol"
+      ],
+      "models": {
+        "opus": "anthropic/claude-sonnet-4.5",
+        "sonnet": "anthropic/claude-sonnet-4",
+        "haiku": "anthropic/claude-haiku-4.5:free"
+      }
     },
     {
-      "id": "bluesminds",
-      "name": "BlueSminds",
-      "baseUrl": "https://api.bluesminds.com",
-      "authStyle": "auto",
-      "dead": true,
-      "description": "Anthropic-compatible gateway (new-api based). Currently unreachable — kept in the catalog in case it returns. Model IDs aren't public — check your dashboard after signing up.",
-      "website": "https://api.bluesminds.com/sign-up?aff=vB03",
-      "pricing": "free tier + per-token",
+      "id": "tokenforge",
+      "name": "TokenForge",
+      "baseUrl": "https://tokenforge.ai.studio/v1",
+      "authStyle": "bearer",
+      "protocol": "anthropic",
+      "description": "Anthropic-compatible API gateway with a focused model catalogue — Claude Opus 5.5, GPT-Astra, GLM-5.3, Kimi K3. Sign-up via affiliate link.",
+      "website": "https://tokenforge.ai.studio/sign-up?aff=8m6k",
+      "pricing": "per-token",
       "freeTier": true,
-      "rating": 3,
-      "tags": ["gateway", "anthropic-compatible"],
-      "models": {}
-    },
-    {
-      "id": "bai",
-      "name": "B.AI",
-      "baseUrl": "https://chat.b.ai",
-      "authStyle": "auto",
-      "description": "Anthropic-compatible gateway. Model IDs aren't public — check your dashboard after signing up.",
-      "website": "https://chat.b.ai/chat?invite_code=RKJVQJ",
-      "pricing": "free tier, check site",
-      "freeTier": true,
-      "rating": 3,
-      "tags": ["gateway", "invite-based"],
-      "models": {}
+      "rating": 3.5,
+      "tags": [
+        "gateway",
+        "anthropic-compatible",
+        "focused"
+      ],
+      "models": {
+        "opus": "claude-opus-5.5",
+        "sonnet": "gpt-6-astra",
+        "haiku": "kimi-k3"
+      }
     },
     {
       "id": "apinex",
@@ -122,7 +142,11 @@
       "pricing": "free tier",
       "freeTier": true,
       "rating": 3.5,
-      "tags": ["gateway", "anthropic-compatible", "multi-model"],
+      "tags": [
+        "gateway",
+        "anthropic-compatible",
+        "multi-model"
+      ],
       "models": {}
     },
     {
@@ -135,7 +159,11 @@
       "pricing": "free models + per-token",
       "freeTier": true,
       "rating": 4,
-      "tags": ["gateway", "multi-model", "free-models"],
+      "tags": [
+        "gateway",
+        "multi-model",
+        "free-models"
+      ],
       "models": {
         "opus": "claude-opus-4-7",
         "sonnet": "claude-sonnet-4-6",
@@ -152,28 +180,15 @@
       "pricing": "free daily quota + per-token",
       "freeTier": true,
       "rating": 3.5,
-      "tags": ["gateway", "free-models", "multi-model"],
+      "tags": [
+        "gateway",
+        "free-models",
+        "multi-model"
+      ],
       "models": {
         "opus": "glm-5.3-free",
         "sonnet": "glm-5.3-flash-free",
         "haiku": "mimo-v2.5-free"
-      }
-    },
-    {
-      "id": "tokenrouter",
-      "name": "TokenRouter",
-      "baseUrl": "https://api.tokenrouter.com",
-      "authStyle": "auto",
-      "description": "Router with a free z-ai/glm-5.3-free model. ⚠ LIMITED-TIME free offering — the free tier may end without notice; treat it as a bonus lane, not a backbone. Anthropic endpoint supported.",
-      "website": "https://www.tokenrouter.com/models/z-ai/glm-5.3-free/",
-      "pricing": "free promo + per-token",
-      "freeTier": true,
-      "rating": 3,
-      "tags": ["gateway", "free-models", "promo"],
-      "models": {
-        "opus": "z-ai/glm-5.3-free",
-        "sonnet": "z-ai/glm-5.3-free",
-        "haiku": "z-ai/glm-5.3-free"
       }
     },
     {
@@ -186,7 +201,11 @@
       "pricing": "free tier + per-token",
       "freeTier": true,
       "rating": 3.5,
-      "tags": ["gateway", "anthropic-compatible", "multi-model"],
+      "tags": [
+        "gateway",
+        "anthropic-compatible",
+        "multi-model"
+      ],
       "models": {}
     },
     {
@@ -199,7 +218,11 @@
       "pricing": "free :free models + per-token",
       "freeTier": true,
       "rating": 4.5,
-      "tags": ["gateway", "aggregator", "free-models"],
+      "tags": [
+        "gateway",
+        "aggregator",
+        "free-models"
+      ],
       "models": {
         "opus": "nvidia/nemotron-3-ultra-550b-a55b:free",
         "sonnet": "nvidia/nemotron-3.5-lightning:free",
@@ -216,7 +239,11 @@
       "pricing": "free models + pay per request",
       "freeTier": true,
       "rating": 4,
-      "tags": ["gateway", "multi-model", "free-models"],
+      "tags": [
+        "gateway",
+        "multi-model",
+        "free-models"
+      ],
       "models": {
         "opus": "nemotron-3-ultra-free",
         "sonnet": "deepseek-v4-flash-free",
@@ -234,7 +261,12 @@
       "pricing": "free daily quota + paid tiers",
       "freeTier": true,
       "rating": 4,
-      "tags": ["google", "gemini", "free-quota", "openai-protocol"],
+      "tags": [
+        "google",
+        "gemini",
+        "free-quota",
+        "openai-protocol"
+      ],
       "models": {
         "opus": "gemini-3.5-pro",
         "sonnet": "gemini-3.5-flash",
@@ -252,7 +284,11 @@
       "pricing": "free starter credits + per-token",
       "freeTier": true,
       "rating": 3.5,
-      "tags": ["nvidia", "nemotron", "openai-protocol"],
+      "tags": [
+        "nvidia",
+        "nemotron",
+        "openai-protocol"
+      ],
       "models": {
         "opus": "nvidia/nemotron-3-ultra-1t",
         "sonnet": "nvidia/nemotron-3.5-lightning",
@@ -270,7 +306,12 @@
       "pricing": "1M free tokens/day + pro subscription",
       "freeTier": true,
       "rating": 4,
-      "tags": ["gateway", "multi-model", "free-quota", "openai-protocol"],
+      "tags": [
+        "gateway",
+        "multi-model",
+        "free-quota",
+        "openai-protocol"
+      ],
       "models": {
         "opus": "DeepSeek-V4-Flash-0731",
         "sonnet": "DeepSeek-V4-Flash-0731",
@@ -288,7 +329,12 @@
       "pricing": "free tier + subscription plans",
       "freeTier": true,
       "rating": 3.5,
-      "tags": ["gateway", "multimodal", "free-quota", "openai-protocol"],
+      "tags": [
+        "gateway",
+        "multimodal",
+        "free-quota",
+        "openai-protocol"
+      ],
       "models": {
         "opus": "agnes-2.5-flash",
         "sonnet": "agnes-2.5-flash",
@@ -306,7 +352,12 @@
       "pricing": "free rate-limited tier + Developer plan (~10x limits)",
       "freeTier": true,
       "rating": 4,
-      "tags": ["lpu", "fast-inference", "free-quota", "openai-protocol"],
+      "tags": [
+        "lpu",
+        "fast-inference",
+        "free-quota",
+        "openai-protocol"
+      ],
       "models": {
         "opus": "openai/gpt-oss-120b",
         "sonnet": "openai/gpt-oss-120b",

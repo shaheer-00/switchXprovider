@@ -120,13 +120,11 @@ The plugin ships with a curated catalog in which **every provider has a free tie
 | **Bynara** | Generous free tier — MiMo, DeepSeek, MiniMax free models; solid last-resort fallback |
 | **SeekAi** | Free models at sign-up |
 | **GoRouter** | Free tier + per-token Claude-family models, incl. thinking variants |
-| **TabiToken** | Free tier — token-based, model IDs from your dashboard |
-| **BlueSminds** | Free tier — Anthropic-compatible (new-api based) |
-| **B.AI** | Free tier — invite-based |
+| **xKiro** | 55 free models — no card needed: Claude Haiku, Gemini Flash, DeepSeek, Qwen, MiMo, Mistral, Cohere. 500K tokens/day free (1M with Telegram) |
+| **TokenForge** | Focused Anthropic-compatible gateway — Claude Opus 5.5, GPT-Astra, GLM-5.3, Kimi K3 |
 | **APInex** | Free tier — "one API for every model" |
 | **OrcaRouter** | 200+ models behind one API — free Claude Opus/Sonnet slots + free auto-router model |
 | **KiraAI** | Free daily quota — GLM-5.3, MiMo, Qwen, Kira free models |
-| **TokenRouter** | ⚠ Limited-time free GLM-5.3 — promo may end without notice |
 | **VyceAI** | Free tier — Claude/GPT/DeepSeek/Gemini proxy, one key |
 | **OpenRouter** | Rotating pool of `:free` models (Nemotron Ultra, Ling, …) — the big aggregator |
 | **OpenCode Zen** | Free Nemotron/DeepSeek/MiMo tiers — Claude, GPT, Gemini behind one key |
