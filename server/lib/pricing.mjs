@@ -13,6 +13,7 @@
 // Models not in the table default to $0. Update when new models appear.
 //
 // Prices are per-1M tokens (multiply by token count, divide by 1M).
+// DeepSeek V4.1: https://api-docs.deepseek.com/quick_start/pricing/
 
 export const PRICING = {
   // ── Claude models (Anthropic official) ──────────────────────────
@@ -28,10 +29,30 @@ export const PRICING = {
   // Haiku 4.5: $1/$5 (the previous $0.80/$4 row was Haiku 3.5 pricing).
   'claude-haiku-4-5-20251001': { input: 1.00, output: 5.00, cacheRead: 0.10, cacheCreate: 1.25 },
 
-  // ── DeepSeek (official, very cheap) ─────────────────────────────
-  'deepseek-chat':         { input: 0.14, output: 0.28, cacheRead: 0.0028, cacheCreate: 0.14 },
-  'deepseek-v4-flash':     { input: 0.14, output: 0.28, cacheRead: 0.0028, cacheCreate: 0.14 },
-  'deepseek-v4-flash-free':{ input: 0.00, output: 0.00, cacheRead: 0.00,  cacheCreate: 0.00  },
+  // ── DeepSeek V4.1 (official) ────────────────────────────────────
+  // Source: https://api-docs.deepseek.com/quick_start/pricing/
+  // Peak = 01:00-04:00 & 06:00-10:00 UTC, Mon-Fri — excluding Chinese public holidays.
+  // Off-peak = half of peak. Current table uses peak as the safe upper bound.
+  // Cache-hit (cache read) multipliers differ by model family:
+  //   Flash: $0.006 / $0.30 = 0.02x of peak cache-miss input
+  //   Pro:   $0.044 / $1.32 = ~0.033x of peak cache-miss input
+  // cacheCreate mirrors cacheRead for DeepSeek (same rate whether the token
+  // was newly cached or read back).
+  // NOTE: "deepseek-v4-flash" and "deepseek-v4-flash-vision-exp" are retired;
+  //   they route to DeepSeek-V4.1-Flash and bill at the Flash rate.
+  //   "deepseek-flash" is the canonical model name going forward.
+  //   "deepseek-chat" is unconfirmed — kept as Flash alias but needs a source
+  //   beyond this pricing page; flag if you find one.
+  'deepseek-flash':        { input: 0.30, output: 1.20, cacheRead: 0.006, cacheCreate: 0.30 },
+  // DeepSeek-V4-Pro-0813: cacheRead 0.044 (0.033x of input, NOT 0.02x)
+  'deepseek-v4-pro':       { input: 1.32, output: 3.96, cacheRead: 0.044, cacheCreate: 1.32 },
+  // deepseek-v4-flash-free: $0 (free tier, no cache read benefit)
+  'deepseek-v4-flash-free':{ input: 0.00, output: 0.00, cacheRead: 0.00, cacheCreate: 0.00 },
+
+  // Legacy/retired DeepSeek model IDs — bill at Flash rate while dashboards migrate.
+  'deepseek-chat':              { input: 0.30, output: 1.20, cacheRead: 0.006, cacheCreate: 0.30 },
+  'deepseek-v4-flash':          { input: 0.30, output: 1.20, cacheRead: 0.006, cacheCreate: 0.30 },
+  'deepseek-v4-flash-vision-exp':{ input: 0.30, output: 1.20, cacheRead: 0.006, cacheCreate: 0.30 },
 
   // ── Z.AI GLM ────────────────────────────────────────────────────
   // GLM-5.2/5.1/5.3 share the same rate card ($1.40/$4.40, cache read $0.26,
