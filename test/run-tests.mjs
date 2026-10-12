@@ -236,6 +236,15 @@ async function main() {
 
   const proxyUrl = `http://127.0.0.1:${PROXY_PORT}`;
 
+  // --- 0a. v1/models route returns only mapped slots ---
+  console.log('\n— v1/models route —');
+  let mr = await (await fetch(`${proxyUrl}/v1/models`)).json();
+  assert(mr.object === 'list' && Array.isArray(mr.data), '/v1/models returns list object');
+  // returns models from the active (highest priority non-dead) provider's mapped slots
+  const ids = mr.data.map((m) => m.id);
+  assert(ids.length > 0, '/v1/models returns non-empty model list', JSON.stringify(ids));
+  assert(ids.every((id) => typeof id === 'string' && id.length > 0), '/v1/models slot IDs are populated', JSON.stringify(ids));
+
   // --- 0. usage period aggregation (from seeded multi-day history) ---
   console.log('\n— usage period aggregation —');
   let u0 = await (await fetch(`${proxyUrl}/api/usage`)).json();

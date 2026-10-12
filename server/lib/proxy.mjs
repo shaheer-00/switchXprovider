@@ -355,6 +355,12 @@ export async function handleProxy(req, res, cfg, rawBody) {
           // Translate the OpenAI body (SSE or JSON — auto-detected) into
           // Anthropic wire format before it reaches usageTap / Claude Code.
           stream = stream.pipe(openaiToAnthropicStream(r.mappedModel || ''));
+        } else if (r.resp.headers.get('content-type')?.includes('application/json')) {
+          // Some non-OpenAI upstreams (e.g. bynara) ignore stream/Accept and
+          // return plain JSON even for /v1/messages — Claude Code requires
+          // text/event-stream. Reuse the JSON-buffering path to emit a valid
+          // Anthropic SSE event stream (it self-selects the JSON branch).
+          stream = stream.pipe(openaiToAnthropicStream(r.mappedModel || ''));
         }
         const tap = usageTap((u) => {
           rec.inTok = u.input + u.cacheRead + u.cacheCreation;

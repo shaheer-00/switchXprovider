@@ -119,6 +119,28 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // Hermes / OpenAI-style /v1/models — return only the 3 mapped slots
+    // (switchx:opus/sonnet/haiku) for the active provider, not the upstream's
+    // full model dump.
+    if (pathname === '/v1/models' || pathname === '/v1/models/') {
+      const { enabledSorted, isDown } = await import('./lib/proxy.mjs');
+      const { statsFor } = await import('./lib/config.mjs');
+      const active = enabledSorted(cfg).find((p) => !isDown(statsFor(cfg, p.id))) || cfg.providers[0];
+      const models = active?.models || {};
+      const slots = ['opus', 'sonnet', 'haiku'];
+      const data = slots
+        .filter((s) => models[s])
+        .map((s) => ({
+          id: models[s],
+          object: 'model',
+          owned_by: active?.name || 'switchXprovider',
+          status: 'active',
+        }));
+      res.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': '*' });
+      res.end(JSON.stringify({ object: 'list', data }));
+      return;
+    }
+
     // Everything else: Anthropic API traffic → proxy it.
     const rawBody = await readRawBody(req);
     await handleProxy(req, res, cfg, rawBody);

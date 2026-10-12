@@ -7,8 +7,7 @@
 //   anthropicToOpenAI(body)     request:  system/messages/tools/params
 //   openAIToAnthropic(json)     response: content blocks, tool_use, usage
 //   openaiToAnthropicStream()   response: SSE chunk stream → Anthropic event
-//                               stream (or buffered JSON → Anthropic JSON —
-//                               the transform auto-detects by first byte)
+//                               event stream — the transform auto-detects by first byte)
 //
 // Tool calls are fully translated in both directions — Claude Code cannot
 // function without them.
@@ -269,8 +268,75 @@ export function openaiToAnthropicStream(model) {
       if (mode === 'json') {
         try {
           const j = JSON.parse(buf);
+          // Anthropic-shaped JSON (a full message object) — already in the
+          // right content format; just emit it across the standard SSE event
+          // sequence so Claude Code always receives text/event-stream even
+          // when an upstream proxy returned plain JSON for a /v1/messages call.
+          if (j?.type === 'message') {
+            ev({
+              type: 'message_start',
+              message: {
+                id: j.id,
+                type: 'message',
+                role: j.role || 'assistant',
+                model: j.model || model,
+                content: [],
+                stop_reason: null,
+                stop_sequence: null,
+                usage: { input_tokens: j.usage?.input_tokens || 0, output_tokens: 0 },
+              },
+            });
+            const blocks = j.content || [];
+            for (const b of blocks) {
+              if (b?.type === 'text') {
+                openTextBlock();
+                if (b.text) ev({ type: 'content_block_delta', index: blockIdx, delta: { type: 'text_delta', text: b.text } });
+              } else if (b?.type === 'tool_use') {
+                openToolBlock(blockIdx, b.id, b.name);
+                if (b.input != null) {
+                  ev({ type: 'content_block_delta', index: blockIdx, delta: { type: 'input_json_delta', partial_json: JSON.stringify(b.input) } });
+                }
+              }
+            }
+            ev({
+              type: 'message_delta',
+              delta: { stop_reason: j.stop_reason || mapFinish(null), stop_sequence: null },
+              usage: { output_tokens: j.usage?.output_tokens || 0 },
+            });
+            ev({ type: 'message_stop' });
+            cb(null, pending);
+            return;
+          }
+          // OpenAI-shaped JSON — translate and emit as above.
           const msg = openAIToAnthropic(j);
-          cb(null, JSON.stringify(msg));
+          ev({
+            type: 'message_start',
+            message: {
+              id: msg.id, type: 'message', role: 'assistant', model, content: [],
+              stop_reason: null, stop_sequence: null,
+              usage: { input_tokens: msg.usage.input_tokens, output_tokens: 0 },
+            },
+          });
+          const blocks = msg.content || [];
+          for (const b of blocks) {
+            if (b.type === 'text') {
+              openTextBlock();
+              if (b.text) ev({ type: 'content_block_delta', index: blockIdx, delta: { type: 'text_delta', text: b.text } });
+            } else {
+              openToolBlock(blocks.indexOf(b), b.id, b.name);
+              if (b.input != null) {
+                ev({ type: 'content_block_delta', index: blockIdx, delta: { type: 'input_json_delta', partial_json: JSON.stringify(b.input) } });
+              }
+            }
+          }
+          ev({
+            type: 'message_delta',
+            delta: { stop_reason: mapFinish(msg.stop_reason), stop_sequence: null },
+            usage: { output_tokens: msg.usage.output_tokens || 0 },
+          });
+          ev({ type: 'message_stop' });
+          cb(null, pending);
+          return;
         } catch {
           cb(null, buf); // not JSON after all — pass through
         }

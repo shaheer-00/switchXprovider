@@ -30,6 +30,26 @@ const OFFICIAL_CATALOG_URL =
 // used by the pricing auto-fill. Community-maintained; matches are editable.
 const MODELS_DEV_URL = 'https://models.dev/api.json';
 
+async function hashSources(root) {
+  const crypto = await import('node:crypto');
+  const paths = [
+    'lib/proxy.mjs',
+    'lib/translate.mjs',
+    'lib/config.mjs',
+    'lib/api.mjs',
+    'lib/health.mjs',
+    'lib/routing.mjs',
+  ];
+  const h = crypto.createHash('sha256');
+  for (const p of paths) {
+    try {
+      const data = fs.readFileSync(path.join(root, p));
+      h.update(data);
+    } catch { /* missing file — ignore */ }
+  }
+  return h.digest('hex').slice(0, 12);
+}
+
 function send(res, status, obj) {
   res.writeHead(status, JSON_HDR);
   res.end(JSON.stringify(obj));
@@ -267,12 +287,15 @@ export async function handleApi(req, res, pathname, cfg) {
   const method = req.method;
   const parts = pathname.split('/').filter(Boolean); // ['api', ...]
   const [, resource, id, action] = parts;
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const pluginRoot = path.resolve(__dirname, '..');
 
   try {
     // ---- GET endpoints ----
     if (method === 'GET' && resource === 'status') {
       return send(res, 200, {
         version: PKG.version,
+        fileHash: await hashSources(pluginRoot),
         update: readUpdateMarker(),
         port: cfg.port,
         uptimeSec: Math.round((Date.now() - PROCESS_START) / 1000),

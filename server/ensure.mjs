@@ -38,6 +38,27 @@ function newer(a, b) {
   return false;
 }
 
+async function hashSources(root) {
+  const crypto = await import('node:crypto');
+  const paths = [
+    'server/server.mjs',
+    'server/lib/proxy.mjs',
+    'server/lib/translate.mjs',
+    'server/lib/config.mjs',
+    'server/lib/api.mjs',
+    'server/lib/health.mjs',
+    'server/lib/routing.mjs',
+  ];
+  const h = crypto.createHash('sha256');
+  for (const p of paths) {
+    try {
+      const data = fs.readFileSync(path.join(root, p));
+      h.update(data);
+    } catch { /* missing file — ignore */ }
+  }
+  return h.digest('hex').slice(0, 12);
+}
+
 async function tryFetch(url, opts, timeoutMs = 1500) {
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), timeoutMs);
@@ -122,13 +143,15 @@ if (process.argv.includes('--replace')) {
 if (await isUp()) {
   const st = await runningStatus();
   const running = st?.version;
-  if (!running || newer(PKG.version, running)) {
+  const runningHash = st?.fileHash || '';
+  const currentHash = await hashSources(PLUGIN_ROOT);
+  if (!running || newer(PKG.version, running) || runningHash !== currentHash) {
     // Record the pending update for the dashboard, then swap the proxy in place.
     try {
       fs.mkdirSync(DIR, { recursive: true });
       fs.writeFileSync(UPDATE_MARKER_PATH, JSON.stringify({ version: PKG.version, path: PLUGIN_ROOT, ts: Date.now() }, null, 2));
     } catch { /* marker is best-effort — the restart below is what matters */ }
-    console.log(`switchXprovider updated ${running || 'unknown'} → ${PKG.version} — restarting proxy`);
+    console.log(`switchXprovider update: ${running || 'unknown'} version ${runningHash === currentHash ? '' : 'or source changed → '+runningHash} — restarting proxy`);
     const replaced = await replaceRunning();
     if (!replaced) console.error('switchXprovider: proxy did not come back up after the update — check the server log');
   }
