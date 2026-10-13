@@ -27,6 +27,10 @@ const ENV_TO_SET = {
   ANTHROPIC_DEFAULT_OPUS_MODEL: 'switchx:opus',
   ANTHROPIC_DEFAULT_SONNET_MODEL: 'switchx:sonnet',
   ANTHROPIC_DEFAULT_HAIKU_MODEL: 'switchx:haiku',
+  // Suppress the auto-mode classifier-billing notice — the proxy reshapes
+  // the classifier-check contract, so server-side checks fall back to a billed
+  // client-side classifier otherwise.
+  CLAUDE_CODE_AUTO_MODE_SERVER: '0',
 };
 
 async function ping(timeoutMs = 1500) {

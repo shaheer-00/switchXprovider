@@ -19,15 +19,28 @@ const ENV_KEYS = [
   'ANTHROPIC_DEFAULT_OPUS_MODEL',
   'ANTHROPIC_DEFAULT_SONNET_MODEL',
   'ANTHROPIC_DEFAULT_HAIKU_MODEL',
+  'CLAUDE_CODE_AUTO_MODE_SERVER',
 ];
 
-// Setting this env key tells Claude Code you don't want claude.ai org
-// connectors loaded — which hides the startup warning about them being
-// disabled by auth precedence. Connectors can't load through the proxy
-// anyway (the same auth precedence blocks them), so hiding costs nothing.
-// Verified against the Claude Code 2.1.x binary: the warning is only shown
-// for the api_key_precedence eligibility reason, not for an intentional opt-out.
+// Two startup notices appear when Claude Code traffic is routed through a
+// proxy, because the proxy rewrites the request/response shapes those features
+// depend on:
+//
+//  1. "claude.ai connectors are disabled" — subscription auth env keys take
+//     precedence over the claude.ai login, so org connectors can't load.
+//     Opting them out on purpose (setting this to '0') hides the warning at no
+//     cost, since connectors can't load through the proxy anyway.
+//  2. Auto-mode classifier-billing notice — server-side classifier checks need
+//     a `safeguards` request field + `safeguard_results` response, which the
+//     proxy reshapes. Setting CLAUDE_CODE_AUTO_MODE_SERVER=0 tells Claude Code
+//     to skip server-side checks (deliberate fallback), removing the notice.
+//
+// Both are toggled together by the dashboard "hide startup notices" switch and
+// take effect after a Claude Code restart. VERIFIED against Claude Code 2.1.x:
+// the connectors warning only shows for the api_key_precedence reason, not for
+// an intentional opt-out.
 const CONNECTORS_KEY = 'ENABLE_CLAUDEAI_MCP_SERVERS';
+const AUTO_MODE_KEY = 'CLAUDE_CODE_AUTO_MODE_SERVER';
 
 function settingsPath() {
   return path.join(os.homedir(), '.claude', 'settings.json');
@@ -90,6 +103,9 @@ export function enableRouting(port, log) {
   settings.env.ANTHROPIC_DEFAULT_OPUS_MODEL = 'switchx:opus';
   settings.env.ANTHROPIC_DEFAULT_SONNET_MODEL = 'switchx:sonnet';
   settings.env.ANTHROPIC_DEFAULT_HAIKU_MODEL = 'switchx:haiku';
+  // Auto-mode server-side classifier checks can't traverse the proxy's request
+  // rewriting — suppress them so the CLI doesn't bill the fallback classifier.
+  settings.env.CLAUDE_CODE_AUTO_MODE_SERVER = '0';
   writeSettings(settings);
   log(`Routing ENABLED — Claude Code now talks to http://127.0.0.1:${port}. Restart Claude Code to apply.`);
   return { enabled: true };
@@ -135,11 +151,11 @@ export function disableRouting(port, log) {
   return { enabled: false, restored: restored > 0 };
 }
 
-// ---- Claude Code "claude.ai connectors are disabled" startup warning ----
-// While routed through the proxy, Claude Code warns at startup that its auth
-// env takes precedence over the claude.ai login and org connectors won't
-// load. Setting CONNECTORS_KEY='0' opts out of connector loading on purpose,
-// which hides the warning. See the comment on CONNECTORS_KEY above.
+// ---- Claude Code startup notices ----
+// While routed through the proxy, Claude Code shows notices about features its
+// auth env keys override and about auto-mode classifier billing. Setting
+// CONNECTORS_KEY='0' and AUTO_MODE_KEY='0' opts both out on purpose, which
+// hides both notices. See the comment block near the constant definitions above.
 
 export function warningState() {
   const settings = readSettings();
@@ -152,13 +168,15 @@ export function setWarningHidden(hidden, log) {
   settings.env = { ...(settings.env || {}) };
   if (hidden) {
     settings.env[CONNECTORS_KEY] = '0';
+    settings.env[AUTO_MODE_KEY] = '0';
   } else {
     delete settings.env[CONNECTORS_KEY];
+    delete settings.env[AUTO_MODE_KEY];
     if (!Object.keys(settings.env).length) delete settings.env;
   }
   writeSettings(settings);
   log(hidden
-    ? 'Claude Code connectors warning hidden (claude.ai connectors opted out). Restart Claude Code to apply.'
-    : 'Claude Code connectors warning restored. Restart Claude Code to apply.');
+    ? 'Claude Code startup notices hidden (connectors opted out, auto-mode server checks disabled). Restart Claude Code to apply.'
+    : 'Claude Code startup notices restored. Restart Claude Code to apply.');
   return { hidden };
 }

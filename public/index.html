@@ -1810,8 +1810,8 @@ try { if (localStorage.getItem('switchx-theme') === 'light') document.documentEl
         <div class="hint" id="routingHint" style="margin-top:10px"></div>
         <div class="setrow">
           <div class="info">
-            <div class="t">Hide "claude.ai connectors are disabled" warning</div>
-            <div class="d">Claude Code shows a yellow warning at startup while switchX's auth settings take precedence over your claude.ai login — org connectors can't load through the proxy anyway. This opts out of connector loading on purpose, which hides the warning.</div>
+            <div class="t">Hide startup notices (connectors disabled + auto-mode billing)</div>
+            <div class="d">Claude Code shows two notices while routed: "claude.ai connectors are disabled" (auth precedence blocks org connectors) and an auto-mode billing notice (proxy reshapes classifier-check responses). These toggle both notices on purpose — restart Claude Code to apply.</div>
           </div>
           <button class="btn btn-secondary" id="warningBtn" onclick="toggleWarning()">…</button>
         </div>
@@ -3194,7 +3194,7 @@ function renderSettings() {
     : `no tool output compressed yet · threshold ${fmtTok(comp.threshold || 12000)} chars`;
   if (document.activeElement !== $('saverThreshold')) $('saverThreshold').value = comp.threshold || 12000;
   const wbtn = $('warningBtn');
-  wbtn.textContent = cc.warningHidden ? 'Show warning again' : 'Hide warning';
+  wbtn.textContent = cc.warningHidden ? 'Show notices again' : 'Hide notices';
   wbtn.className = cc.warningHidden ? 'btn' : 'btn btn-secondary';
   if (statusState.catalogUrl) $('catalogUrl').value = statusState.catalogUrl;
 }
@@ -3204,7 +3204,7 @@ window.toggleWarning = async () => {
   const hiding = !cc.warningHidden;
   try {
     const r = await api('/api/warning', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ hidden: hiding }) });
-    toast(r.warningHidden ? 'Warning hidden — restart Claude Code to apply' : 'Warning restored — restart Claude Code to apply');
+    toast(r.warningHidden ? 'Notices hidden — restart Claude Code to apply' : 'Notices restored — restart Claude Code to apply');
     refresh();
   } catch (e) { toast(e.message, true); }
 };
