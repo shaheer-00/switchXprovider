@@ -142,6 +142,12 @@ function buildHeaders(p, req, protocolOpenai = false) {
 // flows to the client. Handles both SSE (`data:` lines: message_start carries
 // input/cache tokens, message_delta carries the final output token count)
 // and plain JSON responses (top-level `usage`).
+//
+// SSE re-emission: upstream providers (VyceAI, APInex, etc.) frequently split
+// a single `data: {...}` line across TCP chunk boundaries. Claude Code's SSE
+// parser rejects partial JSON on a data: line as "malformed stream". This
+// transform reassembles complete lines before forwarding, so the client only
+// ever sees whole SSE events.
 export function usageTap(onDone) {
   const dec = new StringDecoder('utf8');
   let buf = '';
@@ -171,18 +177,23 @@ export function usageTap(onDone) {
     transform(chunk, _enc, cb) {
       buf += dec.write(chunk);
       let i;
+      let out = '';
       while ((i = buf.indexOf('\n')) >= 0) {
-        const line = buf.slice(0, i).replace(/\r$/, '');
+        const line = buf.slice(0, i);
         buf = buf.slice(i + 1);
-        if (line.startsWith('data:')) {
+        // Preserve the line ending (LF) so client SSE parsers see whole events.
+        out += line + '\n';
+        const trimmed = line.replace(/\r$/, '');
+        if (trimmed.startsWith('data:')) {
           sawSse = true;
-          const d = line.slice(5).trim();
+          const d = trimmed.slice(5).trim();
           if (d && d !== '[DONE]') {
             try { take(JSON.parse(d)); } catch { /* partial/keepalive line */ }
           }
         }
       }
-      cb(null, chunk);
+      if (out) cb(null, out);
+      else cb();
     },
     flush(cb) {
       buf += dec.end();
