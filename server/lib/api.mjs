@@ -990,6 +990,17 @@ ${JSON.stringify(stats)}`;
           return send(res, 200, { ok: true });
         }
 
+        if (action === 'enable' || action === 'disable') {
+          const wasEnabled = p.enabled;
+          p.enabled = action === 'enable';
+          if (p.enabled === wasEnabled) {
+            return send(res, 200, { ok: true, enabled: p.enabled });
+          }
+          logEvent(cfg, `Provider "${p.name}" ${p.enabled ? 'enabled' : 'disabled'} — ${p.enabled ? 'back in rotation' : 'removed from routing'}`);
+          persistSoon(cfg, 0);
+          return send(res, 200, { ok: true, enabled: p.enabled });
+        }
+
         if (action === 'up' || action === 'down') {
           const sorted = cfg.providers.slice().sort((a, b) => (a.priority || 99) - (b.priority || 99));
           const idx = sorted.findIndex((x) => x.id === id);

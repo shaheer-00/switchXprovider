@@ -1135,6 +1135,8 @@
   .btn-ghost:hover { color: var(--text); background: var(--surface-2); border-color: transparent; box-shadow: none; }
   .btn-danger, button.danger { background: none; color: var(--red); border-color: transparent; }
   .btn-danger:hover, button.danger:hover { background: rgba(248,113,113,.08); border-color: transparent; box-shadow: none; }
+  .btn-warning { background: none; color: var(--amber); border-color: transparent; border: 1px solid var(--border); }
+  .btn-warning:hover { color: var(--amber); background: rgba(251,191,36,.12); border-color: transparent; box-shadow: none; }
 
   /* ---- cards & stats ---- */
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--sp-4); }
@@ -2768,7 +2770,11 @@ function providerCard(p) {
     </div>
     <div class="pact">
       <button class="btn btn-ghost" onclick="test('${p.id}')">test</button>
-      ${p.status === 'down' ? `<button class="btn btn-ghost" onclick="resetP('${p.id}')">reset</button>` : ''}
+      ${p.status === 'down' && p.enabled ? `<button class="btn btn-ghost" onclick="resetP('${p.id}')">reset</button>` : ''}
+      ${p.enabled
+        ? `<button class="btn btn-warning" onclick="toggleP('${p.id}')">disable</button>`
+        : `<button class="btn btn-ghost" onclick="toggleP('${p.id}')" style="color:var(--green)">enable</button>`
+      }
       <button class="btn btn-ghost" onclick="edit('${p.id}')">edit</button>
       <span class="spacer"></span>
       <button class="btn btn-danger" onclick="remove('${p.id}')">delete</button>
@@ -3811,6 +3817,18 @@ window.testAll = async () => {
 window.resetP = async (id) => {
   try {
     await api(`/api/providers/${id}/reset`, { method: 'POST' });
+    refresh();
+  } catch (e) { toast(e.message, true); }
+};
+
+window.toggleP = async (id) => {
+  const p = statusState.providers.find((x) => x.id === id);
+  if (!p) return;
+  const action = p.enabled ? 'disable' : 'enable';
+  if (p.enabled && !confirm(`Disable provider "${p.name}"? It will stop receiving traffic until re-enabled.`)) return;
+  try {
+    const r = await api(`/api/providers/${id}/${action}`, { method: 'POST' });
+    toast(r.enabled ? `Provider "${p.name}" enabled` : `Provider "${p.name}" disabled`);
     refresh();
   } catch (e) { toast(e.message, true); }
 };
