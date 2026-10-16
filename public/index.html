@@ -1812,8 +1812,8 @@ try { if (localStorage.getItem('switchx-theme') === 'light') document.documentEl
         <div class="hint" id="routingHint" style="margin-top:10px"></div>
         <div class="setrow">
           <div class="info">
-            <div class="t">Hide startup notices (connectors disabled + auto-mode billing)</div>
-            <div class="d">Claude Code shows two notices while routed: "claude.ai connectors are disabled" (auth precedence blocks org connectors) and an auto-mode billing notice (proxy reshapes classifier-check responses). These toggle both notices on purpose — restart Claude Code to apply.</div>
+            <div class="t">Hide startup notices (connectors disabled)</div>
+            <div class="d">Claude Code shows one notice while routed: "claude.ai connectors are disabled" (auth precedence blocks org connectors). Auto-mode classifier traffic now bypasses the proxy to Anthropic verbatim, so the server-side classifier runs without a billing notice. Hiding this notice opts out of connectors on purpose — restart Claude Code to apply.</div>
           </div>
           <button class="btn btn-secondary" id="warningBtn" onclick="toggleWarning()">…</button>
         </div>

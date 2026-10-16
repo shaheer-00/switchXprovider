@@ -190,13 +190,13 @@ function claudeCodeStatus(cfg) {
       configured: env.ANTHROPIC_BASE_URL === `http://127.0.0.1:${cfg.port}`,
       baseUrl: env.ANTHROPIC_BASE_URL || null,
       models: env.ANTHROPIC_DEFAULT_SONNET_MODEL || null,
-      // Both notices (connectors-disabled + auto-mode billing) are toggled together
-      // under the dashboard "hide startup notices" switch.
+      // Only the connectors-disabled notice is toggled by the dashboard switch.
+      // Auto-mode classifier traffic bypasses the proxy now, so there is no
+      // auto-mode billing notice and no env override controls it.
       warningHidden: env.ENABLE_CLAUDEAI_MCP_SERVERS === '0',
-      autoModeServerDisabled: env.CLAUDE_CODE_AUTO_MODE_SERVER === '0',
     };
   } catch {
-    return { configured: false, baseUrl: null, models: null, warningHidden: false, autoModeServerDisabled: false };
+    return { configured: false, baseUrl: null, models: null, warningHidden: false };
   }
 }
 

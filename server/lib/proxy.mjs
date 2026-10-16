@@ -379,19 +379,30 @@ export async function handleProxy(req, res, cfg, rawBody) {
           recordUsage(cfg, p.id, p.name, u, r.mappedModel, r.projectDir, r.projectName);
           pushRequest(cfg, rec);
         });
-        // If the client hangs up, stop pulling from upstream — and still
+        // If the client hangs up, stop pulling from upstream — drain the
+        // upstream body so its keep-alive socket doesn't enter the pool dirty
+        // and crash the next request with `TypeError: terminated` — and still
         // record the usage parsed so far (finalize is idempotent).
         res.on('close', () => {
-          r.ac.abort();
+          try { r.ac.abort(); } catch {}
+          try { r.resp.body?.cancel().catch(() => {}); } catch {}
           tap.finalize();
         });
         // A dead pipe must never go unhandled: an AbortError from the cancel
         // above or an upstream mid-body drop would otherwise crash the
         // process / leave the client hanging with no failover signal.
+        //
+        // Critical: abort AND drain the upstream. Node's undici keeps HTTP
+        // keep-alive sockets in a pool; if the downstream (Claude Code) closes
+        // mid-stream without us draining the upstream response, the proxy is
+        // left holding a broken socket. The next request that reuses it throws
+        // `TypeError: terminated` and kills the proxy mid-answer.
         stream.on('error', (err) => {
           if (err?.name !== 'AbortError') {
             logEvent(cfg, `Stream from "${p.name}" broke mid-body (${err?.message || err}) — closing client connection`);
           }
+          try { r.ac.abort(); } catch {}
+          try { r.resp.body?.cancel().catch(() => {}); } catch {}
           try { if (!res.writableEnded) res.end(); } catch { /* already gone */ }
           tap.finalize();
         });

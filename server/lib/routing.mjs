@@ -12,6 +12,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { enabledSorted } from './proxy.mjs';
 
 const ENV_KEYS = [
   'ANTHROPIC_BASE_URL',
@@ -19,28 +20,22 @@ const ENV_KEYS = [
   'ANTHROPIC_DEFAULT_OPUS_MODEL',
   'ANTHROPIC_DEFAULT_SONNET_MODEL',
   'ANTHROPIC_DEFAULT_HAIKU_MODEL',
-  'CLAUDE_CODE_AUTO_MODE_SERVER',
 ];
 
-// Two startup notices appear when Claude Code traffic is routed through a
-// proxy, because the proxy rewrites the request/response shapes those features
-// depend on:
+// One startup notice appears when Claude Code traffic is routed through a
+// proxy: "claude.ai connectors are disabled" — subscription auth env keys take
+// precedence over the claude.ai login, so org connectors can't load. Opting
+// them out on purpose (setting this to '0') hides the warning at no cost,
+// since connectors can't load through the proxy anyway.
 //
-//  1. "claude.ai connectors are disabled" — subscription auth env keys take
-//     precedence over the claude.ai login, so org connectors can't load.
-//     Opting them out on purpose (setting this to '0') hides the warning at no
-//     cost, since connectors can't load through the proxy anyway.
-//  2. Auto-mode classifier-billing notice — server-side classifier checks need
-//     a `safeguards` request field + `safeguard_results` response, which the
-//     proxy reshapes. Setting CLAUDE_CODE_AUTO_MODE_SERVER=0 tells Claude Code
-//     to skip server-side checks (deliberate fallback), removing the notice.
-//
-// Both are toggled together by the dashboard "hide startup notices" switch and
-// take effect after a Claude Code restart. VERIFIED against Claude Code 2.1.x:
-// the connectors warning only shows for the api_key_precedence reason, not for
-// an intentional opt-out.
+// The auto-mode classifier-billing notice is GONE: auto-mode classifier
+// endpoints now bypass the proxy and reach Anthropic verbatim, so the server-
+// side classifier runs normally — no fallback classifier, no notice. Toggled
+// by the dashboard "hide startup notices" switch (connectors only now) and
+// applied after a Claude Code restart. VERIFIED against Claude Code 2.1.x: the
+// connectors warning only shows for the api_key_precedence reason, not for an
+// intentional opt-out.
 const CONNECTORS_KEY = 'ENABLE_CLAUDEAI_MCP_SERVERS';
-const AUTO_MODE_KEY = 'CLAUDE_CODE_AUTO_MODE_SERVER';
 
 function settingsPath() {
   return path.join(os.homedir(), '.claude', 'settings.json');
@@ -103,12 +98,32 @@ export function enableRouting(port, log) {
   settings.env.ANTHROPIC_DEFAULT_OPUS_MODEL = 'switchx:opus';
   settings.env.ANTHROPIC_DEFAULT_SONNET_MODEL = 'switchx:sonnet';
   settings.env.ANTHROPIC_DEFAULT_HAIKU_MODEL = 'switchx:haiku';
-  // Auto-mode server-side classifier checks can't traverse the proxy's request
-  // rewriting — suppress them so the CLI doesn't bill the fallback classifier.
-  settings.env.CLAUDE_CODE_AUTO_MODE_SERVER = '0';
+  // Auto-mode classifier endpoints (/v1/human-in-the-loop, /v1/safeguards, and
+  // /v1/messages/count_tokens with a `safeguards` field) now bypass the proxy
+  // and reach Anthropic verbatim via primaryAnthropicProvider(), so the server-
+  // side classifier can run. Don't force CLAUDE_CODE_AUTO_MODE_SERVER=0 here.
   writeSettings(settings);
   log(`Routing ENABLED — Claude Code now talks to http://127.0.0.1:${port}. Restart Claude Code to apply.`);
   return { enabled: true };
+}
+
+// Pick the real Anthropic provider for auto-mode bypass.
+// The server-side safety classifier (/v1/human-in-the-loop, /v1/safeguards,
+// count_tokens with `safeguards`) is an Anthropic contract — it needs
+// `safeguards` in the request and `safeguard_results` in the SSE response.
+// Anthropic-protocol gateways that don't implement that contract return HTML
+// or JSON errors, which breaks the classifier. So the bypass ONLY targets a
+// provider whose baseUrl is api.anthropic.com (a real Anthropic key).
+// Exposed so server.mjs can reuse the lookup on the hot path.
+export function primaryAnthropicProvider(cfg) {
+  if (!cfg) return null;
+  for (const p of enabledSorted(cfg)) {
+    if (p.protocol === 'anthropic' && p.apiKey && p.baseUrl
+        && /api\.anthropic\.com/.test(String(p.baseUrl))) {
+      return p;
+    }
+  }
+  return null;
 }
 
 // Point Claude Code back at Anthropic directly.
@@ -152,10 +167,12 @@ export function disableRouting(port, log) {
 }
 
 // ---- Claude Code startup notices ----
-// While routed through the proxy, Claude Code shows notices about features its
-// auth env keys override and about auto-mode classifier billing. Setting
-// CONNECTORS_KEY='0' and AUTO_MODE_KEY='0' opts both out on purpose, which
-// hides both notices. See the comment block near the constant definitions above.
+// Only the connectors-disabled notice remains while routed through the proxy:
+// subscription auth env keys take precedence over the claude.ai login, so org
+// connectors can't load. Setting CONNECTORS_KEY='0' opts out on purpose, which
+// hides the notice at no cost (connectors can't load through the proxy anyway).
+// The auto-mode classifier-billing notice no longer applies — those endpoints
+// bypass the proxy to Anthropic verbatim, so the server-side classifier runs.
 
 export function warningState() {
   const settings = readSettings();
@@ -168,15 +185,13 @@ export function setWarningHidden(hidden, log) {
   settings.env = { ...(settings.env || {}) };
   if (hidden) {
     settings.env[CONNECTORS_KEY] = '0';
-    settings.env[AUTO_MODE_KEY] = '0';
   } else {
     delete settings.env[CONNECTORS_KEY];
-    delete settings.env[AUTO_MODE_KEY];
     if (!Object.keys(settings.env).length) delete settings.env;
   }
   writeSettings(settings);
   log(hidden
-    ? 'Claude Code startup notices hidden (connectors opted out, auto-mode server checks disabled). Restart Claude Code to apply.'
+    ? 'Claude Code startup notice hidden (connectors opted out). Restart Claude Code to apply.'
     : 'Claude Code startup notices restored. Restart Claude Code to apply.');
   return { hidden };
 }

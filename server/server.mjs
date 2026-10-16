@@ -5,8 +5,12 @@
 //   /            web dashboard
 //   /healthz     liveness ping (used by ensure.mjs and the dashboard)
 //   /api/*       management API (providers, status, events)
+//   /v1/models   returns only the 3 mapped model slots
+//   /v1/human-in-the-loop, /v1/safeguards, /v1/messages/count_tokens (with
+//     `safeguards`) → bypass: forwarded verbatim to the primary Anthropic
+//     provider so server-side auto-mode classifier checks run unwrapped.
 //   anything else is forwarded to the active provider (Anthropic API shape:
-//   /v1/messages, /v1/messages/count_tokens, ...)
+//   /v1/messages, ...)
 
 import http from 'node:http';
 import fs from 'node:fs';
@@ -16,6 +20,128 @@ import { load, LOG_PATH, CONFIG_PATH } from './lib/config.mjs';
 import { handleProxy } from './lib/proxy.mjs';
 import { handleApi } from './lib/api.mjs';
 import { startHealthLoop } from './lib/health.mjs';
+import { primaryAnthropicProvider } from './lib/routing.mjs';
+
+// Auto-mode classifier endpoints — bypass provider routing and forward to the
+// primary Anthropic provider verbatim. The server-side classifier contract
+// (safeguards request field + safeguard_results response) is preserved as-is;
+// the proxy never rewrites or translates these, so the classifier works even
+// while all other traffic is routed through gateway providers.
+const AUTO_MODE_PATHS = new Set(['/v1/human-in-the-loop', '/v1/safeguards']);
+
+// Build Anthropic-shaped headers for a bypass request to `provider`.
+function anthropicHeaders(provider, req) {
+  const h = {
+    'user-agent': req.headers['user-agent'] || 'claude-cli/2.0.14 (external, cli)',
+    accept: 'text/event-stream, application/json, */*',
+  };
+  if (req.headers['content-type']) h['content-type'] = req.headers['content-type'];
+  if (req.headers['anthropic-version']) h['anthropic-version'] = req.headers['anthropic-version'];
+  if (req.headers['anthropic-beta']) h['anthropic-beta'] = req.headers['anthropic-beta'];
+  if (req.headers['x-api-key']) h['x-api-key'] = req.headers['x-api-key'];
+  // Always stamp the provider's real key so the request authenticates upstream,
+  // regardless of how Claude Code sent it (the sentinel token "switchx-local"
+  // only works against this proxy).
+  const style = provider.authStyle || 'auto';
+  if (style === 'bearer') {
+    h['authorization'] = `Bearer ${provider.apiKey}`;
+  } else if (style === 'anthropic') {
+    h['x-api-key'] = provider.apiKey;
+    if (!h['anthropic-version']) h['anthropic-version'] = '2023-06-01';
+  } else {
+    h['x-api-key'] = provider.apiKey;
+    h['authorization'] = `Bearer ${provider.apiKey}`;
+    if (!h['anthropic-version']) h['anthropic-version'] = '2023-06-01';
+  }
+  return h;
+}
+
+// Forward a classifier request straight to the primary Anthropic provider,
+// preserving the SSE / JSON stream exactly — no model rewriting, no usage
+// capture, no failover. Returns false when the request isn't a bypass target.
+async function handleAutoModeBypass(req, res, pathname, rawBody, cfg) {
+  // Explicit classifier endpoints always bypass.
+  let isClassifier = AUTO_MODE_PATHS.has(pathname);
+  // /v1/messages/count_tokens only bypasses when it carries a `safeguards`
+  // field — a plain token-count request should still go through normal routing
+  // (and be rewritten to the active provider).
+  if (!isClassifier && pathname === '/v1/messages/count_tokens' && req.method !== 'GET') {
+    try {
+      const json = JSON.parse(rawBody.toString('utf8'));
+      if (json && typeof json === 'object' && Object.prototype.hasOwnProperty.call(json, 'safeguards')) {
+        isClassifier = true;
+      }
+    } catch { /* not JSON — not a classifier request */ }
+  }
+  if (!isClassifier) return false;
+
+  const provider = primaryAnthropicProvider(cfg);
+  if (!provider) {
+    // No real Anthropic (api.anthropic.com) provider is configured — the
+    // server-side classifier contract can't be satisfied through a gateway
+    // that doesn't implement safeguards/safeguard_results. Respond with a
+    // clear, client-actionable error instead of relaying garbage (gateways
+    // return HTML for these endpoints) or triggering a noisy failover.
+    const hint = 'switchXprovider: auto-mode classifier requires an Anthropic provider (api.anthropic.com) configured and enabled. Add one in the dashboard and re-enable routing — the bypass will pick it up.';
+    res.writeHead(403, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ type: 'error', error: { type: 'authentication_error', message: hint } }));
+    return true;
+  }
+
+  const baseUrl = String(provider.baseUrl || '').replace(/\/+$/, '');
+  const url = baseUrl.endsWith('/v1') ? baseUrl + pathname : baseUrl + pathname;
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), 120_000);
+  try {
+    const upstream = await fetch(url, {
+      method: req.method,
+      headers: anthropicHeaders(provider, req),
+      body: req.method === 'GET' || req.method === 'HEAD' ? undefined : rawBody,
+      signal: ac.signal,
+    });
+    // Relay status + the headers Claude Code's classifier client expects,
+    // preserving the SSE / JSON framing the upstream chose. Only forward headers
+    // that are actually present — Node rejects an `undefined` header value.
+    const relayHeaders = {
+      'content-type': upstream.headers.get('content-type') || 'application/json',
+    };
+    const ce = upstream.headers.get('content-encoding');
+    if (ce) relayHeaders['content-encoding'] = ce;
+    res.writeHead(upstream.status, relayHeaders);
+    // Pump the upstream body straight to the client, byte for byte. SSE framing
+    // is preserved by usageTap-free passthrough. Drain-on-close prevents the
+    // undici socket-pool TypeError: terminated race (same fix as handleProxy).
+    const reader = upstream.body?.getReader();
+    if (reader) {
+      res.on('close', () => { try { reader.cancel(); } catch {} try { ac.abort(); } catch {} });
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (!res.write(value)) await new Promise((r) => res.once('drain', r));
+        }
+      } catch (err) {
+        // Client gone / upstream dropped — abort quietly; headers may be sent.
+        if (err?.name === 'AbortError' || !res.writableEnded) {
+          try { res.end(); } catch {}
+        }
+        return;
+      }
+    }
+    res.end();
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      res.writeHead(504, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ type: 'error', error: { type: 'timeout', message: 'switchXprovider: auto-mode classifier request timed out' } }));
+    } else {
+      res.writeHead(502, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ type: 'error', error: { type: 'api_error', message: `switchXprovider: auto-mode bypass failed — ${err.message}` } }));
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+  return true;
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const INDEX_PATH = path.join(__dirname, '..', 'public', 'index.html');
@@ -141,8 +267,13 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // Everything else: Anthropic API traffic → proxy it.
+    // Everything else: Anthropic API traffic → proxy it. Read the body first so
+    // the auto-mode bypass can inspect it for the `safeguards` field.
     const rawBody = await readRawBody(req);
+    // Auto-mode classifier endpoints bypass provider routing and forward
+    // verbatim to the primary Anthropic provider, so server-side classifier
+    // checks run without the proxy reshaping the safeguard_results contract.
+    if (await handleAutoModeBypass(req, res, pathname, rawBody, cfg)) return;
     await handleProxy(req, res, cfg, rawBody);
   } catch (err) {
     if (!res.headersSent) {
@@ -171,4 +302,11 @@ process.on('SIGINT', () => {
 });
 process.on('uncaughtException', (err) => {
   try { fs.appendFileSync(LOG_PATH, `[uncaught] ${new Date().toISOString()} ${err.stack || err.message}\n`); } catch { /* ignore */ }
+  // `TypeError: terminated` from undici on client disconnect is noisy-but-
+  // harmless — the client is already gone. Don't spam the log for the one
+  // we can't avoid: Node fires it before the request 'close' handler finishes.
+  if (err?.name === 'AbortError' || /terminated/i.test(err?.message || '')) {
+    return;
+  }
+  console.error('[switchx] uncaught exception:', err);
 });
