@@ -260,8 +260,8 @@ function sanitizeProviderInput(body) {
       name,
       baseUrl,
       apiKey: String(body.apiKey || '').trim(),
-      authStyle: ['anthropic', 'bearer', 'auto'].includes(body.authStyle) ? body.authStyle : 'auto',
-      protocol: body.protocol === 'openai' ? 'openai' : 'anthropic',
+      authStyle: ['anthropic', 'bearer', 'auto', 'none'].includes(body.authStyle) ? body.authStyle : 'auto',
+      protocol: ['openai', 'anthropic', 'freelane'].includes(body.protocol) ? body.protocol : 'anthropic',
       enabled: body.enabled !== false,
       models,
     },
@@ -919,7 +919,7 @@ ${JSON.stringify(stats)}`;
         const body = await readJson(req);
         const { errors, value } = sanitizeProviderInput(body);
         if (errors.length) return send(res, 400, { error: errors.join('; ') });
-        if (!value.apiKey) return send(res, 400, { error: 'apiKey is required' });
+        if (!value.apiKey && value.authStyle !== 'none') return send(res, 400, { error: 'apiKey is required' });
         const p = {
           id: newId(),
           ...value,

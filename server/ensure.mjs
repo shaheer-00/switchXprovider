@@ -48,6 +48,7 @@ async function hashSources(root) {
     'server/lib/api.mjs',
     'server/lib/health.mjs',
     'server/lib/routing.mjs',
+    'server/lib/freelane.mjs',
   ];
   const h = crypto.createHash('sha256');
   for (const p of paths) {

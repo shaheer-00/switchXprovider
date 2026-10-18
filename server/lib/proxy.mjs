@@ -12,6 +12,7 @@ import { statsFor, logEvent, persistSoon, recordUsage, pushRequest, countFailove
 import { anthropicToOpenAI, openaiToAnthropicStream } from './translate.mjs';
 import { compressBody } from './compress.mjs';
 import { sessionFromMetadata, sessionProject, projectDisplayName } from './chaptions.mjs';
+import { gatewayHeaders, applyFingerprint, canonicalizeSession, mintSessionId, isCanonicalSession } from './freelane.mjs';
 
 // Time allowed for upstream to send response headers (streams may run much longer).
 const HEADER_TIMEOUT_MS = 60_000;
@@ -106,11 +107,15 @@ function targetUrl(baseUrl, url) {
 function buildHeaders(p, req, protocolOpenai = false) {
   if (protocolOpenai) {
     // OpenAI-protocol providers: Bearer auth, no Anthropic headers.
-    return {
+    const headers = {
       'content-type': 'application/json',
-      authorization: `Bearer ${p.apiKey}`,
       'user-agent': req.headers['user-agent'] || 'claude-cli/2.0.14 (external, cli)',
     };
+    const hasKey = typeof p.apiKey === 'string' && p.apiKey.trim() !== '';
+    if (hasKey && p.authStyle !== 'none') {
+      headers.authorization = `Bearer ${p.apiKey}`;
+    }
+    return headers;
   }
   const h = {
     'content-type': req.headers['content-type'] || 'application/json',
@@ -123,7 +128,12 @@ function buildHeaders(p, req, protocolOpenai = false) {
   // to a claude-cli UA — some gateways fingerprint and reject other clients.
   h['user-agent'] = req.headers['user-agent'] || 'claude-cli/2.0.14 (external, cli)';
   const style = p.authStyle || 'auto';
-  if (style === 'bearer') {
+  const hasKey = typeof p.apiKey === 'string' && p.apiKey.trim() !== '';
+  if (style === 'none' || !hasKey) {
+    // No credential on this lane (keyless free tier). The freelane protocol
+    // injects its own pooled cred via gatewayHeaders(); keyless OpenAI gateways
+    // rely on the upstream accepting anonymous traffic.
+  } else if (style === 'bearer') {
     h['authorization'] = `Bearer ${p.apiKey}`;
   } else if (style === 'anthropic') {
     h['x-api-key'] = p.apiKey;
@@ -226,6 +236,7 @@ async function attempt(p, req, rawBody, cfg) {
   let projectName = null;
   let projectDir = null;
   let protocolOpenai = p.protocol === 'openai';
+  const protocolFreelane = p.protocol === 'freelane';
   let targetPath = null; // protocol-translated requests target a different path
   let savedChars = 0;    // token saver — reported to the caller on success
   if (rawBody && rawBody.length && req.method !== 'GET' && req.method !== 'HEAD') {
@@ -256,6 +267,13 @@ async function attempt(p, req, rawBody, cfg) {
           // need the request translated and pointed at /chat/completions.
           body = JSON.stringify(anthropicToOpenAI(json));
           targetPath = '/chat/completions';
+        } else if (protocolFreelane) {
+          // Free lane speaks OpenAI-style /chat/completions under /inference/v1.
+          // The fingerprint layer injects the v2 OpenCode tool definitions and
+          // session headers that gate the anonymous lane.
+          applyFingerprint(json);
+          body = JSON.stringify(anthropicToOpenAI(json));
+          targetPath = '/inference/v1/chat/completions';
         } else {
           body = JSON.stringify(json);
         }
@@ -267,6 +285,12 @@ async function attempt(p, req, rawBody, cfg) {
     }
   }
 
+  // Free lane: mint a canonical session id and synthesize v2 OpenCode headers.
+  let upstreamSession = null;
+  if (protocolFreelane) {
+    upstreamSession = isCanonicalSession(sessionId) ? sessionId.trim() : canonicalizeSession(sessionId);
+  }
+
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), HEADER_TIMEOUT_MS);
   try {
@@ -275,7 +299,9 @@ async function attempt(p, req, rawBody, cfg) {
       : targetUrl(p.baseUrl, req.url);
     const resp = await fetch(url, {
       method: req.method,
-      headers: buildHeaders(p, req, protocolOpenai),
+      headers: protocolFreelane
+        ? gatewayHeaders(upstreamSession, { stream: true })
+        : buildHeaders(p, req, protocolOpenai),
       body,
       signal: ac.signal,
     });
@@ -291,7 +317,11 @@ async function attempt(p, req, rawBody, cfg) {
       }
       return { ok: false, status: resp.status, text, retryAfterSec, ac };
     }
-    return { ok: true, resp, ac, mappedModel, protocolOpenai, sessionId, projectName, projectDir, savedChars };
+    return {
+      ok: true, resp, ac,
+      mappedModel, protocolOpenai: protocolOpenai || protocolFreelane,
+      sessionId, projectName, projectDir, savedChars,
+    };
   } finally {
     clearTimeout(timer);
   }

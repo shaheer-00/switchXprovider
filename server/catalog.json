@@ -363,6 +363,53 @@
         "sonnet": "openai/gpt-oss-120b",
         "haiku": "openai/gpt-oss-20b"
       }
+    },
+    {
+      "id": "opencode-free",
+      "name": "OpenCode Free Lane",
+      "baseUrl": "https://opencode.ai",
+      "authStyle": "none",
+      "protocol": "freelane",
+      "description": "Keyless anonymous lane — DeepSeek V4.1 Flash, Kimi K3, GLM 5.3 Flash, MiMo V2.6 Flash, Claude Fable 5, and more, no signup. Gated by a v2 OpenCode client fingerprint that the proxy synthesizes per request (session id minting, tool definitions, pooled Bearer public credential). Rate-limited per session; verify model availability at opencode.ai/inference/v1/models. Note: the free lane now requires the official OpenCode client's TLS identity — a standalone proxy may receive 403 FreeTierError.",
+      "website": "https://opencode.ai/inference/v1/models",
+      "pricing": "free, keyless, rate-limited per session",
+      "freeTier": true,
+      "rating": 4,
+      "tags": [
+        "free",
+        "keyless",
+        "no-signup",
+        "frontier-models",
+        "experimental"
+      ],
+      "models": {
+        "opus": "claude-opus-5",
+        "sonnet": "claude-fable-5",
+        "haiku": "mimo-v2.6-flash-free"
+      }
+    },
+    {
+      "id": "kilo-free",
+      "name": "Kilo Channel",
+      "baseUrl": "https://api.kilo.ai/api/gateway",
+      "authStyle": "none",
+      "protocol": "openai",
+      "description": "Public gateway at api.kilo.ai — free models without signup. Routes through kilo-auto/free which auto-selects the cheapest working free model (DeepSeek V4.1, reflection, minimax, qwen, and others). OpenAI-protocol endpoint; the proxy translates Anthropic requests to /chat/completions automatically.",
+      "website": "https://kilo.ai",
+      "pricing": "free, keyless",
+      "freeTier": true,
+      "rating": 4,
+      "tags": [
+        "free",
+        "keyless",
+        "no-signup",
+        "openai-protocol"
+      ],
+      "models": {
+        "opus": "kilo-auto/free",
+        "sonnet": "kilo-auto/free",
+        "haiku": "kilo-auto/free"
+      }
     }
   ]
 }
