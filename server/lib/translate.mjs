@@ -65,12 +65,14 @@ function splitMessage(m, out) {
     }
   } else if (m.role === 'user') {
     // tool_results must become standalone role:'tool' messages; other content
-    // (text/images) becomes a normal user message.
+    // (text/images) becomes a normal user message. The tool messages must come
+    // FIRST (right after the assistant tool_calls they answer), otherwise OpenAI
+    // gateways reject "assistant message with tool_calls has no result".
     const results = blocks.filter((b) => b?.type === 'tool_result');
     const rest = blocks.filter((b) => b?.type !== 'tool_result');
-    if (rest.length) out.push({ role: 'user', content: openAIContent(rest) });
     for (const r of results) out.push({ role: 'tool', tool_call_id: r.tool_use_id, content: toolResultText(r.content) });
-    if (!blocks.length) out.push({ role: 'user', content: '' });
+    if (rest.length) out.push({ role: 'user', content: openAIContent(rest) });
+    if (!rest.length && !results.length) out.push({ role: 'user', content: '' });
   } else {
     out.push({ role: m.role, content: openAIContent(blocks) });
   }
@@ -155,6 +157,8 @@ export function openAIToAnthropic(json) {
 export function openaiToAnthropicStream(model) {
   let mode = null; // 'sse' | 'json' — set on first non-whitespace byte
   let buf = '';
+  // First bytes ever seen, kept only for the "nothing usable arrived" error.
+  let lastSeen = '';
 
   let started = false;
   let blockIdx = -1;
@@ -244,6 +248,7 @@ export function openaiToAnthropicStream(model) {
     transform(chunk, _enc, cb) {
       pending = '';
       const text = chunk.toString('utf8');
+      if (!lastSeen) lastSeen = text.trim().slice(0, 300);
       if (mode === null) {
         const first = text.slice(text.search(/\S/));
         if (first.startsWith('{')) mode = 'json';
@@ -347,6 +352,22 @@ export function openaiToAnthropicStream(model) {
       const d = buf.replace(/^data:/, '').trim();
       if (d && d !== '[DONE]') { try { handleChunk(JSON.parse(d)); } catch { /* ignore */ } }
       buf = '';
+      // Nothing usable arrived: an intermediary (gateway, WAF, corporate proxy)
+      // answered with HTML or an empty body. Emitting the normal close sequence
+      // without a message_start is an invalid Anthropic stream and surfaces to
+      // Claude Code as "no_events"/"empty or malformed response" — send a real
+      // error event instead so the failure is legible and failover can act.
+      if (!started) {
+        ev({
+          type: 'error',
+          error: {
+            type: 'api_error',
+            message: `switchXprovider: upstream did not return a usable stream (no SSE data events received). First bytes: ${lastSeen.slice(0, 300) || '<empty>'}`,
+          },
+        });
+        cb(null, pending);
+        return;
+      }
       finish();
       cb(null, pending);
     },

@@ -29,6 +29,7 @@ const MOCK_RAMBLER = 9909;
 const MOCK_PROSE = 9910;
 const MOCK_TEMPLATE = 9911;
 const MOCK_MODELSDEV = 9912;
+const MOCK_OPENAI_HTML = 9913;
 
 const home = fs.mkdtempSync(path.join(os.tmpdir(), 'switchx-test-'));
 
@@ -75,10 +76,10 @@ async function waitUp(url, timeoutMs = 8000) {
 
 async function main() {
   // --- mock providers ---
-  for (const [port, mode] of [[MOCK_OK, 'ok'], [MOCK_500, 'fail500'], [MOCK_429, 'ratelimit'], [MOCK_400, 'badreq'], [MOCK_KEYONLY, 'keyonly'], [MOCK_BearerONLY, 'beareronly'], [MOCK_OPENAI, 'openai'], [MOCK_MODELFAIL, 'modelfail'], [MOCK_RAMBLER, 'rambler'], [MOCK_PROSE, 'prose'], [MOCK_TEMPLATE, 'template'], [MOCK_MODELSDEV, 'modelsdev']]) {
+  for (const [port, mode] of [[MOCK_OK, 'ok'], [MOCK_500, 'fail500'], [MOCK_429, 'ratelimit'], [MOCK_400, 'badreq'], [MOCK_KEYONLY, 'keyonly'], [MOCK_BearerONLY, 'beareronly'], [MOCK_OPENAI, 'openai'], [MOCK_OPENAI_HTML, 'openaihtml'], [MOCK_MODELFAIL, 'modelfail'], [MOCK_RAMBLER, 'rambler'], [MOCK_PROSE, 'prose'], [MOCK_TEMPLATE, 'template'], [MOCK_MODELSDEV, 'modelsdev']]) {
     children.push(spawn(process.execPath, [path.join(__dirname, 'mock.mjs'), String(port), mode], { stdio: 'ignore' }));
   }
-  for (const port of [MOCK_OK, MOCK_500, MOCK_429, MOCK_400, MOCK_KEYONLY, MOCK_BearerONLY, MOCK_OPENAI, MOCK_MODELFAIL, MOCK_RAMBLER, MOCK_PROSE, MOCK_TEMPLATE, MOCK_MODELSDEV]) {
+  for (const port of [MOCK_OK, MOCK_500, MOCK_429, MOCK_400, MOCK_KEYONLY, MOCK_BearerONLY, MOCK_OPENAI, MOCK_OPENAI_HTML, MOCK_MODELFAIL, MOCK_RAMBLER, MOCK_PROSE, MOCK_TEMPLATE, MOCK_MODELSDEV]) {
     assert(await waitUp(`http://127.0.0.1:${port}/v1/models`), `mock :${port} up`);
   }
 
@@ -429,6 +430,46 @@ async function main() {
   });
   // restore BearerProvider to priority 1
   for (let i = 0; i < 8; i++) await fetch(`${proxyUrl}/api/providers/${created.id}/up`, { method: 'POST' });
+
+  // --- 7b. OpenAI-protocol upstream answering 200 with an HTML body ---
+  // A gateway/WAF/quota page in front of the provider returns HTML instead of a
+  // stream. The proxy must reject it and fail over — not forward an empty event
+  // stream, which Claude Code reports as "no_events" / "Streaming response
+  // ended before any complete data was received".
+  console.log('\n— OpenAI protocol: HTML body instead of a stream —');
+  resp = await fetch(`${proxyUrl}/api/providers`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      name: 'HtmlIntercept', baseUrl: `http://127.0.0.1:${MOCK_OPENAI_HTML}/v1`,
+      apiKey: 'html-key', authStyle: 'auto', protocol: 'openai', enabled: true,
+      models: { sonnet: 'html-model' },
+    }),
+  });
+  const htmlProv = await resp.json();
+  assert(resp.status === 201 && htmlProv.id, 'html-intercept provider added');
+  // Force it to the front so it is the first candidate.
+  for (let i = 0; i < 8; i++) await fetch(`${proxyUrl}/api/providers/${htmlProv.id}/up`, { method: 'POST' });
+  resp = await fetch(`${proxyUrl}/v1/messages`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-api-key': 'switchx-local' },
+    body: JSON.stringify({ model: 'switchx:sonnet', max_tokens: 32, stream: true, messages: [{ role: 'user', content: 'hi' }] }),
+  });
+  const htmlBody = await resp.text();
+  // Failover means a different provider answered — the HTML never reached the
+  // client, and no empty Anthropic stream was emitted.
+  assert(!htmlBody.includes('502 Bad Gateway') && !htmlBody.includes('<!DOCTYPE html>'),
+    'HTML intercept body never forwarded to the client', htmlBody.slice(0, 160));
+  assert(resp.status === 200 && htmlBody.includes('event: message_start'),
+    'request fails over to a healthy provider instead of returning an empty stream',
+    `got ${resp.status} ${htmlBody.slice(0, 160)}`);
+  // The intercepting provider is marked down and logs the real reason.
+  await sleep(300);
+  const htmlEvents = await (await fetch(`${proxyUrl}/api/events`)).json();
+  assert(htmlEvents.events.some((e) => /HtmlIntercept/.test(e.msg) && /content-type "text\/html/.test(e.msg)),
+    'HTML intercept recorded as a provider fault with its content-type',
+    JSON.stringify(htmlEvents.events.slice(0, 3).map((e) => e.msg)));
+  await fetch(`${proxyUrl}/api/providers/${htmlProv.id}`, { method: 'DELETE' });
 
 
   // --- 8. authStyle auto: works with both anthropic-only and bearer-only providers ---

@@ -10,6 +10,10 @@
 //   openai   — OpenAI-protocol provider: /chat/completions only (JSON + SSE
 //              with tool calls + usage), everything else 404. Verifies the
 //              proxy's Anthropic→OpenAI translation.
+//   openaihtml — OpenAI-protocol provider that answers /chat/completions with
+//              HTTP 200 and a small HTML page (gateway/WAF/quota intercept)
+//              instead of a stream. Verifies the proxy rejects it and fails
+//              over rather than forwarding an empty event stream.
 //   modelfail — 400 "model not available" for models starting with "dead-"
 //              (a gateway with a broken model channel), 200 otherwise.
 //   rambler  — "thinks out loud" before the answer: /v1/messages returns a
@@ -35,6 +39,19 @@ const server = http.createServer((req, res) => {
   let body = '';
   req.on('data', (c) => (body += c));
   req.on('end', () => {
+    if (mode === 'openaihtml') {
+      // HTTP 200 + HTML body: what a gateway/WAF/quota page looks like when it
+      // intercepts an OpenAI-protocol call. Not a stream, not JSON.
+      if (req.method === 'GET' && req.url.includes('/v1/models')) {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ object: 'list', data: [{ id: 'html-model', object: 'model' }] }));
+        return;
+      }
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      res.end('<!DOCTYPE html><html><head><title>502 Bad Gateway</title></head><body><h1>502 Bad Gateway</h1><p>Upstream unreachable.</p></body></html>');
+      return;
+    }
+
     if (mode === 'openai') {
       // OpenAI-protocol provider: /chat/completions + /v1/models (health
       // probes GET the models list), everything else 404.

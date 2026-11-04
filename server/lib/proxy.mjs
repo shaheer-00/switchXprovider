@@ -9,7 +9,7 @@
 import { Readable, Transform } from 'node:stream';
 import { StringDecoder } from 'node:string_decoder';
 import { statsFor, logEvent, persistSoon, recordUsage, pushRequest, countFailover } from './config.mjs';
-import { anthropicToOpenAI, openaiToAnthropicStream } from './translate.mjs';
+import { anthropicToOpenAI, openaiToAnthropicStream, openAIToAnthropic } from './translate.mjs';
 import { compressBody } from './compress.mjs';
 import { sessionFromMetadata, sessionProject, projectDisplayName } from './chaptions.mjs';
 import { gatewayHeaders, applyFingerprint, canonicalizeSession, mintSessionId, isCanonicalSession } from './freelane.mjs';
@@ -207,11 +207,19 @@ export function usageTap(onDone) {
     },
     flush(cb) {
       buf += dec.end();
-      if (!sawSse && buf.trim()) {
-        try { take(JSON.parse(buf)); } catch { /* not JSON */ }
+      // A JSON body usually has no trailing newline, so transform() held it
+      // back as an incomplete line. Parse it for usage AND forward it —
+      // emitting nothing here would drop the whole response body.
+      let out = '';
+      if (buf) {
+        if (!sawSse) {
+          try { take(JSON.parse(buf)); } catch { /* not JSON */ }
+        }
+        out = buf;
+        buf = '';
       }
       finalize();
-      cb();
+      cb(null, out || undefined);
     },
   });
   t.finalize = finalize;
@@ -239,11 +247,13 @@ async function attempt(p, req, rawBody, cfg) {
   const protocolFreelane = p.protocol === 'freelane';
   let targetPath = null; // protocol-translated requests target a different path
   let savedChars = 0;    // token saver — reported to the caller on success
+  let clientStreams = false; // did the client ask for an SSE response?
   if (rawBody && rawBody.length && req.method !== 'GET' && req.method !== 'HEAD') {
     const ct = String(req.headers['content-type'] || '');
     if (ct.includes('json')) {
       try {
         const json = JSON.parse(rawBody.toString('utf8'));
+        clientStreams = json.stream === true;
         if (typeof json.model === 'string') {
           mappedModel = mapModel(p, json.model);
           json.model = mappedModel;
@@ -320,6 +330,7 @@ async function attempt(p, req, rawBody, cfg) {
     return {
       ok: true, resp, ac,
       mappedModel, protocolOpenai: protocolOpenai || protocolFreelane,
+      clientStreams,
       sessionId, projectName, projectDir, savedChars,
     };
   } finally {
@@ -371,6 +382,21 @@ export async function handleProxy(req, res, cfg, rawBody) {
     try {
       const r = await attempt(p, req, rawBody, cfg);
       if (r.ok) {
+        const ct = r.resp.headers.get('content-type') || '';
+        // An OpenAI-protocol upstream can answer HTTP 200 with a small HTML
+        // body (gateway / WAF / quota page) instead of a stream. Feeding that
+        // into the SSE translator yields zero events, which Claude Code
+        // surfaces as "streaming response ended before any complete data" and
+        // an unhelpful "no_events" error. Catch it here and fail over instead —
+        // before counting the attempt as a success.
+        if (r.protocolOpenai && !/event-stream/i.test(ct) && !/application\/json/i.test(ct)) {
+          const body = await new Response(r.resp.body).text().catch(() => '');
+          try { r.ac.abort(); } catch {}
+          markDown(cfg, p, 'server', `HTTP 200 with content-type "${ct}" instead of a stream: ${String(body).slice(0, 200)}`);
+          countFailover(cfg);
+          lastErr = { status: 502, text: `unexpected content-type "${ct}" (expected text/event-stream): ${String(body).slice(0, 200)}` };
+          continue;
+        }
         markSuccess(cfg, p, Date.now() - t0);
         // Token saver counters — once per served request, not per attempt
         // (failover retries compress the same body again; bytes identical).
@@ -390,19 +416,35 @@ export async function handleProxy(req, res, cfg, rawBody) {
           inTok: 0,
           outTok: 0,
         };
-        res.writeHead(r.resp.status, sanitizeRespHeaders(r.resp.headers));
-        let stream = Readable.fromWeb(r.resp.body);
-        if (r.protocolOpenai) {
-          // Translate the OpenAI body (SSE or JSON — auto-detected) into
-          // Anthropic wire format before it reaches usageTap / Claude Code.
-          stream = stream.pipe(openaiToAnthropicStream(r.mappedModel || ''));
-        } else if (r.resp.headers.get('content-type')?.includes('application/json')) {
-          // Some non-OpenAI upstreams (e.g. bynara) ignore stream/Accept and
-          // return plain JSON even for /v1/messages — Claude Code requires
-          // text/event-stream. Reuse the JSON-buffering path to emit a valid
-          // Anthropic SSE event stream (it self-selects the JSON branch).
-          stream = stream.pipe(openaiToAnthropicStream(r.mappedModel || ''));
+        let stream;
+        if (r.protocolOpenai && !r.clientStreams && ct.includes('application/json')) {
+          // Non-streaming OpenAI-protocol call: the upstream answered with a
+          // chat.completion object. Translate it to an Anthropic message and
+          // return JSON — a non-streaming client parses the body as JSON, so
+          // reshaping it into an SSE event stream breaks the response.
+          const raw = await new Response(r.resp.body).text().catch(() => '');
+          let out = raw;
+          try { out = JSON.stringify(openAIToAnthropic(JSON.parse(raw))); } catch { /* not JSON — pass through */ }
+          stream = Readable.from([out]);
+        } else {
+          stream = Readable.fromWeb(r.resp.body);
+          if (r.protocolOpenai) {
+            // Translate the OpenAI body (SSE or JSON — auto-detected) into
+            // Anthropic wire format before it reaches usageTap / Claude Code.
+            // The translator emits an `event: error` if the body turns out not
+            // to be a usable stream, so failures stay legible downstream.
+            stream = stream.pipe(openaiToAnthropicStream(r.mappedModel || ''));
+          } else if (ct.includes('application/json') && r.clientStreams) {
+            // Some non-OpenAI upstreams (e.g. bynara) ignore stream/Accept and
+            // return plain JSON even for /v1/messages — Claude Code requires
+            // text/event-stream. Reuse the JSON-buffering path to emit a valid
+            // Anthropic SSE event stream (it self-selects the JSON branch).
+            // Only when the client asked to stream: a non-streaming request is
+            // supposed to get JSON back, and reshaping it into SSE breaks it.
+            stream = stream.pipe(openaiToAnthropicStream(r.mappedModel || ''));
+          }
         }
+        res.writeHead(r.resp.status, sanitizeRespHeaders(r.resp.headers));
         const tap = usageTap((u) => {
           rec.inTok = u.input + u.cacheRead + u.cacheCreation;
           rec.outTok = u.output;
